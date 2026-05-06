@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "installCommand": "cd web && npx pnpm@10.33.0 install --frozen-lockfile",
-  "buildCommand": "cd web && npx pnpm@10.33.0 run build",
-  "outputDirectory": "web/.next"
+  "installCommand": "npx pnpm@10.33.0 install --frozen-lockfile",
+  "buildCommand": "npx pnpm@10.33.0 run build",
+  "outputDirectory": ".next"
 }
