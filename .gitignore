@@ -1,0 +1,20 @@
+.secrets/
+.DS_Store
+
+# env
+.env
+.env.local
+.env*.local
+
+# node / next
+node_modules/
+.next/
+out/
+
+# foundry generated output
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# local notes / docs
+*.md
