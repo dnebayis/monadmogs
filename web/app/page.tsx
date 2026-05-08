@@ -17,6 +17,14 @@ export default function Home() {
             <a href="https://app.monad.xyz/" className="text-link muted" target="_blank" rel="noreferrer">
               Get MON
             </a>
+            <a
+              href="https://opensea.io/collection/monad-mogs"
+              className="text-link muted"
+              target="_blank"
+              rel="noreferrer"
+            >
+              OpenSea
+            </a>
           </div>
         </div>
         <div className="mog-stage" aria-label="Pixel hamster mascot preview">
@@ -32,7 +40,7 @@ export default function Home() {
       <section id="mint" className="mint-section">
         <div className="section-heading">
           <p className="eyebrow">Mint Surface</p>
-          <h2>One wallet can mint five testnet Mogs.</h2>
+          <h2>One wallet can mint five Monad Mogs.</h2>
           <p className="section-copy">
             The contract returns the artwork and metadata directly from <code>tokenURI()</code>. Mint is free; only Monad
             gas is paid.
