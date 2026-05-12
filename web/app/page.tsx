@@ -1,29 +1,25 @@
 import { MintPanel } from "@/components/mint-panel";
+import { TraitExplorer } from "@/components/trait-explorer";
 
 export default function Home() {
   return (
     <main>
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">Monad Mainnet / Free Mint</p>
+          <p className="eyebrow">Monad Mainnet / Sold Out</p>
           <h1>Monad Mogs</h1>
           <p className="hero-line">
-            5,000 fully onchain pixel hamsters born from Monad culture, deterministic traits, and SVG metadata.
+            5,000 fully onchain pixel hamsters, permanently minted on Monad and locked forever.
           </p>
           <div className="hero-actions">
-            <a href="#mint" className="text-link">
-              Mint on Monad
+            <a href="https://opensea.io/collection/monad-mogs" className="text-link" target="_blank" rel="noreferrer">
+              View on OpenSea
             </a>
-            <a href="https://app.monad.xyz/" className="text-link muted" target="_blank" rel="noreferrer">
-              Get MON
+            <a href="https://x.com/monadmogs" className="text-link muted" target="_blank" rel="noreferrer">
+              Follow X
             </a>
-            <a
-              href="https://opensea.io/collection/monad-mogs"
-              className="text-link muted"
-              target="_blank"
-              rel="noreferrer"
-            >
-              OpenSea
+            <a href="#story" className="text-link muted">
+              Read story
             </a>
           </div>
         </div>
@@ -32,18 +28,18 @@ export default function Home() {
           <div className="stage-caption">
             <span>no ipfs</span>
             <span>no lp</span>
-            <span>no price</span>
+            <span>sold out</span>
           </div>
         </div>
       </section>
 
       <section id="mint" className="mint-section">
         <div className="section-heading">
-          <p className="eyebrow">Mint Surface</p>
-          <h2>One wallet can mint five Monad Mogs.</h2>
+          <p className="eyebrow">Final Supply</p>
+          <h2>5,000 / 5,000 Monad Mogs have been minted.</h2>
           <p className="section-copy">
-            The contract returns the artwork and metadata directly from <code>tokenURI()</code>. Mint is free; only Monad
-            gas is paid.
+            Mint is closed, metadata is frozen, and ownership has been renounced. The artwork and metadata remain
+            available directly from <code>tokenURI()</code>.
           </p>
         </div>
         <MintPanel />
@@ -51,19 +47,40 @@ export default function Home() {
 
       <section className="trait-section">
         <div className="section-heading">
-          <p className="eyebrow">Locked Renderer</p>
-          <h2>A simple hamster mask with Monad-native traits.</h2>
+          <p className="eyebrow">Trait Explorer</p>
+          <h2>Filter the onchain trait set behind every Mog.</h2>
         </div>
-        <div className="trait-list" aria-label="Trait groups">
-          {["Background", "Body", "Eyes", "Mouth", "Head", "Hands", "Aura", "Glitch", "Meme Tag"].map((trait) => (
-            <span key={trait}>{trait}</span>
-          ))}
+        <TraitExplorer />
+      </section>
+
+      <section id="story" className="story-section">
+        <div className="section-heading">
+          <p className="eyebrow">Story</p>
+          <h2>A small hamster relic from Monad culture.</h2>
+        </div>
+        <div className="story-copy">
+          <p>
+            Monad Mogs began as a free onchain experiment: no IPFS, no LP, no mint price, just 5,000 deterministic
+            pixel hamsters written for Monad mainnet.
+          </p>
+          <p>
+            Each Mog is assembled from a stored mint seed and rendered as SVG by the contract itself. The collection is
+            now sold out, frozen, and ownerless.
+          </p>
+          <div className="story-links">
+            <a href="https://x.com/monadmogs" target="_blank" rel="noreferrer">
+              X
+            </a>
+            <a href="https://opensea.io/collection/monad-mogs" target="_blank" rel="noreferrer">
+              OpenSea
+            </a>
+          </div>
         </div>
       </section>
 
       <section className="proof-section">
         <p>SVG and JSON metadata are returned directly from <code>tokenURI()</code> as data URIs.</p>
-        <p>Final launch flow: verify, smoke test, freeze metadata, renounce ownership.</p>
+        <p>Final state: sold out, metadata frozen, ownership renounced.</p>
       </section>
     </main>
   );

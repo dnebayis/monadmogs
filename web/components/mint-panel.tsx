@@ -13,6 +13,8 @@ import {
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS, hasConfiguredContract } from "@/lib/contract";
 import { MONAD_CHAIN, MONAD_EXPLORER_URL, MONAD_NETWORK_LABEL } from "@/lib/network";
 
+const FINAL_SUPPLY = 5000;
+
 export function MintPanel() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -52,11 +54,11 @@ export function MintPanel() {
     query: { enabled: hasConfiguredContract && Boolean(address) },
   });
 
-  const supply = Number(totalSupply.data || 0n);
-  const max = Number(maxSupply.data || 5000n);
+  const supply = Math.max(Number(totalSupply.data || BigInt(FINAL_SUPPLY)), FINAL_SUPPLY);
+  const max = Number(maxSupply.data || BigInt(FINAL_SUPPLY));
   const walletMinted = Number(mintedCount.data || 0n);
   const perWallet = Number(walletLimit.data || 5n);
-  const soldOut = supply >= max;
+  const soldOut = true;
   const wrongNetwork = isConnected && chainId !== MONAD_CHAIN.id;
   const disabled =
     !hasConfiguredContract ||
@@ -114,7 +116,7 @@ export function MintPanel() {
           </button>
         ) : (
           <button className="primary-action" disabled={disabled} onClick={mint}>
-            Mint Free
+            {soldOut ? "Sold out" : "Mint Free"}
           </button>
         )}
       </div>
