@@ -34,7 +34,8 @@ a {
 
 button,
 code,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -71,6 +72,7 @@ code {
 .hero-copy,
 .mog-stage,
 .mint-section,
+.collection-section,
 .trait-section,
 .story-section,
 .proof-section {
@@ -130,7 +132,8 @@ h2 {
 }
 
 .text-link,
-.primary-action {
+.primary-action,
+.secondary-action {
   min-height: 48px;
   display: inline-flex;
   align-items: center;
@@ -144,7 +147,8 @@ h2 {
 }
 
 .text-link:hover,
-.primary-action:hover:not(:disabled) {
+.primary-action:hover:not(:disabled),
+.secondary-action:hover:not(:disabled) {
   transform: translateY(-2px);
 }
 
@@ -157,7 +161,14 @@ h2 {
   cursor: pointer;
 }
 
-.primary-action:disabled {
+.secondary-action {
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.primary-action:disabled,
+.secondary-action:disabled {
   cursor: not-allowed;
   opacity: 0.42;
 }
@@ -405,6 +416,7 @@ h2 {
 }
 
 .mint-section,
+.collection-section,
 .trait-section,
 .story-section {
   padding: 96px clamp(20px, 5vw, 78px);
@@ -504,6 +516,7 @@ h2 {
   font-size: 13px;
 }
 
+.collection-section,
 .trait-section,
 .story-section {
   display: grid;
@@ -511,6 +524,115 @@ h2 {
   overflow: hidden;
   border-top: 1px solid var(--line);
   background: #09080f;
+}
+
+.collection-section {
+  background:
+    linear-gradient(180deg, #09080f 0%, #100c15 100%);
+}
+
+.collection-shell {
+  display: grid;
+  gap: 24px;
+}
+
+.collection-toolbar,
+.collection-actions,
+.collection-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.collection-search,
+.filter-grid label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.collection-search {
+  min-width: min(100%, 360px);
+}
+
+.collection-search input,
+.filter-grid select {
+  min-height: 46px;
+  border: 1px solid var(--line);
+  background: rgba(255, 248, 238, 0.06);
+  color: var(--ink);
+  outline: none;
+}
+
+.collection-search input {
+  padding: 0 14px;
+}
+
+.filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.filter-grid select {
+  padding: 0 10px;
+}
+
+.filter-grid option {
+  background: #100c15;
+  color: var(--ink);
+}
+
+.collection-meta {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.collection-meta span {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+}
+
+.nft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 16px;
+}
+
+.nft-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: rgba(18, 14, 27, 0.74);
+}
+
+.nft-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background: #100c15;
+}
+
+.nft-card-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.nft-card-body strong {
+  font-size: 15px;
+}
+
+.nft-traits {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
 }
 
 .trait-list,
@@ -625,6 +747,7 @@ h2 {
 @media (max-width: 900px) {
   .hero,
   .mint-section,
+  .collection-section,
   .story-section {
     grid-template-columns: 1fr;
   }

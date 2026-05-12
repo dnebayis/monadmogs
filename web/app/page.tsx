@@ -1,5 +1,5 @@
+import { CollectionGallery } from "@/components/collection-gallery";
 import { MintPanel } from "@/components/mint-panel";
-import { TraitExplorer } from "@/components/trait-explorer";
 
 export default function Home() {
   return (
@@ -17,6 +17,9 @@ export default function Home() {
             </a>
             <a href="https://x.com/monadmogs" className="text-link muted" target="_blank" rel="noreferrer">
               Follow X
+            </a>
+            <a href="#collection" className="text-link muted">
+              Browse
             </a>
             <a href="#story" className="text-link muted">
               Read story
@@ -45,13 +48,7 @@ export default function Home() {
         <MintPanel />
       </section>
 
-      <section className="trait-section">
-        <div className="section-heading">
-          <p className="eyebrow">Trait Explorer</p>
-          <h2>Filter the onchain trait set behind every Mog.</h2>
-        </div>
-        <TraitExplorer />
-      </section>
+      <CollectionGallery />
 
       <section id="story" className="story-section">
         <div className="section-heading">
