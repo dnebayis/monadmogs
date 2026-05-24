@@ -21,6 +21,9 @@ export default function Home() {
             <a href="#collection" className="text-link muted">
               Browse
             </a>
+            <a href="/developers" className="text-link muted">
+              API
+            </a>
             <a href="#story" className="text-link muted">
               Read story
             </a>

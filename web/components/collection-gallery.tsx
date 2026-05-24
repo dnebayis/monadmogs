@@ -3,24 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPublicClient, http } from "viem";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
+import { MAX_SUPPLY, TRAIT_GROUPS, type MogAttribute, type MogMetadata } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 
 const PAGE_SIZE = 48;
-const MAX_SUPPLY = 5000;
 
-type Attribute = {
-  trait_type: string;
-  value: string;
-};
-
-type TokenMetadata = {
-  tokenId: number;
-  name: string;
-  image: string;
-  attributes: Attribute[];
-};
-
-const TRAIT_GROUPS = ["Background", "Body", "Eyes", "Mouth", "Head", "Hands", "Aura", "Glitch", "Meme Tag"];
+type TokenMetadata = MogMetadata;
 
 const client = createPublicClient({
   chain: MONAD_CHAIN,
@@ -166,7 +154,7 @@ export function CollectionGallery() {
       options[group] = Array.from(
         new Set(
           tokens.flatMap((token) =>
-            token.attributes.filter((attribute) => attribute.trait_type === group).map((attribute) => attribute.value),
+            token.attributes.filter((attribute: MogAttribute) => attribute.trait_type === group).map((attribute) => attribute.value),
           ),
         ),
       ).sort();

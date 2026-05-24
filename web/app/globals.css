@@ -59,6 +59,28 @@ code {
     #100d18;
 }
 
+.developer-hero {
+  position: relative;
+  min-height: 72svh;
+  display: grid;
+  align-content: center;
+  padding: 44px clamp(20px, 5vw, 78px) 68px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(9, 8, 15, 0.96) 0%, rgba(9, 8, 15, 0.76) 58%, rgba(9, 8, 15, 0.34) 100%),
+    linear-gradient(180deg, #100d18 0%, #09080f 100%);
+}
+
+.developer-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 248, 238, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 248, 238, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
 .hero::before {
   content: "";
   position: absolute;
@@ -70,6 +92,7 @@ code {
 }
 
 .hero-copy,
+.developer-hero > *,
 .mog-stage,
 .mint-section,
 .collection-section,
@@ -417,6 +440,7 @@ h2 {
 
 .mint-section,
 .collection-section,
+.developer-section,
 .trait-section,
 .story-section {
   padding: 96px clamp(20px, 5vw, 78px);
@@ -517,6 +541,7 @@ h2 {
 }
 
 .collection-section,
+.developer-section,
 .trait-section,
 .story-section {
   display: grid;
@@ -524,6 +549,53 @@ h2 {
   overflow: hidden;
   border-top: 1px solid var(--line);
   background: #09080f;
+}
+
+.developer-section.compact {
+  padding-top: 56px;
+}
+
+.endpoint-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.endpoint-card {
+  display: grid;
+  gap: 14px;
+  min-height: 168px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: rgba(18, 14, 27, 0.74);
+}
+
+.endpoint-card span {
+  width: fit-content;
+  padding: 6px 8px;
+  background: var(--cream);
+  color: #171018;
+  font-size: 12px;
+}
+
+.endpoint-card code {
+  overflow-wrap: anywhere;
+}
+
+.endpoint-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.code-block {
+  max-width: 860px;
+  overflow: auto;
+  margin: 0;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: rgba(255, 248, 238, 0.06);
+  color: var(--ink);
 }
 
 .collection-section {
