@@ -79,7 +79,7 @@ export default function DevelopersPage() {
           <h2>Fetch a random Mog.</h2>
         </div>
         <pre className="code-block">
-          <code>{`const mog = await fetch("https://monadmogs.xyz/api/v0/mogs/random").then((r) => r.json());
+          <code>{`const mog = await fetch("https://monadmogs.vercel.app/api/v0/mogs/random").then((r) => r.json());
 console.log(mog.name, mog.attributes);`}</code>
         </pre>
       </section>

@@ -94,6 +94,7 @@ code {
 .hero-copy,
 .developer-hero > *,
 .mog-stage,
+.tabs-shell,
 .mint-section,
 .collection-section,
 .trait-section,
@@ -419,7 +420,9 @@ h2 {
 .trait-list,
 .trait-controls,
 .trait-results,
-.story-links {
+.story-links,
+.overview-stats,
+.tabs-bar {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -429,7 +432,8 @@ h2 {
 .stage-caption span,
 .trait-list span,
 .trait-results span,
-.story-links a {
+.story-links a,
+.overview-stats span {
   padding: 8px 10px;
   border: 1px solid var(--line);
   color: var(--muted);
@@ -442,8 +446,60 @@ h2 {
 .collection-section,
 .developer-section,
 .trait-section,
-.story-section {
+.story-section,
+.tabs-shell {
   padding: 96px clamp(20px, 5vw, 78px);
+}
+
+.tabs-shell {
+  display: grid;
+  gap: 28px;
+  border-top: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, #0d0b14 0%, #09080f 100%);
+}
+
+.tabs-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  justify-content: flex-start;
+  padding: 10px;
+  border: 1px solid var(--line);
+  background: rgba(9, 8, 15, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+.tabs-bar button {
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.tabs-bar button.active {
+  border-color: var(--line);
+  background: var(--cream);
+  color: #171018;
+}
+
+.tab-panel {
+  min-height: 520px;
+}
+
+.overview-grid,
+.api-summary {
+  display: grid;
+  gap: 28px;
+  min-height: 520px;
+  align-content: center;
+}
+
+.overview-stats {
+  justify-content: flex-start;
 }
 
 .mint-section {
@@ -454,6 +510,14 @@ h2 {
   border-top: 1px solid var(--line);
   background:
     linear-gradient(180deg, #0d0b14 0%, #100c15 100%);
+}
+
+.mint-section.tabbed,
+.collection-section.tabbed,
+.story-section.tabbed {
+  padding: 0;
+  border-top: 0;
+  background: transparent;
 }
 
 .mint-surface {
@@ -549,6 +613,11 @@ h2 {
   overflow: hidden;
   border-top: 1px solid var(--line);
   background: #09080f;
+}
+
+.collection-section.tabbed,
+.story-section.tabbed {
+  overflow: visible;
 }
 
 .developer-section.compact {

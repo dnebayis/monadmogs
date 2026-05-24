@@ -65,7 +65,7 @@ function parseTokenIdSearch(query: string) {
   return tokenId;
 }
 
-export function CollectionGallery() {
+export function CollectionGallery({ compact = false }: { compact?: boolean }) {
   const [tokens, setTokens] = useState<TokenMetadata[]>([]);
   const [nextTokenId, setNextTokenId] = useState(1);
   const [query, setQuery] = useState("");
@@ -176,7 +176,7 @@ export function CollectionGallery() {
   }
 
   return (
-    <section id="collection" className="collection-section">
+    <section id="collection" className={compact ? "collection-section tabbed" : "collection-section"}>
       <div className="section-heading">
         <p className="eyebrow">Collection</p>
         <h2>Browse the onchain Mogs and filter by loaded traits.</h2>

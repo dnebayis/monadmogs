@@ -1,5 +1,4 @@
-import { CollectionGallery } from "@/components/collection-gallery";
-import { MintPanel } from "@/components/mint-panel";
+import { HomeTabs } from "@/components/home-tabs";
 
 export default function Home() {
   return (
@@ -39,49 +38,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section id="mint" className="mint-section">
-        <div className="section-heading">
-          <p className="eyebrow">Final Supply</p>
-          <h2>5,000 / 5,000 Monad Mogs have been minted.</h2>
-          <p className="section-copy">
-            Mint is closed, metadata is frozen, and ownership has been renounced. The artwork and metadata remain
-            available directly from <code>tokenURI()</code>.
-          </p>
-        </div>
-        <MintPanel />
-      </section>
-
-      <CollectionGallery />
-
-      <section id="story" className="story-section">
-        <div className="section-heading">
-          <p className="eyebrow">Story</p>
-          <h2>A small hamster relic from Monad culture.</h2>
-        </div>
-        <div className="story-copy">
-          <p>
-            Monad Mogs began as a free onchain experiment: no IPFS, no LP, no mint price, just 5,000 deterministic
-            pixel hamsters written for Monad mainnet.
-          </p>
-          <p>
-            Each Mog is assembled from a stored mint seed and rendered as SVG by the contract itself. The collection is
-            now sold out, frozen, and ownerless.
-          </p>
-          <div className="story-links">
-            <a href="https://x.com/monadmogs" target="_blank" rel="noreferrer">
-              X
-            </a>
-            <a href="https://opensea.io/collection/monad-mogs" target="_blank" rel="noreferrer">
-              OpenSea
-            </a>
-          </div>
-        </div>
-      </section>
-
-      <section className="proof-section">
-        <p>SVG and JSON metadata are returned directly from <code>tokenURI()</code> as data URIs.</p>
-        <p>Final state: sold out, metadata frozen, ownership renounced.</p>
-      </section>
+      <HomeTabs />
     </main>
   );
 }
