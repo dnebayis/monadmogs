@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Jersey_10 } from "next/font/google";
+import { ClientProviders } from "@/components/client-providers";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
@@ -18,8 +19,10 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en">
       <body className={pixelFont.variable}>
-        {children}
-        <SiteFooter />
+        <ClientProviders>
+          {children}
+          <SiteFooter />
+        </ClientProviders>
       </body>
     </html>
   );

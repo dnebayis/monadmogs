@@ -10,6 +10,7 @@ const tabs = [
   { id: "final", label: "Final State" },
   { id: "token", label: "$MOGS" },
   { id: "ip", label: "IP Rules" },
+  { id: "agents", label: "Agents" },
   { id: "story", label: "Story" },
   { id: "api", label: "API" },
   { id: "docs", label: "Docs" },
@@ -86,6 +87,8 @@ export function HomeTabs() {
           <TokenTab />
         ) : activeTab === "ip" ? (
           <IpTab />
+        ) : activeTab === "agents" ? (
+          <AgentsTab />
         ) : activeTab === "story" ? (
           <StoryTab />
         ) : activeTab === "api" ? (
@@ -254,6 +257,42 @@ function IpTab() {
         </a>
         <a className="text-link muted" href="/developers">
           Builder Kit
+        </a>
+      </div>
+    </section>
+  );
+}
+function AgentsTab() {
+  return (
+    <section className="api-summary">
+      <div className="section-heading">
+        <p className="eyebrow">Mog Identity</p>
+        <h2>Register a signed agent profile for your Mog.</h2>
+        <p className="section-copy">
+          Agent Identity v0 lets a wallet choose a Mog, generate an AgentURI, sign it, and register it through the
+          ERC-8004 Identity Registry on Monad.
+        </p>
+      </div>
+      <div className="endpoint-list">
+        <article className="endpoint-card">
+          <span>1 / Wallet</span>
+          <p>Connect the operator wallet that controls the agent profile.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>2 / Mog</span>
+          <p>Pick the Mog that the agent will pilot and use its traits as strategy context.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>3 / Sign</span>
+          <p>Sign the AgentURI locally or submit an ERC-8004 register transaction.</p>
+        </article>
+      </div>
+      <div className="hero-actions">
+        <a className="text-link" href="/agents">
+          Open Agent Identity
+        </a>
+        <a className="text-link muted" href="/llms.txt" target="_blank" rel="noreferrer">
+          Agent Context
         </a>
       </div>
     </section>

@@ -129,6 +129,9 @@ export default function DevelopersPage() {
           <a className="text-link muted" href="/mogs/1">
             Sample Mog
           </a>
+          <a className="text-link muted" href="/agents">
+            Agent Identity
+          </a>
           <a className="text-link muted" href="https://github.com/dnebayis/monadmogs" target="_blank" rel="noreferrer">
             GitHub
           </a>

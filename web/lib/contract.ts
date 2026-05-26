@@ -60,6 +60,20 @@ export const MONAD_MOGS_ABI = [
     inputs: [{ type: "uint256" }],
     outputs: [{ type: "string" }],
   },
+  {
+    type: "function",
+    name: "ownerOf",
+    stateMutability: "view",
+    inputs: [{ type: "uint256" }],
+    outputs: [{ type: "address" }],
+  },
+  {
+    type: "function",
+    name: "balanceOf",
+    stateMutability: "view",
+    inputs: [{ type: "address" }],
+    outputs: [{ type: "uint256" }],
+  },
 ] as const;
 
 export const hasConfiguredContract = MONAD_MOGS_ADDRESS !== "0x0000000000000000000000000000000000000000";
