@@ -657,6 +657,25 @@ h2 {
   line-height: 1.5;
 }
 
+.token-card {
+  display: grid;
+  gap: 14px;
+  max-width: 760px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: rgba(18, 14, 27, 0.74);
+}
+
+.token-card span {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.token-card code {
+  overflow-wrap: anywhere;
+}
+
 .code-block {
   max-width: 860px;
   overflow: auto;

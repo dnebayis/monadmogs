@@ -23,6 +23,14 @@ export default function Home() {
             <a href="/developers" className="text-link muted">
               API
             </a>
+            <a
+              href="https://nad.fun/tokens/0x9cF1538f92341A311a922D411DE8C471DCEA7777"
+              className="text-link muted"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Token
+            </a>
             <a href="#story" className="text-link muted">
               Read story
             </a>

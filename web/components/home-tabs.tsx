@@ -8,9 +8,13 @@ const tabs = [
   { id: "overview", label: "Overview" },
   { id: "collection", label: "Collection" },
   { id: "status", label: "Status" },
+  { id: "token", label: "Token" },
   { id: "story", label: "Story" },
   { id: "api", label: "API" },
 ] as const;
+
+const TOKEN_ADDRESS = "0x9cF1538f92341A311a922D411DE8C471DCEA7777";
+const TOKEN_URL = `https://nad.fun/tokens/${TOKEN_ADDRESS}`;
 
 type TabId = (typeof tabs)[number]["id"];
 
@@ -57,6 +61,8 @@ export function HomeTabs() {
           <CollectionGallery compact />
         ) : activeTab === "status" ? (
           <StatusTab />
+        ) : activeTab === "token" ? (
+          <TokenTab />
         ) : activeTab === "story" ? (
           <StoryTab />
         ) : (
@@ -83,6 +89,7 @@ function OverviewTab() {
         <span>0 MON mint</span>
         <span>onchain SVG</span>
         <span>ownerless</span>
+        <span>MOG token live</span>
       </div>
     </section>
   );
@@ -99,6 +106,30 @@ function StatusTab() {
         </p>
       </div>
       <MintPanel />
+    </section>
+  );
+}
+
+function TokenTab() {
+  return (
+    <section className="api-summary">
+      <div className="section-heading">
+        <p className="eyebrow">MOG Token</p>
+        <h2>The Monad Mogs token is live on nad.fun.</h2>
+        <p className="section-copy">
+          The NFT collection remains sold out and ownerless. The token page is the public market surface for the Mogs
+          community token on Monad.
+        </p>
+      </div>
+      <div className="token-card">
+        <span>Token address</span>
+        <code>{TOKEN_ADDRESS}</code>
+        <div className="hero-actions">
+          <a className="text-link" href={TOKEN_URL} target="_blank" rel="noreferrer">
+            Open on nad.fun
+          </a>
+        </div>
+      </div>
     </section>
   );
 }
@@ -125,6 +156,9 @@ function StoryTab() {
           </a>
           <a href="https://opensea.io/collection/monad-mogs" target="_blank" rel="noreferrer">
             OpenSea
+          </a>
+          <a href={TOKEN_URL} target="_blank" rel="noreferrer">
+            Token
           </a>
         </div>
       </div>
