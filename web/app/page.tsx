@@ -29,7 +29,7 @@ export default function Home() {
               target="_blank"
               rel="noreferrer"
             >
-              Token
+              $MOGS
             </a>
             <a href="#story" className="text-link muted">
               Read story
@@ -40,7 +40,7 @@ export default function Home() {
           <PixelMog />
           <div className="stage-caption">
             <span>no ipfs</span>
-            <span>no lp</span>
+            <span>onchain svg</span>
             <span>sold out</span>
           </div>
         </div>

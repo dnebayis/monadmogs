@@ -8,7 +8,7 @@ const tabs = [
   { id: "overview", label: "Overview" },
   { id: "collection", label: "Collection" },
   { id: "status", label: "Status" },
-  { id: "token", label: "Token" },
+  { id: "token", label: "$MOGS" },
   { id: "story", label: "Story" },
   { id: "api", label: "API" },
 ] as const;
@@ -26,8 +26,14 @@ export function HomeTabs() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
   useEffect(() => {
-    const hash = window.location.hash.replace("#", "");
-    if (isTabId(hash)) setActiveTab(hash);
+    function syncHash() {
+      const hash = window.location.hash.replace("#", "");
+      if (isTabId(hash)) setActiveTab(hash);
+    }
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    return () => window.removeEventListener("hashchange", syncHash);
   }, []);
 
   const activeLabel = useMemo(() => tabs.find((tab) => tab.id === activeTab)?.label || "Overview", [activeTab]);
@@ -86,10 +92,10 @@ function OverviewTab() {
       </div>
       <div className="overview-stats">
         <span>5,000 supply</span>
-        <span>0 MON mint</span>
+        <span>sold out</span>
         <span>onchain SVG</span>
         <span>ownerless</span>
-        <span>MOG token live</span>
+        <span>$MOGS live</span>
       </div>
     </section>
   );
@@ -114,8 +120,8 @@ function TokenTab() {
   return (
     <section className="api-summary">
       <div className="section-heading">
-        <p className="eyebrow">MOG Token</p>
-        <h2>The Monad Mogs token is live on nad.fun.</h2>
+        <p className="eyebrow">$MOGS</p>
+        <h2>$MOGS is live on nad.fun.</h2>
         <p className="section-copy">
           The NFT collection remains sold out and ownerless. The token page is the public market surface for the Mogs
           community token on Monad.
@@ -143,8 +149,7 @@ function StoryTab() {
       </div>
       <div className="story-copy">
         <p>
-          Monad Mogs began as a free onchain experiment: no IPFS, no LP, no mint price, just 5,000 deterministic pixel
-          hamsters written for Monad mainnet.
+          Monad Mogs began as an onchain pixel experiment: 5,000 deterministic hamsters written for Monad mainnet.
         </p>
         <p>
           Each Mog is assembled from a stored mint seed and rendered as SVG by the contract itself. The collection is now
@@ -158,7 +163,7 @@ function StoryTab() {
             OpenSea
           </a>
           <a href={TOKEN_URL} target="_blank" rel="noreferrer">
-            Token
+            $MOGS
           </a>
         </div>
       </div>
