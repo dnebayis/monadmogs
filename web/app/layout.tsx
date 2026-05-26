@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Jersey_10 } from "next/font/google";
+import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
 
 const pixelFont = Jersey_10({
@@ -18,6 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     <html lang="en">
       <body className={pixelFont.variable}>
         {children}
+        <SiteFooter />
       </body>
     </html>
   );

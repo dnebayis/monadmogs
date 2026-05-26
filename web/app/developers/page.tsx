@@ -65,6 +65,48 @@ const agentPrompt = `read https://monadmogs.vercel.app/llms.txt first.
 then use the monad mogs public api to fetch frozen metadata, traits, svg renders, or random mogs.
 if you build with the assets, credit monad mogs and link back to https://monadmogs.vercel.app/.`;
 
+const builderSteps = [
+  {
+    title: "1 / Read context",
+    body: "Start with /llms.txt or the copyable agent prompt so tools understand Monad Mogs, IP rules, and API routes.",
+  },
+  {
+    title: "2 / Fetch a Mog",
+    body: "Use /api/v0/mogs/random or /api/v0/mogs/{id} to load frozen metadata, traits, image data, and links.",
+  },
+  {
+    title: "3 / Render assets",
+    body: "Use /api/v0/mogs/{id}/render for SVG source that can power stickers, bots, games, dashboards, and sites.",
+  },
+  {
+    title: "4 / Share a page",
+    body: "Use /mogs/{id} for a public detail page with render, traits, OpenSea, Monadscan, and API links.",
+  },
+];
+
+const remixAssets = [
+  {
+    label: "Random Mog",
+    href: "/api/v0/mogs/random",
+    body: "Best starting point for bots, daily posts, and small experiments.",
+  },
+  {
+    label: "SVG Render",
+    href: "/api/v0/mogs/1/render",
+    body: "Raw onchain-style SVG render for remixing, stickers, and previews.",
+  },
+  {
+    label: "Trait Schema",
+    href: "/api/v0/traits",
+    body: "Full trait map for filters, rarity-style explainers, and search tools.",
+  },
+  {
+    label: "Gallery Page",
+    href: "/api/v0/mogs?cursor=1&limit=24",
+    body: "Paginated metadata for galleries, collection browsers, and datasets.",
+  },
+];
+
 export default function DevelopersPage() {
   return (
     <main>
@@ -84,6 +126,12 @@ export default function DevelopersPage() {
           <a className="text-link muted" href="/llms.txt" target="_blank" rel="noreferrer">
             llms.txt
           </a>
+          <a className="text-link muted" href="/mogs/1">
+            Sample Mog
+          </a>
+          <a className="text-link muted" href="https://github.com/dnebayis/monadmogs" target="_blank" rel="noreferrer">
+            GitHub
+          </a>
           <a className="text-link muted" href="/">
             Back home
           </a>
@@ -100,6 +148,47 @@ export default function DevelopersPage() {
           </p>
         </div>
         <CopyPrompt text={agentPrompt} />
+      </section>
+
+      <section className="developer-section compact">
+        <div className="section-heading">
+          <p className="eyebrow">Builder Kit v0</p>
+          <h2>Build with frozen Mogs data without asking permission.</h2>
+          <p className="section-copy">
+            The first builder kit is simple: context, metadata, traits, SVG renders, and examples that can plug into
+            bots, games, galleries, dashboards, and creative tools.
+          </p>
+        </div>
+        <div className="endpoint-list">
+          {builderSteps.map((step) => (
+            <article className="endpoint-card" key={step.title}>
+              <span>{step.title}</span>
+              <p>{step.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="developer-section compact">
+        <div className="section-heading">
+          <p className="eyebrow">Remix Assets</p>
+          <h2>Use API routes as the source layer for Mogs remixes.</h2>
+          <p className="section-copy">
+            Monad Mogs is treated as a cc0 character layer. These routes are the first public asset surface for creators:
+            use them for tools, art, stickers, bots, games, or experiments, and credit Monad Mogs when you publish.
+          </p>
+        </div>
+        <div className="endpoint-list">
+          {remixAssets.map((asset) => (
+            <article className="endpoint-card" key={asset.label}>
+              <span>{asset.label}</span>
+              <a href={asset.href} target="_blank" rel="noreferrer">
+                {asset.href}
+              </a>
+              <p>{asset.body}</p>
+            </article>
+          ))}
+        </div>
       </section>
 
       <section className="developer-section">

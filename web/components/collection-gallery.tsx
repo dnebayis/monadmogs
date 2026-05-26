@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { createPublicClient, http } from "viem";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import { MAX_SUPPLY, TRAIT_GROUPS, type MogAttribute, type MogMetadata } from "@/lib/mogs";
@@ -221,7 +222,7 @@ export function CollectionGallery({ compact = false }: { compact?: boolean }) {
 
         <div className="nft-grid">
           {visibleTokens.map((token) => (
-            <article className="nft-card" key={token.tokenId}>
+            <Link className="nft-card" href={`/mogs/${token.tokenId}`} key={token.tokenId}>
               <img src={token.image} alt={token.name} loading="lazy" />
               <div className="nft-card-body">
                 <strong>{token.name}</strong>
@@ -233,7 +234,7 @@ export function CollectionGallery({ compact = false }: { compact?: boolean }) {
                   ))}
                 </div>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
 

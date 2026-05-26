@@ -17,6 +17,14 @@ const tabs = [
 
 const TOKEN_ADDRESS = "0x9cF1538f92341A311a922D411DE8C471DCEA7777";
 const TOKEN_URL = `https://nad.fun/tokens/${TOKEN_ADDRESS}`;
+const RESERVE_TXS = [
+  "0xac84218e1b6b675f01455258c5363d8151fa9203c756a7b5f4a6d364f76ad001",
+  "0x50f8a58a24ddef84e65fc86558af255ec77d737ebc94c5b522eb1a08a94bca24",
+  "0xd6650a9fde3920e876f4ebd3839e29ebeca2f13014f4e0c1364da0774d878a1c",
+  "0x437cac45bca9128150b7f9944fa4f85f1af32443e8f249db0d290d29f422c433",
+  "0x8a59cd5575ee1c8468bb1bebb4731d588067453480dc3b85c41c48888cdc7c0a",
+  "0x9ed683682f96d0a3b8efbbf843db52c97e7cb91c2b14beea027968aa90a04bfa",
+];
 
 type TabId = (typeof tabs)[number]["id"];
 
@@ -142,10 +150,10 @@ function TokenTab() {
     <section className="api-summary">
       <div className="section-heading">
         <p className="eyebrow">$MOGS</p>
-        <h2>A culture token for the Monad Mogs character universe.</h2>
+        <h2>An ecosystem layer around a sold-out cc0 onchain collection.</h2>
         <p className="section-copy">
-          $MOGS is positioned as a community and culture layer around the IP, API, remix assets, builder experiments,
-          and future Mogs-native campaigns. The NFT collection remains sold out, frozen, and ownerless.
+          Monad Mogs should not just sit in wallets. $MOGS exists to fund tools, campaigns, liquidity, burns, and the
+          Mogs Reserve without replacing or migrating the NFT collection.
         </p>
       </div>
       <div className="info-grid">
@@ -159,13 +167,35 @@ function TokenTab() {
           </div>
         </div>
         <article className="endpoint-card">
-          <span>Purpose</span>
-          <p>Culture signal, community rewards, art bounties, API remix incentives, and Mogs-native experiments.</p>
+          <span>Fee strategy</span>
+          <p>60% creator, 25% LP support, 15% buyback and burn.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>Creator work</span>
+          <p>Public API, open IP tools, campaigns, operations, and reserve growth.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>Reserve</span>
+          <p>300 Monad Mogs collected so far and held as an ecosystem reserve, not for flipping.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>Flywheel</span>
+          <p>Fees fund tools, liquidity, burns, and reserve. API drives builders, memes, and distribution.</p>
         </article>
         <article className="endpoint-card">
           <span>Boundary</span>
-          <p>No ownership changes, no NFT metadata changes, and no promises around financial return.</p>
+          <p>No price promises, no forced migration, and no replacement of Monad Mogs.</p>
         </article>
+      </div>
+      <div className="reserve-links">
+        <span>Reserve txs</span>
+        <div>
+          {RESERVE_TXS.map((tx, index) => (
+            <a key={tx} href={`https://monadscan.com/tx/${tx}`} target="_blank" rel="noreferrer">
+              tx {index + 1}
+            </a>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -184,6 +214,13 @@ function IpTab() {
       </div>
       <div className="endpoint-list">
         <article className="endpoint-card">
+          <span>CC0</span>
+          <p>
+            Monad Mogs is treated as a cc0 character layer: remix it, build with it, and spread it without asking
+            permission.
+          </p>
+        </article>
+        <article className="endpoint-card">
           <span>Allowed</span>
           <p>Memes, fan art, stickers, banners, bots, dashboards, API experiments, and non-misleading community tools.</p>
         </article>
@@ -199,13 +236,24 @@ function IpTab() {
           <span>Commercial</span>
           <p>Small creator experiments are welcome. Larger commercial use should ask first so attribution stays clean.</p>
         </article>
+        <article className="endpoint-card">
+          <span>Remix assets</span>
+          <p>Use SVG renders, metadata, traits, and random Mogs from the public API as source material.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>Attribution</span>
+          <p>Credit Monad Mogs and link back to monadmogs.vercel.app when publishing remixes or tools.</p>
+        </article>
       </div>
       <div className="hero-actions">
         <a className="text-link" href="/api/v0/mogs/1/render" target="_blank" rel="noreferrer">
           Open SVG render
         </a>
+        <a className="text-link muted" href="/api/v0/mogs/random" target="_blank" rel="noreferrer">
+          Random Mog
+        </a>
         <a className="text-link muted" href="/developers">
-          API docs
+          Builder Kit
         </a>
       </div>
     </section>
@@ -269,19 +317,42 @@ function DocsTab() {
   return (
     <section className="api-summary">
       <div className="section-heading">
-        <p className="eyebrow">Docs</p>
-        <h2>Public docs and LLM-readable context for builders.</h2>
+        <p className="eyebrow">Builder Kit v0</p>
+        <h2>Start with docs, agent context, API examples, and remix assets.</h2>
         <p className="section-copy">
-          Use the developers page for human-readable examples, or <code>/llms.txt</code> when giving context to agents
-          and AI tools.
+          The first builder kit is public: metadata, traits, SVG renders, random Mogs, copyable agent context, and
+          remix-friendly source routes.
         </p>
+      </div>
+      <div className="endpoint-list">
+        <article className="endpoint-card">
+          <span>1 / Docs</span>
+          <p>Human-readable API examples and shareable Mog pages for bots, galleries, trait tools, and remix projects.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>2 / LLM</span>
+          <p>A copyable agent prompt plus <code>/llms.txt</code> for AI builders and docs-aware assistants.</p>
+        </article>
+        <article className="endpoint-card">
+          <span>3 / Assets</span>
+          <p>SVG renders and trait data that can feed stickers, banners, games, dashboards, and community tools.</p>
+        </article>
       </div>
       <div className="hero-actions">
         <a className="text-link" href="/developers">
-          Open developers
+          Open Builder Kit
+        </a>
+        <a className="text-link muted" href="/mogs/1">
+          Sample Mog Page
         </a>
         <a className="text-link muted" href="/llms.txt" target="_blank" rel="noreferrer">
           Open llms.txt
+        </a>
+        <a className="text-link muted" href="https://github.com/dnebayis/monadmogs" target="_blank" rel="noreferrer">
+          GitHub
+        </a>
+        <a className="text-link muted" href="/api/v0/mogs/1/render" target="_blank" rel="noreferrer">
+          Sample SVG
         </a>
       </div>
     </section>
