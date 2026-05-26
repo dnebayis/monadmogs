@@ -22,9 +22,15 @@ html {
 
 body {
   margin: 0;
-  background: var(--bg);
+  background:
+    linear-gradient(rgba(255, 248, 238, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 248, 238, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 82% 18%, rgba(110, 84, 255, 0.2), transparent 28%),
+    linear-gradient(180deg, #0d0b14 0%, var(--bg) 48%, #07060b 100%);
+  background-attachment: fixed;
+  background-size: 40px 40px, 40px 40px, auto, auto;
   color: var(--ink);
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-family: var(--font-pixel), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
   letter-spacing: 0;
 }
 
@@ -43,20 +49,17 @@ code {
   color: var(--cream);
 }
 
-.hero {
+.hero,
+.overview-hero {
   position: relative;
-  min-height: 92svh;
+  min-height: 72svh;
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
   align-items: center;
   gap: clamp(32px, 6vw, 96px);
   padding: 44px clamp(20px, 5vw, 78px) 68px;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(9, 8, 15, 0.96) 0%, rgba(9, 8, 15, 0.76) 48%, rgba(9, 8, 15, 0.2) 100%),
-    radial-gradient(circle at 78% 46%, rgba(242, 138, 66, 0.22), transparent 24%),
-    radial-gradient(circle at 86% 18%, rgba(110, 84, 255, 0.32), transparent 30%),
-    #100d18;
+  background: transparent;
 }
 
 .developer-hero {
@@ -66,35 +69,14 @@ code {
   align-content: center;
   padding: 44px clamp(20px, 5vw, 78px) 68px;
   overflow: hidden;
-  background:
-    linear-gradient(90deg, rgba(9, 8, 15, 0.96) 0%, rgba(9, 8, 15, 0.76) 58%, rgba(9, 8, 15, 0.34) 100%),
-    linear-gradient(180deg, #100d18 0%, #09080f 100%);
-}
-
-.developer-hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 248, 238, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 248, 238, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(255, 248, 238, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 248, 238, 0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background: transparent;
 }
 
 .hero-copy,
 .developer-hero > *,
 .mog-stage,
 .tabs-shell,
+.overview-hero,
 .mint-section,
 .collection-section,
 .trait-section,
@@ -119,14 +101,14 @@ h2 {
 
 h1 {
   max-width: 790px;
-  font-size: clamp(66px, 11vw, 150px);
-  line-height: 0.82;
+  font-size: clamp(78px, 12vw, 168px);
+  line-height: 0.76;
 }
 
 h2 {
   max-width: 780px;
-  font-size: clamp(38px, 5.8vw, 82px);
-  line-height: 0.94;
+  font-size: clamp(48px, 7vw, 96px);
+  line-height: 0.88;
 }
 
 .hero-line,
@@ -134,13 +116,13 @@ h2 {
   max-width: 610px;
   margin: 28px 0 0;
   color: #ddd1e8;
-  font-size: clamp(17px, 1.8vw, 23px);
-  line-height: 1.35;
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1;
 }
 
 .section-copy {
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 28px;
+  line-height: 1.08;
 }
 
 .hero-actions,
@@ -201,7 +183,6 @@ h2 {
   min-height: 560px;
   display: grid;
   place-items: center;
-  align-content: center;
   gap: 22px;
 }
 
@@ -421,8 +402,7 @@ h2 {
 .trait-controls,
 .trait-results,
 .story-links,
-.overview-stats,
-.tabs-bar {
+.overview-stats {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -446,28 +426,50 @@ h2 {
 .collection-section,
 .developer-section,
 .trait-section,
-.story-section,
-.tabs-shell {
+.story-section {
   padding: 96px clamp(20px, 5vw, 78px);
 }
 
 .tabs-shell {
+  padding: 0 clamp(20px, 5vw, 78px) 96px;
   display: grid;
-  gap: 28px;
-  border-top: 1px solid var(--line);
-  background:
-    linear-gradient(180deg, #0d0b14 0%, #09080f 100%);
+  gap: 0;
+  background: transparent;
 }
 
-.tabs-bar {
+.tabs-nav {
   position: sticky;
   top: 0;
   z-index: 5;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: 18px;
   padding: 10px;
-  border: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
   background: rgba(9, 8, 15, 0.92);
   backdrop-filter: blur(14px);
+}
+
+.site-logo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 0 4px;
+  color: var(--ink);
+  font-size: clamp(18px, 2.2vw, 26px);
+  font-weight: 900;
+  line-height: 1;
+  text-decoration: none;
+  text-transform: uppercase;
+  text-shadow: 3px 0 0 rgba(110, 84, 255, 0.42), -3px 0 0 rgba(133, 230, 255, 0.22);
+}
+
+.tabs-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .tabs-bar button {
@@ -487,7 +489,8 @@ h2 {
 }
 
 .tab-panel {
-  min-height: 520px;
+  min-height: calc(100svh - 64px);
+  padding: clamp(32px, 5vw, 72px) clamp(20px, 5vw, 78px) 72px;
 }
 
 .overview-grid,
@@ -496,6 +499,11 @@ h2 {
   gap: 28px;
   min-height: 520px;
   align-content: center;
+}
+
+.overview-hero {
+  min-height: calc(100svh - 96px);
+  padding: 18px 0 68px;
 }
 
 .overview-stats {
@@ -515,7 +523,7 @@ h2 {
 .mint-section.tabbed,
 .collection-section.tabbed,
 .story-section.tabbed {
-  padding: 0;
+  padding: 56px 0 0;
   border-top: 0;
   background: transparent;
 }
@@ -630,6 +638,13 @@ h2 {
   gap: 16px;
 }
 
+.info-grid,
+.example-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
 .endpoint-card {
   display: grid;
   gap: 14px;
@@ -655,6 +670,47 @@ h2 {
   margin: 0;
   color: var(--muted);
   line-height: 1.5;
+}
+
+.example-card {
+  display: grid;
+  gap: 14px;
+}
+
+.example-card h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.prompt-section {
+  padding-top: 56px;
+}
+
+.copy-prompt {
+  display: grid;
+  gap: 12px;
+  max-width: 920px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: rgba(18, 14, 27, 0.72);
+}
+
+.copy-prompt-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.copy-prompt-top > span {
+  color: var(--cyan);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.compact-action {
+  min-height: 38px;
+  padding: 0 14px;
 }
 
 .token-card {
@@ -915,6 +971,14 @@ h2 {
   .hero {
     min-height: auto;
     padding-top: 34px;
+  }
+
+  .tabs-nav {
+    grid-template-columns: 1fr;
+  }
+
+  .tabs-bar {
+    justify-content: flex-start;
   }
 
   .mog-stage {

@@ -1,3 +1,5 @@
+import { CopyPrompt } from "@/components/copy-prompt";
+
 const endpoints = [
   {
     method: "GET",
@@ -29,7 +31,39 @@ const endpoints = [
     path: "/api/v0/traits",
     note: "Full trait schema for the collection.",
   },
+  {
+    method: "GET",
+    path: "/llms.txt",
+    note: "LLM-readable project, API, and IP context for agents and AI tools.",
+  },
 ];
+
+const examples = [
+  {
+    title: "Fetch a random Mog",
+    code: `const mog = await fetch("https://monadmogs.vercel.app/api/v0/mogs/random").then((r) => r.json());
+console.log(mog.name, mog.attributes);`,
+  },
+  {
+    title: "Load a gallery page",
+    code: `const page = await fetch("https://monadmogs.vercel.app/api/v0/mogs?cursor=1&limit=24").then((r) => r.json());
+console.log(page.items, page.nextCursor);`,
+  },
+  {
+    title: "Render an SVG",
+    code: `const svg = await fetch("https://monadmogs.vercel.app/api/v0/mogs/1/render").then((r) => r.text());
+document.body.innerHTML = svg;`,
+  },
+  {
+    title: "Read trait schema",
+    code: `const schema = await fetch("https://monadmogs.vercel.app/api/v0/traits").then((r) => r.json());
+console.log(schema.traits.Background);`,
+  },
+];
+
+const agentPrompt = `read https://monadmogs.vercel.app/llms.txt first.
+then use the monad mogs public api to fetch frozen metadata, traits, svg renders, or random mogs.
+if you build with the assets, credit monad mogs and link back to https://monadmogs.vercel.app/.`;
 
 export default function DevelopersPage() {
   return (
@@ -47,10 +81,25 @@ export default function DevelopersPage() {
           <a className="text-link muted" href="/api/v0/mogs/1/render" target="_blank" rel="noreferrer">
             Try render
           </a>
+          <a className="text-link muted" href="/llms.txt" target="_blank" rel="noreferrer">
+            llms.txt
+          </a>
           <a className="text-link muted" href="/">
             Back home
           </a>
         </div>
+      </section>
+
+      <section className="developer-section prompt-section">
+        <div className="section-heading">
+          <p className="eyebrow">For Agents</p>
+          <h2>Give this prompt to any agent.</h2>
+          <p className="section-copy">
+            It points the agent at the project context first, then the public API for frozen metadata, traits, and SVG
+            renders.
+          </p>
+        </div>
+        <CopyPrompt text={agentPrompt} />
       </section>
 
       <section className="developer-section">
@@ -75,13 +124,67 @@ export default function DevelopersPage() {
 
       <section className="developer-section compact">
         <div className="section-heading">
-          <p className="eyebrow">Example</p>
-          <h2>Fetch a random Mog.</h2>
+          <p className="eyebrow">LLM Context</p>
+          <h2>Point agents and AI tools at <code>/llms.txt</code>.</h2>
+          <p className="section-copy">
+            The <code>llms.txt</code> file gives language models a compact map of Monad Mogs, public API routes, token
+            links, and IP rules. Use it when building agents, chatbots, gallery generators, remix tools, or docs-aware
+            assistants.
+          </p>
         </div>
-        <pre className="code-block">
-          <code>{`const mog = await fetch("https://monadmogs.vercel.app/api/v0/mogs/random").then((r) => r.json());
-console.log(mog.name, mog.attributes);`}</code>
-        </pre>
+        <div className="endpoint-list">
+          <article className="endpoint-card">
+            <span>URL</span>
+            <code>https://monadmogs.vercel.app/llms.txt</code>
+            <p>Fetch this first so an LLM can understand the project surface before calling API endpoints.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Agent prompt</span>
+            <p>“Read the Monad Mogs llms.txt, then use the v0 API to fetch metadata, traits, or renders.”</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Use cases</span>
+            <p>Trait explainers, collection bots, random Mog pickers, SVG remix tools, and API-aware support agents.</p>
+          </article>
+        </div>
+      </section>
+
+      <section className="developer-section compact">
+        <div className="section-heading">
+          <p className="eyebrow">Examples</p>
+          <h2>Use the API in small bots, galleries, and remix tools.</h2>
+        </div>
+        <div className="example-list">
+          {examples.map((example) => (
+            <article className="example-card" key={example.title}>
+              <h3>{example.title}</h3>
+              <pre className="code-block">
+                <code>{example.code}</code>
+              </pre>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="developer-section compact">
+        <div className="section-heading">
+          <p className="eyebrow">Notes</p>
+          <h2>Frozen data, practical limits.</h2>
+        </div>
+        <div className="endpoint-list">
+          <article className="endpoint-card">
+            <span>Cache</span>
+            <p>Metadata and renders use immutable cache headers because the collection is frozen.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Pagination</span>
+            <p>Use cursor pagination. Keep limit at or below 100 for reliable RPC and Vercel performance.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Source</span>
+            <p>Responses are generated from onchain tokenURI data, not from IPFS or a mutable database.</p>
+          </article>
+        </div>
       </section>
     </main>
   );
