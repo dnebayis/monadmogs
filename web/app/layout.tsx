@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Jersey_10 } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
 import { ClientProviders } from "@/components/client-providers";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           {children}
           <SiteFooter />
         </ClientProviders>
+        <Analytics />
       </body>
     </html>
   );
