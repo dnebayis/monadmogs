@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createPublicClient, getAddress, http, isAddress } from "viem";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
-import { ERC8004_IDENTITY_REGISTRY_ADDRESS } from "@/lib/erc8004";
+import {
+  ERC8004_IDENTITY_REGISTRY_ADDRESS,
+  ERC8004_REPUTATION_REGISTRY_ADDRESS,
+} from "@/lib/erc8004";
 import { getMogMetadata, MAX_SUPPLY, parseTokenId } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
-
-const SITE_URL = "https://monadmogs.vercel.app";
+import { apiUrl, siteUrl } from "@/lib/urls";
 const client = createPublicClient({
   chain: MONAD_CHAIN,
   transport: http(MONAD_RPC_URL),
@@ -23,6 +25,13 @@ function cleanCaps(value: string | null) {
     .slice(0, 12);
 }
 
+/**
+ * GET /api/agents/uri?owner=0x...&mogId=1&name=...&caps=...&strategy=...
+ *
+ * Returns a spec-compliant ERC-8004 AgentURI JSON document.
+ * Required fields per spec: type, name, description, image
+ * Optional fields: services[], x402Support, active, registrations[], supportedTrust[]
+ */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const owner = searchParams.get("owner") || "";
@@ -52,122 +61,106 @@ export async function GET(request: NextRequest) {
   const mog = await getMogMetadata(tokenId);
   const name = cleanText(searchParams.get("name"), `Mog Pilot #${tokenId}`);
   const capabilities = cleanCaps(searchParams.get("caps"));
-  const strategy = cleanText(searchParams.get("strategy"), "Plays from Monad Mogs traits and returns transparent JSON decisions.");
-  const image = `${SITE_URL}/api/v0/mogs/${tokenId}/render`;
-  const detail = `${SITE_URL}/mogs/${tokenId}`;
-  const metadata = `${SITE_URL}/api/v0/mogs/${tokenId}`;
-  const render = `${SITE_URL}/api/v0/mogs/${tokenId}/render`;
-  const traits = `${SITE_URL}/api/v0/mogs/${tokenId}/traits`;
+  const strategy = cleanText(
+    searchParams.get("strategy"),
+    "Plays from Monad Mogs traits and returns transparent JSON decisions.",
+  );
+  const image = apiUrl(`/api/v0/mogs/${tokenId}/render`);
+  const detail = siteUrl(`/mogs/${tokenId}`);
+  const metadata = apiUrl(`/api/v0/mogs/${tokenId}`);
+  const render = apiUrl(`/api/v0/mogs/${tokenId}/render`);
+  const traits = apiUrl(`/api/v0/mogs/${tokenId}/traits`);
   const agentRegistry = `eip155:${MONAD_CHAIN.id}:${ERC8004_IDENTITY_REGISTRY_ADDRESS}`;
-  const agentWallet = `eip155:${MONAD_CHAIN.id}:${getAddress(owner)}`;
-  const endpoints = [
+
+  /* ---------------------------------------------------------------- */
+  /*  ERC-8004 spec-compliant services array                          */
+  /* ---------------------------------------------------------------- */
+  const services = [
     {
       name: "web",
       endpoint: detail,
       version: "1.0.0",
-      capabilities: ["profile", "render", "traits", "collection"],
+      skills: ["profile", "render", "traits", "collection"],
+      domains: ["technology/blockchain", "media_and_entertainment/content_creation"],
     },
     {
       name: "metadata",
       endpoint: metadata,
       version: "1.0.0",
-      capabilities: ["erc721-metadata", "onchain-traits"],
+      skills: ["erc721-metadata", "onchain-traits"],
     },
     {
       name: "render",
       endpoint: render,
       version: "1.0.0",
-      capabilities: ["svg-render", "avatar"],
+      skills: ["svg-render", "avatar"],
     },
     {
       name: "traits",
       endpoint: traits,
       version: "1.0.0",
-      capabilities: ["trait-read"],
-    },
-    {
-      name: "agentWallet",
-      endpoint: agentWallet,
-    },
-    {
-      name: "OASF",
-      endpoint: "https://github.com/agntcy/oasf/",
-      version: "0.8.0",
-      skills: [
-        "tool_interaction/api_schema_understanding",
-        "natural_language_processing/natural_language_generation",
-        "multi_modal/image_processing",
-      ],
-      domains: ["technology/blockchain", "media_and_entertainment/content_creation"],
+      skills: ["trait-read"],
     },
   ];
 
-  return NextResponse.json(
-    {
-      type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
-      version: "1.0.0",
-      name,
-      description: `${name} is a Monad Mogs agent identity bound to ${mog.name}. It uses the Mog's onchain traits as strategy context for future games, tools, and agent workflows.`,
+  /* ---------------------------------------------------------------- */
+  /*  Spec-compliant AgentURI JSON                                     */
+  /*  Required: type, name, description, image                         */
+  /*  Optional: services, x402Support, active, registrations,          */
+  /*            supportedTrust                                          */
+  /* ---------------------------------------------------------------- */
+  const agentURI = {
+    // --- Required fields (ERC-8004 spec) ---
+    type: "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+    name,
+    description: `${name} is a Monad Mogs agent identity bound to ${mog.name}. It uses the Mog's onchain traits as strategy context for future games, tools, and agent workflows.`,
+    image,
+
+    // --- Optional spec fields ---
+    services,
+    x402Support: false,
+    active: true,
+    registrations: [
+      {
+        agentId: null,
+        agentRegistry,
+      },
+    ],
+    supportedTrust: ["reputation", "self-signed", "erc-8004-identity"],
+
+    // --- Extended Monad Mogs fields ---
+    version: "1.0.0",
+    external_url: detail,
+    owner,
+    agentWallet: `eip155:${MONAD_CHAIN.id}:${getAddress(owner)}`,
+    capabilities,
+    strategy,
+    context: siteUrl("/llms.txt"),
+    attributes: mog.attributes,
+    tags: ["monad", "monad-mogs", "erc-8004", "onchain", "pixel", "hamster"],
+
+    // --- Registries ---
+    registries: {
+      identity: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+      reputation: ERC8004_REPUTATION_REGISTRY_ADDRESS,
+      validation: null,
+      chainId: MONAD_CHAIN.id,
+    },
+
+    // --- NFT binding ---
+    nft: {
+      name: mog.name,
+      tokenId,
+      contract: MONAD_MOGS_ADDRESS,
+      chainId: MONAD_CHAIN.id,
       image,
-      image_url: image,
-      imageUrl: image,
-      avatar: image,
-      thumbnail_url: image,
-      external_url: detail,
-      active: true,
-      x402Support: false,
-      updatedAt: Math.floor(Date.now() / 1000),
-      project: "Monad Mogs",
-      category: "onchain-collectible-agent",
-      owner,
-      agentWallet,
-      hosted: false,
-      services: endpoints,
-      endpoints,
-      capabilities,
-      strategy,
-      controls: {
-        collection: "Monad Mogs",
-        tokenId,
-        detail,
-        metadata,
-        render,
-        traits,
-      },
-      context: `${SITE_URL}/llms.txt`,
-      reservedEndpoint: `${SITE_URL}/api/agents/{agentId}`,
-      registrations: [
-        {
-          agentId: null,
-          agentRegistry,
-        },
-      ],
-      supportedTrust: ["self-signed", "erc-8004-identity"],
-      attributes: mog.attributes,
-      tags: ["monad", "monad-mogs", "erc-8004", "onchain", "pixel", "hamster"],
-      nft: {
-        name: mog.name,
-        tokenId,
-        contract: MONAD_MOGS_ADDRESS,
-        chainId: MONAD_CHAIN.id,
-        image,
-        metadata,
-        traits,
-        verifiedOwner: verifiedMogOwner,
-      },
-      properties: {
-        mogName: mog.name,
-        mogTokenId: tokenId,
-        mogImage: image,
-        mogMetadata: metadata,
-        mogTraits: traits,
-        verifiedMogOwner,
-      },
+      metadata,
+      traits,
+      verifiedOwner: verifiedMogOwner,
     },
-    {
-      headers: {
-        "Cache-Control": "public, max-age=300",
-      },
-    },
-  );
+  };
+
+  return NextResponse.json(agentURI, {
+    headers: { "Cache-Control": "public, max-age=300" },
+  });
 }

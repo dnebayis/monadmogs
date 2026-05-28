@@ -3,8 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MogDetailActions } from "@/components/mog-detail-actions";
 import { enrichMogMetadata, getMogMetadata, parseTokenId } from "@/lib/mogs";
-
-const SITE_URL = "https://monadmogs.vercel.app";
+import { API_BASE_URL, SITE_URL } from "@/lib/urls";
 
 type MogPageProps = {
   params: Promise<{ id: string }>;
@@ -39,7 +38,7 @@ export async function generateMetadata({ params }: MogPageProps): Promise<Metada
 export default async function MogPage({ params }: MogPageProps) {
   const { id } = await params;
   const mog = await loadMog(id);
-  const apiUrl = `${SITE_URL}/api/v0/mogs/${mog.tokenId}`;
+  const apiUrl = `${API_BASE_URL}/api/v0/mogs/${mog.tokenId}`;
   const previousId = mog.tokenId === 1 ? 5000 : mog.tokenId - 1;
   const nextId = mog.tokenId === 5000 ? 1 : mog.tokenId + 1;
 

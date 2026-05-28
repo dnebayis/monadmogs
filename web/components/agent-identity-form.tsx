@@ -1,6 +1,5 @@
 "use client";
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useEffect, useMemo, useState } from "react";
 import { BaseError, createPublicClient, getAddress, http, stringToHex } from "viem";
 import { useAccount, useReadContract, useSignMessage, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
@@ -8,6 +7,7 @@ import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import { ERC8004_IDENTITY_REGISTRY_ABI, ERC8004_IDENTITY_REGISTRY_ADDRESS } from "@/lib/erc8004";
 import { MAX_SUPPLY, type MogMetadata } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_EXPLORER_URL, MONAD_RPC_URL } from "@/lib/network";
+import { API_BASE_URL } from "@/lib/urls";
 
 type AgentRegistration = {
   owner: string;
@@ -89,7 +89,7 @@ function buildAgentURIUrl(input: Pick<AgentRegistration, "owner" | "mogId" | "ag
     caps: input.capabilities.join(","),
     strategy: input.strategy,
   });
-  return `https://monadmogs.vercel.app/api/agents/uri?${params.toString()}`;
+  return `${API_BASE_URL}/api/agents/uri?${params.toString()}`;
 }
 
 function getFriendlyError(caught: unknown) {
@@ -106,9 +106,9 @@ function getFriendlyError(caught: unknown) {
 }
 
 function buildOnchainMetadata(input: Pick<AgentRegistration, "mogId" | "agentName" | "capabilities" | "strategy" | "agentURI">) {
-  const detail = `https://monadmogs.vercel.app/mogs/${input.mogId}`;
-  const image = `https://monadmogs.vercel.app/api/v0/mogs/${input.mogId}/render`;
-  const metadata = `https://monadmogs.vercel.app/api/v0/mogs/${input.mogId}`;
+  const detail = `${API_BASE_URL}/mogs/${input.mogId}`;
+  const image = `${API_BASE_URL}/api/v0/mogs/${input.mogId}/render`;
+  const metadata = `${API_BASE_URL}/api/v0/mogs/${input.mogId}`;
 
   return [
     { metadataKey: "project", metadataValue: stringToHex("Monad Mogs") },
@@ -275,7 +275,7 @@ export function AgentIdentityForm() {
     setCapabilities((current) => ({ ...current, [capability]: enabled }));
   }
 
-  async function registerAgent({ onchain }: { onchain: boolean }) {
+  async function registerAgent() {
     setError("");
 
     if (!address) {
@@ -309,21 +309,20 @@ export function AgentIdentityForm() {
 
     try {
       const signature = await signMessageAsync({ message: registrationMessage(unsigned) });
+
+      const hash = await writeContractAsync({
+        address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+        abi: ERC8004_IDENTITY_REGISTRY_ABI,
+        functionName: "register",
+        args: [nextAgentURI, buildOnchainMetadata(unsigned)],
+      });
+
       const nextRegistration: AgentRegistration = {
         ...unsigned,
         signature,
+        txHash: hash,
         createdAt: new Date().toISOString(),
       };
-
-      if (onchain) {
-        const hash = await writeContractAsync({
-          address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-          abi: ERC8004_IDENTITY_REGISTRY_ABI,
-          functionName: "register",
-          args: [nextAgentURI, buildOnchainMetadata(unsigned)],
-        });
-        nextRegistration.txHash = hash;
-      }
 
       window.localStorage.setItem(`monad-mogs-agent:${address.toLowerCase()}`, JSON.stringify(nextRegistration));
       setRegistration(nextRegistration);
@@ -332,13 +331,29 @@ export function AgentIdentityForm() {
     }
   }
 
+  const currentStep = !isConnected ? 1 : !ownsSelectedMog ? 2 : 3;
+  const [showPreview, setShowPreview] = useState(false);
+
   return (
     <section className="agent-panel">
-      <div className="agent-wallet-bar">
-        <div className="agent-connect">
-          <span>Wallet</span>
-          <ConnectButton />
+      <div className="agent-progress">
+        <div className={`agent-progress-step ${currentStep >= 1 ? "active" : ""}`}>
+          <span className="agent-progress-number">1</span>
+          <span>Connect</span>
         </div>
+        <div className="agent-progress-line" />
+        <div className={`agent-progress-step ${currentStep >= 2 ? "active" : ""}`}>
+          <span className="agent-progress-number">2</span>
+          <span>Select Mog</span>
+        </div>
+        <div className="agent-progress-line" />
+        <div className={`agent-progress-step ${currentStep >= 3 ? "active" : ""}`}>
+          <span className="agent-progress-number">3</span>
+          <span>Register</span>
+        </div>
+      </div>
+
+      <div className="agent-wallet-bar">
         <div className={ownsSelectedMog ? "agent-note owned" : "agent-note"}>
           <span>Ownership</span>
           <p>
@@ -353,139 +368,144 @@ export function AgentIdentityForm() {
         </div>
       </div>
 
-      <div className="agent-workspace">
-        <div className="owned-mogs-picker">
-          <div className="copy-prompt-top">
-            <div>
-              <span>Your Mogs</span>
-              <small>
-                {walletBalance === undefined ? "connect wallet" : `${ownedMogs.length}/${walletBalance.toString()} loaded`}
-              </small>
+      {isConnected && (
+        <div className="agent-workspace">
+          <div className="owned-mogs-picker">
+            <div className="copy-prompt-top">
+              <div>
+                <span>Your Mogs</span>
+                <small>
+                  {walletBalance === undefined ? "connect wallet" : `${ownedMogs.length}/${walletBalance.toString()} loaded`}
+                </small>
+              </div>
+              <label className="manual-mog-inline">
+                <span>Token ID</span>
+                <input value={mogId} onChange={(event) => setMogId(event.target.value)} inputMode="numeric" placeholder="1" />
+              </label>
             </div>
-            <label className="manual-mog-inline">
-              <span>Token ID</span>
-              <input value={mogId} onChange={(event) => setMogId(event.target.value)} inputMode="numeric" placeholder="1" />
-            </label>
+            {ownedMogs.length ? (
+              <div className="owned-mogs-grid">
+                {ownedMogs.map((token) => (
+                  <button
+                    key={token.tokenId}
+                    type="button"
+                    className={Number(mogId) === token.tokenId ? "owned-mog-card active" : "owned-mog-card"}
+                    onClick={() => selectOwnedMog(token)}
+                  >
+                    <img src={token.image} alt={token.name} />
+                    <span>#{token.tokenId}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p>{isLoadingOwned ? "Scanning your wallet..." : "No owned Mogs loaded yet."}</p>
+            )}
+            <button
+              className="secondary-action compact-action"
+              type="button"
+              onClick={loadOwnedMogs}
+              disabled={!isConnected || isLoadingOwned || ownedScanCursor > MAX_SUPPLY}
+            >
+              {isLoadingOwned ? "Scanning..." : ownedScanCursor > MAX_SUPPLY ? "Scan complete" : "Scan more"}
+            </button>
           </div>
-          {ownedMogs.length ? (
-            <div className="owned-mogs-grid">
-              {ownedMogs.map((token) => (
+
+          <div className={`agent-config ${!ownsSelectedMog ? "dimmed" : ""}`}>
+            <div className="agent-top-grid">
+              <div className="selected-mog-strip">
+                <span>Selected</span>
+                <p>{mog ? `${mog.name} is ready.` : "Pick one of your Mogs."}</p>
+              </div>
+
+              <label>
+                <span>Agent name</span>
+                <input value={agentName} onChange={(event) => setAgentName(event.target.value)} placeholder="Mog Pilot #1" disabled={!ownsSelectedMog} />
+              </label>
+            </div>
+
+            <div className="agent-step">
+              <span>Define Agent</span>
+              <p>Choose a behavior profile and capability tags. AgentURI is generated in the background.</p>
+            </div>
+
+            <div className="playstyle-grid">
+              {PLAYSTYLES.map((playstyle) => (
                 <button
-                  key={token.tokenId}
+                  key={playstyle.id}
                   type="button"
-                  className={Number(mogId) === token.tokenId ? "owned-mog-card active" : "owned-mog-card"}
-                  onClick={() => selectOwnedMog(token)}
+                  className={strategy === playstyle.description ? "playstyle-card active" : "playstyle-card"}
+                  onClick={() => setStrategy(playstyle.description)}
+                  disabled={!ownsSelectedMog}
                 >
-                  <img src={token.image} alt={token.name} />
-                  <span>#{token.tokenId}</span>
+                  <strong>{playstyle.label}</strong>
+                  <span>{playstyle.description}</span>
                 </button>
               ))}
             </div>
-          ) : (
-            <p>{isConnected ? "No owned Mogs loaded yet." : "Connect wallet to load owned Mogs."}</p>
-          )}
-          <button
-            className="secondary-action compact-action"
-            type="button"
-            onClick={loadOwnedMogs}
-            disabled={!isConnected || isLoadingOwned || ownedScanCursor > MAX_SUPPLY}
-          >
-            {isLoadingOwned ? "Scanning..." : ownedScanCursor > MAX_SUPPLY ? "Scan complete" : "Scan more"}
-          </button>
-        </div>
 
-        <div className="agent-config">
-          <div className="agent-top-grid">
-            <div className="selected-mog-strip">
-              <span>Selected</span>
-              <p>{mog ? `${mog.name} is ready.` : "Pick one of your Mogs."}</p>
+            <div className="agent-capabilities">
+              <span>Capabilities</span>
+              <p>Choose what this agent claims it can do. These become capability tags in the AgentURI.</p>
+              <div>
+                {CAPABILITIES.map((capability) => (
+                  <label key={capability}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(capabilities[capability])}
+                      onChange={(event) => updateCapability(capability, event.target.checked)}
+                      disabled={!ownsSelectedMog}
+                    />
+                    {capability}
+                  </label>
+                ))}
+              </div>
             </div>
 
-            <label>
-              <span>Agent name</span>
-              <input value={agentName} onChange={(event) => setAgentName(event.target.value)} placeholder="Mog Pilot #1" />
-            </label>
-          </div>
+            {agentURI && (
+              <div className="agent-preview-toggle">
+                <button type="button" className="secondary-action compact-action" onClick={() => setShowPreview(!showPreview)}>
+                  {showPreview ? "Hide preview" : "Preview AgentURI"}
+                </button>
+                {showPreview && (
+                  <div className="agent-preview">
+                    <pre className="code-block"><code>{agentURI}</code></pre>
+                  </div>
+                )}
+              </div>
+            )}
 
-          <div className="agent-step">
-            <span>Define Agent</span>
-            <p>Choose a behavior profile and capability tags. AgentURI is generated in the background.</p>
-          </div>
+            <div className="agent-step">
+              <span>Register</span>
+              <p>Sign and submit the AgentURI to the ERC-8004 Identity Registry on Monad.</p>
+            </div>
 
-          <div className="playstyle-grid">
-            {PLAYSTYLES.map((playstyle) => (
+            <div className="agent-actions">
               <button
-                key={playstyle.id}
+                className="primary-action"
                 type="button"
-                className={strategy === playstyle.description ? "playstyle-card active" : "playstyle-card"}
-                onClick={() => setStrategy(playstyle.description)}
+                onClick={() => registerAgent()}
+                disabled={!isConnected || !ownsSelectedMog || isPending || isWriting || isConfirming}
               >
-                <strong>{playstyle.label}</strong>
-                <span>{playstyle.description}</span>
+                {isPending ? "Signing..." : isWriting ? "Check wallet..." : isConfirming ? "Confirming..." : "Register on ERC-8004"}
               </button>
-            ))}
-          </div>
-
-          <div className="agent-capabilities">
-            <span>Capabilities</span>
-            <p>Choose what this agent claims it can do. These become capability tags in the AgentURI.</p>
-            <div>
-              {CAPABILITIES.map((capability) => (
-                <label key={capability}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(capabilities[capability])}
-                    onChange={(event) => updateCapability(capability, event.target.checked)}
-                  />
-                  {capability}
-                </label>
-              ))}
             </div>
+
+            {error ? <p className="error">{error}</p> : null}
+            {txHash ? (
+              <a className="tx-link" href={`${MONAD_EXPLORER_URL}/tx/${txHash}`} target="_blank" rel="noreferrer">
+                {isConfirmed ? "ERC-8004 tx confirmed" : "View ERC-8004 tx"}
+              </a>
+            ) : null}
+
+            {registration ? (
+              <div className="agent-status">
+                <span>Registered</span>
+                <p>Agent identity was submitted to the ERC-8004 Identity Registry on Monad.</p>
+              </div>
+            ) : null}
           </div>
-
-          <div className="agent-step">
-            <span>Sign or Register</span>
-            <p>Sign locally for a draft identity, or write the AgentURI to ERC-8004.</p>
-          </div>
-
-          <div className="agent-actions">
-            <button
-              className="secondary-action"
-              type="button"
-              onClick={() => registerAgent({ onchain: false })}
-              disabled={!isConnected || !ownsSelectedMog || isPending}
-            >
-              {isPending ? "Signing..." : "Sign AgentURI"}
-            </button>
-            <button
-              className="primary-action"
-              type="button"
-              onClick={() => registerAgent({ onchain: true })}
-              disabled={!isConnected || !ownsSelectedMog || isPending || isWriting || isConfirming}
-            >
-              {isWriting ? "Check wallet..." : isConfirming ? "Confirming..." : "Register on ERC-8004"}
-            </button>
-          </div>
-
-          {error ? <p className="error">{error}</p> : null}
-          {txHash ? (
-            <a className="tx-link" href={`${MONAD_EXPLORER_URL}/tx/${txHash}`} target="_blank" rel="noreferrer">
-              {isConfirmed ? "ERC-8004 tx confirmed" : "View ERC-8004 tx"}
-            </a>
-          ) : null}
-
-          {registration ? (
-            <div className="agent-status">
-              <span>{registration.txHash ? "Registered" : "Signed"}</span>
-              <p>
-                {registration.txHash
-                  ? "Agent identity was submitted to ERC-8004."
-                  : "AgentURI was signed locally and is ready for ERC-8004 registration."}
-              </p>
-            </div>
-          ) : null}
         </div>
-      </div>
+      )}
     </section>
   );
 }

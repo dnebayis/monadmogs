@@ -1,0 +1,124 @@
+"use client";
+
+import { AgentDashboard } from "@/components/agent-dashboard";
+import { AgentIdentityForm } from "@/components/agent-identity-form";
+
+export function AgentsTab() {
+  return (
+    <section className="tab-full">
+      <div className="section-heading">
+        <p className="eyebrow">ERC-8004 on Monad</p>
+        <h2>Bind an agent identity to your Mog.</h2>
+        <p className="section-copy">
+          Choose a Mog, configure a playstyle and capabilities, then register the agent through the ERC-8004 Identity
+          Registry on Monad.
+        </p>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">Your Agents</p>
+        </div>
+        <AgentDashboard />
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">Register</p>
+          <p className="tab-block-copy">Connect wallet, pick a Mog you own, set a playstyle and capabilities, and register onchain.</p>
+        </div>
+        <AgentIdentityForm />
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">ERC-8004 Registries</p>
+          <p className="tab-block-copy">Monad uses the same ERC-8004 contract addresses deployed across 25+ chains.</p>
+        </div>
+        <div className="endpoint-list">
+          <article className="endpoint-card">
+            <span>Identity Registry</span>
+            <p>ERC-721 agent cards with AgentURI, metadata, and wallet management.</p>
+            <code>0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</code>
+          </article>
+          <article className="endpoint-card">
+            <span>Reputation Registry</span>
+            <p>Onchain feedback signals with tags, values, and dispute responses.</p>
+            <code>0x8004BAa17C55a88189AE136b182e5fdA19dE9b63</code>
+          </article>
+          <article className="endpoint-card">
+            <span>Validation Registry</span>
+            <p>Third-party validation requests and responses. Coming soon.</p>
+          </article>
+        </div>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">Agent API</p>
+          <p className="tab-block-copy">Programmatic access to agent identities and ERC-8004 data.</p>
+        </div>
+        <div className="endpoint-list">
+          <article className="endpoint-card">
+            <span>AgentURI</span>
+            <code>/api/agents/uri?owner=&#123;addr&#125;&mogId=&#123;id&#125;</code>
+            <p>Generate a spec-compliant ERC-8004 AgentURI JSON document.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Lookup</span>
+            <code>/api/agents/lookup?agentId=&#123;id&#125;</code>
+            <p>Read onchain tokenURI and agentWallet for a registered agent.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Registries</span>
+            <code>/api/agents/registries</code>
+            <p>ERC-8004 contract addresses and chain info for Monad.</p>
+          </article>
+        </div>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">What&rsquo;s Next</p>
+          <p className="tab-block-copy">Agents will go beyond registration.</p>
+        </div>
+        <div className="endpoint-list">
+          <article className="endpoint-card">
+            <span>Arena Games</span>
+            <p>Agents compete in onchain games like chess. Winners claim NFTs or $MOGS from the prize pool.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Trait Personas</span>
+            <p>Every Mog has a unique persona derived from its 9 onchain traits. Agents behave accordingly.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Agent Chat</span>
+            <p>Chat with your Mog agent. Its personality, tone, and decisions reflect its traits and playstyle.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Rarity Advantage</span>
+            <p>Rarer Mogs get strategic edges in games. Everyone can play, but rare traits unlock bonuses.</p>
+          </article>
+        </div>
+      </div>
+
+      <div className="hero-actions">
+        <a className="text-link" href="https://docs.monad.xyz/guides/erc-8004" target="_blank" rel="noreferrer">
+          Monad ERC-8004 Docs
+        </a>
+        <a className="text-link muted" href="https://eips.ethereum.org/EIPS/eip-8004" target="_blank" rel="noreferrer">
+          EIP Spec
+        </a>
+        <a className="text-link muted" href="https://github.com/erc-8004/erc-8004-contracts" target="_blank" rel="noreferrer">
+          Contracts
+        </a>
+        <a className="text-link muted" href="/api/agents/registries" target="_blank" rel="noreferrer">
+          Registries API
+        </a>
+        <a className="text-link muted" href="/llms.txt" target="_blank" rel="noreferrer">
+          llms.txt
+        </a>
+      </div>
+    </section>
+  );
+}
