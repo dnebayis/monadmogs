@@ -25,10 +25,18 @@ const agentEndpoints = [
   { method: "GET", path: "/api/agents/registries", note: "ERC-8004 contract addresses on Monad." },
 ];
 
+const arenaEndpoints = [
+  { method: "GET", path: "/api/arena?view=open", note: "Open games waiting for opponents." },
+  { method: "GET", path: "/api/arena?view=leaderboard", note: "Top players by total wins." },
+  { method: "GET", path: "/api/arena?view=recent", note: "Recently played games." },
+  { method: "GET", path: "/api/arena/games?id={id}", note: "Single game state and result." },
+  { method: "POST", path: "/api/arena/games", note: "Create, join, or submit a move." },
+];
+
 const utilEndpoints = [
   { method: "GET", path: "/llms.txt", note: "LLM-readable project, API, and IP context." },
   { method: "GET", path: "/api/studio", note: "Approved community projects list." },
-  { method: "POST", path: "/api/studio/submit", note: "Submit a project for review." },
+  { method: "POST", path: "/api/studio/submit", note: "Submit a project." },
 ];
 
 const examples = [
@@ -106,6 +114,20 @@ export function DocsTab() {
           </div>
           <div className="endpoint-list">
             {agentEndpoints.map((ep) => (
+              <article className="endpoint-card" key={ep.path}>
+                <span>{ep.method}</span>
+                <code>{ep.path}</code>
+                <p>{ep.note}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="tab-block-header" style={{ marginTop: 32 }}>
+            <p className="eyebrow">Arena Endpoints</p>
+            <p className="tab-block-copy">Game creation, matchmaking, and leaderboard.</p>
+          </div>
+          <div className="endpoint-list">
+            {arenaEndpoints.map((ep) => (
               <article className="endpoint-card" key={ep.path}>
                 <span>{ep.method}</span>
                 <code>{ep.path}</code>

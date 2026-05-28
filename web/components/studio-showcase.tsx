@@ -53,7 +53,7 @@ export function StudioShowcase() {
         return;
       }
 
-      setSubmitResult({ ok: true, message: "Project submitted for review." });
+      setSubmitResult({ ok: true, message: "Project submitted. It's live now." });
       setForm(emptyForm);
     } catch {
       setSubmitResult({ ok: false, message: "Network error. Try again." });
@@ -165,7 +165,7 @@ export function StudioShowcase() {
             </label>
             <div className="studio-form-actions">
               <button className="primary-action" type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit for Review"}
+                {isSubmitting ? "Submitting..." : "Submit Project"}
               </button>
             </div>
             {submitResult && (

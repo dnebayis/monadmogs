@@ -86,7 +86,7 @@ export async function submitProject(data: StudioSubmission): Promise<StudioProje
   const project: StudioProject = {
     id: crypto.randomUUID(),
     ...data,
-    status: "pending",
+    status: "approved",
     createdAt: new Date().toISOString(),
   };
 

@@ -5,6 +5,7 @@ import { CollectionGallery } from "@/components/collection-gallery";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { StudioShowcase } from "@/components/studio-showcase";
 import { AgentsTab } from "@/components/tabs/agents-tab";
+import { ArenaTab } from "@/components/tabs/arena-tab";
 import { DocsTab } from "@/components/tabs/docs-tab";
 import { IpTab } from "@/components/tabs/ip-tab";
 import { OverviewTab } from "@/components/tabs/overview-tab";
@@ -20,6 +21,7 @@ const tabs = [
   { id: "token", label: "$MOGS" },
   { id: "ip", label: "IP Rules" },
   { id: "agents", label: "Agents" },
+  { id: "arena", label: "Arena" },
   { id: "story", label: "Story" },
   { id: "docs", label: "Docs" },
 ] as const;
@@ -38,6 +40,7 @@ const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
   token: TokenTab,
   ip: IpTab,
   agents: AgentsTab,
+  arena: ArenaTab,
   story: StoryTab,
   docs: DocsTab,
 };

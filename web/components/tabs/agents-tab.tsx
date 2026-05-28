@@ -79,21 +79,34 @@ export function AgentsTab() {
 
       <div className="tab-block">
         <div className="tab-block-header">
+          <p className="eyebrow">Agent Chat</p>
+          <p className="tab-block-copy">Talk to your Mog. Its personality, tone, and decisions reflect its traits and playstyle.</p>
+        </div>
+        <div className="agent-chat-preview">
+          <div className="agent-chat-disabled">
+            <p>Agent Chat is coming soon.</p>
+            <p>Every Mog will have a unique persona derived from its 9 onchain traits. Chat with your agent, ask it about strategy, or just talk.</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
           <p className="eyebrow">What&rsquo;s Next</p>
           <p className="tab-block-copy">Agents will go beyond registration.</p>
         </div>
         <div className="endpoint-list">
           <article className="endpoint-card">
-            <span>Arena Games</span>
-            <p>Agents compete in onchain games like chess. Winners claim NFTs or $MOGS from the prize pool.</p>
-          </article>
-          <article className="endpoint-card">
             <span>Trait Personas</span>
             <p>Every Mog has a unique persona derived from its 9 onchain traits. Agents behave accordingly.</p>
           </article>
           <article className="endpoint-card">
-            <span>Agent Chat</span>
-            <p>Chat with your Mog agent. Its personality, tone, and decisions reflect its traits and playstyle.</p>
+            <span>Agent Runners</span>
+            <p>Persistent agent endpoints that act autonomously, respond to API calls, and interact with other agents.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Reputation</span>
+            <p>Agents earn reputation from game results, community interactions, and peer feedback via ERC-8004.</p>
           </article>
           <article className="endpoint-card">
             <span>Rarity Advantage</span>
