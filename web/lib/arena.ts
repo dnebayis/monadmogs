@@ -16,8 +16,8 @@ export type RoundResult = {
   p2Move: GameMove;
   p1Result: number;
   p2Result: number;
-  roundWinner: string | null; // address or null for draw
-  commentary?: { p1: string; p2: string };
+  roundWinner: string | null;
+  commentary: { p1: string; p2: string };
 };
 
 export type GamePlayer = {
@@ -27,6 +27,7 @@ export type GamePlayer = {
   agentId: number;
   score: number;
   move?: GameMove;
+  commentary?: string;
   result?: number;
 };
 
@@ -93,41 +94,6 @@ export const GAME_TYPES: Record<GameType, { label: string; description: string; 
   },
 };
 
-const AGGRESSIVE_COMMENTARY = [
-  "too easy.", "didn't even try.", "predictable.", "is that all?",
-  "next.", "yawn.", "again.", "not even close.",
-];
-const DEFENSIVE_COMMENTARY = [
-  "calculated.", "as expected.", "patience pays.", "steady.",
-  "one step at a time.", "no rush.", "solid.", "according to plan.",
-];
-const CHAOTIC_COMMENTARY = [
-  "chaos wins!", "lol what", "no logic, just vibes.", "pure entropy.",
-  "random is a strategy.", "trust the chaos.", "mempool energy.", "gg ez.",
-];
-const CHILL_COMMENTARY = [
-  "gm.", "chill round.", "no stress.", "all good.",
-  "nice one.", "vibes.", "we go again.", "smooth.",
-];
-
-function pickCommentary(mogName: string, won: boolean): string {
-  const name = mogName.toLowerCase();
-  let pool: string[];
-  if (name.includes("rage") || name.includes("raptor") || name.includes("diamond") || name.includes("jit")) {
-    pool = AGGRESSIVE_COMMENTARY;
-  } else if (name.includes("final") || name.includes("valid") || name.includes("block") || name.includes("guard")) {
-    pool = DEFENSIVE_COMMENTARY;
-  } else if (name.includes("mempool") || name.includes("chaos") || name.includes("trick") || name.includes("glitch")) {
-    pool = CHAOTIC_COMMENTARY;
-  } else {
-    pool = CHILL_COMMENTARY;
-  }
-  if (!won) {
-    const lossPhrases = ["hmm.", "not bad.", "lucky.", "next round.", "interesting.", "ok."];
-    return lossPhrases[Math.floor(Math.random() * lossPhrases.length)];
-  }
-  return pool[Math.floor(Math.random() * pool.length)];
-}
 
 /* ------------------------------------------------------------------ */
 /*  KV Keys                                                             */
@@ -207,9 +173,6 @@ function resolveRound(game: Game): RoundResult | null {
     }
   }
 
-  const p1Won = roundWinner === p1.address;
-  const p2Won = roundWinner === p2.address;
-
   return {
     round: game.round,
     p1Move: p1.move,
@@ -218,8 +181,8 @@ function resolveRound(game: Game): RoundResult | null {
     p2Result,
     roundWinner,
     commentary: {
-      p1: pickCommentary(p1.mogName, p1Won),
-      p2: pickCommentary(p2.mogName, p2Won),
+      p1: p1.commentary || "",
+      p2: p2.commentary || "",
     },
   };
 }
@@ -283,7 +246,8 @@ export async function joinGame(
 export async function submitMove(
   id: string,
   address: string,
-  move: GameMove
+  move: GameMove,
+  commentary?: string
 ): Promise<Game | null> {
   const game = await getGame(id);
   if (!game || game.status === "finished") return null;
@@ -295,6 +259,7 @@ export async function submitMove(
   if (playerIndex === -1) return null;
 
   game.players[playerIndex].move = move;
+  if (commentary) game.players[playerIndex].commentary = commentary;
 
   // If both have moves, resolve this round
   if (game.players.every((p) => p.move)) {
@@ -333,12 +298,14 @@ async function advanceRound(game: Game): Promise<Game> {
     game.winner = game.players[1].address;
     game.finishedAt = new Date().toISOString();
   } else {
-    // Next round — clear moves
+    // Next round — clear moves and commentary
     game.round++;
     game.players[0].move = undefined;
     game.players[0].result = undefined;
+    game.players[0].commentary = undefined;
     game.players[1].move = undefined;
     game.players[1].result = undefined;
+    game.players[1].commentary = undefined;
   }
 
   // Store round results on players for the current/last round

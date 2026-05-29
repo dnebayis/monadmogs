@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
 
     const poolId = typeof body.poolId === "number" ? body.poolId : undefined;
     const move = body.move as GameMove | undefined;
+    const commentary = typeof body.commentary === "string" ? body.commentary.slice(0, 200) : undefined;
 
     const player: GamePlayer = {
       address: session.address,
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       mogName: session.mogName,
       agentId: session.agentId,
       score: 0,
+      commentary,
     };
 
     try {
@@ -82,6 +84,7 @@ export async function POST(request: NextRequest) {
     }
 
     const move = body.move as GameMove | undefined;
+    const commentary = typeof body.commentary === "string" ? body.commentary.slice(0, 200) : undefined;
 
     const player: GamePlayer = {
       address: session.address,
@@ -89,6 +92,7 @@ export async function POST(request: NextRequest) {
       mogName: session.mogName,
       agentId: session.agentId,
       score: 0,
+      commentary,
     };
 
     try {
@@ -113,13 +117,14 @@ export async function POST(request: NextRequest) {
   if (action === "move") {
     const gameId = body.gameId as string;
     const move = body.move as GameMove;
+    const commentary = typeof body.commentary === "string" ? body.commentary.slice(0, 200) : undefined;
 
     if (!gameId || !move) {
       return NextResponse.json({ error: "gameId and move are required." }, { status: 400 });
     }
 
     try {
-      const game = await submitMove(gameId, session.address, move);
+      const game = await submitMove(gameId, session.address, move, commentary);
       if (!game) {
         return NextResponse.json({ error: "Cannot submit move." }, { status: 400 });
       }
