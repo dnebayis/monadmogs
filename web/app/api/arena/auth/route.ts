@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createChallenge, verifyAgentWallet } from "@/lib/arena-auth";
 
-/* POST /api/arena/auth — create challenge or verify signature */
+/* POST /api/arena/auth — challenge-response agent authentication */
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
   try {
@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
   /* ---- CHALLENGE ---- */
   if (action === "challenge") {
     const address = body.address as string;
-    if (!address || !address.startsWith("0x")) {
-      return NextResponse.json({ error: "Valid address is required." }, { status: 400 });
+    if (!address || !address.startsWith("0x") || address.length !== 42) {
+      return NextResponse.json({ error: "Valid Ethereum address is required." }, { status: 400 });
     }
 
     try {
@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     const address = body.address as string;
     const signature = body.signature as string;
     const challenge = body.challenge as string;
+    const mogId = typeof body.mogId === "number" ? body.mogId : undefined;
 
     if (!address || !signature || !challenge) {
       return NextResponse.json(
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const result = await verifyAgentWallet(address, signature, challenge);
+      const result = await verifyAgentWallet(address, signature, challenge, mogId);
       if ("error" in result) {
         return NextResponse.json({ error: result.error }, { status: 403 });
       }

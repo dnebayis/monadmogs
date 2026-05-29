@@ -4,14 +4,26 @@ import {
   joinGame,
   submitMove,
   getGame,
+  resolveGame,
   type GameType,
   type GameMove,
   type GamePlayer,
   GAME_TYPES,
 } from "@/lib/arena";
+import { validateAuthHeader } from "@/lib/arena-auth";
+import { resolvePoolOnchain, getOnchainPool } from "@/lib/arena-pool";
 
-/* POST /api/arena/games — create, join, or move */
+/* POST /api/arena/games — create, join, or move (auth required) */
 export async function POST(request: NextRequest) {
+  // Validate auth
+  const session = await validateAuthHeader(request.headers.get("authorization"));
+  if (!session) {
+    return NextResponse.json(
+      { error: "Authentication required. Use POST /api/arena/auth to get a session token." },
+      { status: 401 }
+    );
+  }
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -28,15 +40,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid game type." }, { status: 400 });
     }
 
-    const player = validatePlayer(body.player);
-    if (!player) {
-      return NextResponse.json({ error: "Invalid player data." }, { status: 400 });
-    }
-
+    const poolId = typeof body.poolId === "number" ? body.poolId : undefined;
     const move = body.move as GameMove | undefined;
+
+    const player: GamePlayer = {
+      address: session.address,
+      mogId: session.mogId,
+      mogName: session.mogName,
+    };
 
     try {
       const game = await createGame(type, player, move);
+      // Store poolId association if provided
+      if (poolId) {
+        const { kv } = await import("@vercel/kv");
+        await kv.set(`arena:game-pool:${game.id}`, poolId, { ex: 86400 });
+      }
       return NextResponse.json({ game }, { status: 201 });
     } catch {
       return NextResponse.json({ error: "Failed to create game." }, { status: 500 });
@@ -50,18 +69,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "gameId is required." }, { status: 400 });
     }
 
-    const player = validatePlayer(body.player);
-    if (!player) {
-      return NextResponse.json({ error: "Invalid player data." }, { status: 400 });
-    }
-
     const move = body.move as GameMove | undefined;
+
+    const player: GamePlayer = {
+      address: session.address,
+      mogId: session.mogId,
+      mogName: session.mogName,
+    };
 
     try {
       const game = await joinGame(gameId, player, move);
       if (!game) {
         return NextResponse.json({ error: "Cannot join this game." }, { status: 400 });
       }
+
+      // If game finished, try to resolve onchain pool
+      if (game.status === "finished" && game.winner) {
+        await tryResolveOnchain(gameId, game.winner);
+      }
+
       return NextResponse.json({ game });
     } catch {
       return NextResponse.json({ error: "Failed to join game." }, { status: 500 });
@@ -71,18 +97,23 @@ export async function POST(request: NextRequest) {
   /* ---- MOVE ---- */
   if (action === "move") {
     const gameId = body.gameId as string;
-    const address = body.address as string;
     const move = body.move as GameMove;
 
-    if (!gameId || !address || !move) {
-      return NextResponse.json({ error: "gameId, address, and move are required." }, { status: 400 });
+    if (!gameId || !move) {
+      return NextResponse.json({ error: "gameId and move are required." }, { status: 400 });
     }
 
     try {
-      const game = await submitMove(gameId, address, move);
+      const game = await submitMove(gameId, session.address, move);
       if (!game) {
         return NextResponse.json({ error: "Cannot submit move." }, { status: 400 });
       }
+
+      // If game finished, try to resolve onchain pool
+      if (game.status === "finished" && game.winner) {
+        await tryResolveOnchain(gameId, game.winner);
+      }
+
       return NextResponse.json({ game });
     } catch {
       return NextResponse.json({ error: "Failed to submit move." }, { status: 500 });
@@ -92,7 +123,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ error: "Invalid action. Use: create, join, move." }, { status: 400 });
 }
 
-/* GET /api/arena/games?id={gameId} — get single game */
+/* GET /api/arena/games?id={gameId} — get single game (no auth required) */
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
@@ -122,19 +153,26 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/* ---- Helpers ---- */
+/* ---- Helper: resolve onchain prize pool ---- */
+async function tryResolveOnchain(gameId: string, winnerAddress: string) {
+  try {
+    const { kv } = await import("@vercel/kv");
+    const poolId = await kv.get<number>(`arena:game-pool:${gameId}`);
+    if (!poolId) return; // no onchain pool linked
 
-function validatePlayer(data: unknown): GamePlayer | null {
-  if (!data || typeof data !== "object") return null;
-  const p = data as Record<string, unknown>;
+    const pool = await getOnchainPool(poolId);
+    if (pool.status !== "full") return; // pool not ready
 
-  if (typeof p.address !== "string" || !p.address.startsWith("0x")) return null;
-  if (typeof p.mogId !== "number" || p.mogId < 1 || p.mogId > 5000) return null;
-  if (typeof p.mogName !== "string" || !p.mogName.trim()) return null;
-
-  return {
-    address: p.address,
-    mogId: p.mogId,
-    mogName: p.mogName.trim(),
-  };
+    const result = await resolvePoolOnchain(poolId, winnerAddress);
+    // Store resolution tx
+    await kv.set(`arena:game-resolve:${gameId}`, {
+      poolId,
+      winnerAddress,
+      txHash: result.txHash,
+      resolvedAt: new Date().toISOString(),
+    }, { ex: 86400 * 7 }); // keep for 7 days
+  } catch (err) {
+    console.error("Failed to resolve onchain pool:", err);
+    // Game result is still valid even if onchain resolution fails
+  }
 }
