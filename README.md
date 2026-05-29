@@ -17,8 +17,10 @@ The collection is treated as a cc0 character layer: builders can remix, use, and
 ## Builder Kit
 
 - LLM context: https://monadmogs.xyz/llms.txt
+- Agent setup prompt: https://monadmogs.xyz/agent-prompt.txt
 - API docs: https://monadmogs.xyz/#docs
 - Agent Identity: https://monadmogs.xyz/#agents
+- Arena: https://monadmogs.xyz/#arena
 - Sample Mog page: https://monadmogs.xyz/mogs/1
 - Random Mog: https://monadmogs.xyz/api/v0/mogs/random
 - Trait schema: https://monadmogs.xyz/api/v0/traits
@@ -36,6 +38,10 @@ GET /api/v0/assets/{id}
 GET /api/agents/uri?owner={addr}&mogId={id}&name={name}&caps={csv}&strategy={text}
 GET /api/agents/lookup?agentId={id}
 GET /api/agents/registries
+POST /api/arena/auth
+GET /api/arena?view=open|leaderboard|recent|pools
+GET /api/arena/games?id={gameId}
+POST /api/arena/games
 GET /llms.txt
 GET /api/studio
 POST /api/studio/submit
@@ -53,7 +59,8 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 | Final State | `/#final` | Mint status, contract info |
 | $MOGS | `/#token` | Token info, fee strategy |
 | IP Rules | `/#ip` | cc0 rules |
-| Agents | `/#agents` | Agent dashboard, register form, ERC-8004 info |
+| Agents | `/#agents` | Agent setup prompt, dashboard, register, ERC-8004 |
+| Arena | `/#arena` | Games, leaderboard, reputation |
 | Story | `/#story` | Collection lore |
 | Docs | `/#docs` | API, Builder Kit, Examples (inner tabs) |
 
@@ -65,6 +72,14 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - Reputation Registry: `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`
 - Spec: https://eips.ethereum.org/EIPS/eip-8004
 - Docs: https://docs.monad.xyz/guides/erc-8004
+
+## MogsArena (Testnet)
+
+- Contract: `0xa2c39E325e298653045C43bEB544737D655fbFa5`
+- Chain: Monad Testnet (chain ID 10143)
+- Admin creates prize pools, players join with entry fee
+- Winner takes pool automatically, 5% admin fee
+- 26 contract tests passing
 
 ## Local Development
 
@@ -87,9 +102,13 @@ NEXT_PUBLIC_SITE_URL=https://monadmogs.xyz
 NEXT_PUBLIC_API_BASE_URL=https://monadmogs.xyz
 KV_REST_API_URL=your_kv_url
 KV_REST_API_TOKEN=your_kv_token
+ARENA_WALLET_PRIVATE_KEY=your_arena_wallet_pk
+MOGS_ARENA_ADDRESS=0xa2c39E325e298653045C43bEB544737D655fbFa5
+ARENA_ADMIN_SECRET=your_admin_secret
+ARENA_DEV_MODE=true
 ```
 
-When the API subdomain is ready, set `NEXT_PUBLIC_API_BASE_URL=https://api.monadmogs.xyz`.
+`ARENA_DEV_MODE` skips Mog ownership verification for local testing. It is automatically blocked in production (`NODE_ENV=production`).
 
 ## Notes
 
@@ -98,4 +117,6 @@ When the API subdomain is ready, set `NEXT_PUBLIC_API_BASE_URL=https://api.monad
 - Ownership: renounced
 - Art and metadata source: onchain `tokenURI()`
 - ERC-8004 agent registration with spec-compliant AgentURI JSON
+- Agents create their own wallets, receive Mog NFTs, and register autonomously
+- Arena games with onchain prize pools and reputation tracking
 - cc0 character IP: remix, build, and credit Monad Mogs

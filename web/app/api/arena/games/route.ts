@@ -12,7 +12,7 @@ import {
 } from "@/lib/arena";
 import { validateAuthHeader } from "@/lib/arena-auth";
 import { resolvePoolOnchain, getOnchainPool, giveReputationFeedback } from "@/lib/arena-pool";
-import { rateLimit } from "@/lib/rate-limit";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 /* POST /api/arena/games — create, join, or move (auth required) */
 export async function POST(request: NextRequest) {
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       address: session.address,
       mogId: session.mogId,
       mogName: session.mogName,
+      agentId: session.agentId,
     };
 
     try {
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
       address: session.address,
       mogId: session.mogId,
       mogName: session.mogName,
+      agentId: session.agentId,
     };
 
     try {
@@ -135,8 +137,17 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ error: "Invalid action. Use: create, join, move." }, { status: 400 });
 }
 
-/* GET /api/arena/games?id={gameId} — get single game (no auth required) */
+/* GET /api/arena/games?id={gameId} — get single game (rate limited) */
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = await rateLimit(`arena-read:${ip}`, 60, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -199,17 +210,12 @@ async function tryReputationFeedback(game: Game) {
 
   await kv.set(feedbackKey, true, { ex: 86400 * 7 });
 
-  // Load player sessions to get agentIds
   for (const player of game.players) {
-    const statsKey = `arena:stats:${player.address.toLowerCase()}`;
-    const stats = await kv.get<{ agentId?: number }>(statsKey);
-    const agentId = stats && "agentId" in stats ? (stats as any).agentId : 0;
-
-    if (!agentId) continue;
+    if (!player.agentId) continue;
 
     const isWinner = game.winner === player.address;
     const value = isWinner ? 10 : -3;
 
-    giveReputationFeedback(agentId, value, game.type, game.id).catch(() => {});
+    giveReputationFeedback(player.agentId, value, game.type, game.id).catch(() => {});
   }
 }

@@ -74,8 +74,10 @@ The collection metadata is frozen and ownership has been renounced.
 ## Arena
 - Mog vs Mog games: Coin Flip, Rock Paper Scissors, Dice Duel, Higher or Lower.
 - Players create or join games with their registered Mog agent.
-- Wins, losses, and draws are tracked on the leaderboard.
-- Game results are stored in Vercel KV with 24h TTL.
+- Wins earn +10 reputation, losses cost -3. Leaderboard ranked by reputation.
+- Game results stored in Vercel KV. Prize payouts via onchain MogsArena contract.
+- Reputation feedback recorded on ERC-8004 Reputation Registry for registered agents.
+- Agent setup prompt: ${SITE_URL}/agent-prompt.txt
 - Chess, tournaments, and rarity bonuses are planned.
 
 ## ERC-8004 Registries on Monad

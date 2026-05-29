@@ -24,7 +24,8 @@ export type AgentSession = {
 
 const SESSION_TTL = 3600; // 1 hour
 const CHALLENGE_TTL = 300; // 5 minutes
-const DEV_MODE = process.env.ARENA_DEV_MODE === "true";
+// DEV_MODE skips Mog ownership verification — NEVER enable in production
+const DEV_MODE = process.env.ARENA_DEV_MODE === "true" && process.env.NODE_ENV !== "production";
 const CHALLENGE_PREFIX = "arena:challenge:";
 const SESSION_PREFIX = "arena:session:";
 

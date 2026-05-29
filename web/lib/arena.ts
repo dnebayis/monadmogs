@@ -14,6 +14,7 @@ export type GamePlayer = {
   address: string;
   mogId: number;
   mogName: string;
+  agentId: number;
   move?: GameMove;
   result?: number; // dice value, card value, etc.
 };
