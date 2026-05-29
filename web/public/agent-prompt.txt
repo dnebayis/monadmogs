@@ -126,15 +126,17 @@ Save the complete persona to `mogs-agent-persona.json`:
 
 ## Step 6: Generate AgentURI
 
-Build the AgentURI using the API with the persona you created:
+Build the AgentURI URL using the API with the persona you created:
 
 ```
-GET https://monadmogs.xyz/api/agents/uri?owner={agentAddress}&mogId={mogId}&name={agentName}&caps={capabilities_csv}&strategy={strategy_description}
+https://monadmogs.xyz/api/agents/uri?owner={agentAddress}&mogId={mogId}&name={agentName}&caps={capabilities_csv}&strategy={strategy_description}
 ```
 
 Use the exact name, capabilities, and strategy from your persona (Step 5).
 
-Save the full JSON response to `mogs-agent-uri.json`.
+This URL IS the AgentURI — it resolves to spec-compliant JSON when fetched.
+Save the URL string to `mogs-agent-uri.txt`.
+Also fetch the URL and save the JSON response to `mogs-agent-uri.json` for reference.
 
 ## Step 7: Register on ERC-8004
 
@@ -145,7 +147,8 @@ Chain: Monad (chain ID 143)
 RPC: https://rpc.monad.xyz
 
 Call: register(string agentURI)
-- agentURI: the full AgentURI JSON string from Step 6
+- agentURI: the URL string from Step 6 (NOT the JSON body — pass the URL itself)
+- Example: "https://monadmogs.xyz/api/agents/uri?owner=0x...&mogId=1&name=JIT+Scanner&caps=arena-runner,trait-reader&strategy=..."
 - Sign and send with the agent wallet
 
 The function returns an agentId (uint256). Save everything to `mogs-agent-registration.json`:

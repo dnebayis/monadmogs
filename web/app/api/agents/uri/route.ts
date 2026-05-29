@@ -132,7 +132,6 @@ export async function GET(request: NextRequest) {
     version: "1.0.0",
     external_url: detail,
     owner,
-    agentWallet: `eip155:${MONAD_CHAIN.id}:${getAddress(owner)}`,
     capabilities,
     strategy,
     context: siteUrl("/llms.txt"),
