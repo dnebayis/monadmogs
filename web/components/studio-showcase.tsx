@@ -55,6 +55,11 @@ export function StudioShowcase() {
 
       setSubmitResult({ ok: true, message: "Project submitted. It's live now." });
       setForm(emptyForm);
+      setShowForm(false);
+
+      // Refresh project list (bypass cache)
+      const refreshed = await fetch("/api/studio", { cache: "no-store" }).then((r) => r.json());
+      setProjects(refreshed.projects || []);
     } catch {
       setSubmitResult({ ok: false, message: "Network error. Try again." });
     } finally {
