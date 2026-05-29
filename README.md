@@ -28,6 +28,7 @@ The collection is treated as a cc0 character layer: builders can remix, use, and
 ## API
 
 ```txt
+# Mogs
 GET /api/v0/mogs?cursor=1&limit=24
 GET /api/v0/mogs/{id}
 GET /api/v0/mogs/{id}/traits
@@ -35,17 +36,27 @@ GET /api/v0/mogs/{id}/render
 GET /api/v0/mogs/random
 GET /api/v0/traits
 GET /api/v0/assets/{id}
+
+# Agents (ERC-8004)
 GET /api/agents/uri?owner={addr}&mogId={id}&name={name}&caps={csv}&strategy={text}
 GET /api/agents/lookup?agentId={id}
 GET /api/agents/registries
+
+# Arena
 POST /api/arena/auth
 GET /api/arena?view=open|leaderboard|recent|pools
 GET /api/arena/games?id={gameId}
 POST /api/arena/games
+POST /api/arena/admin
+
+# Utility
 GET /llms.txt
+GET /agent-prompt.txt
 GET /api/studio
 POST /api/studio/submit
 ```
+
+All endpoints are rate-limited. See rate limits in the security section of [ROADMAP.md](./ROADMAP.md).
 
 ## Site Structure
 
@@ -116,7 +127,9 @@ ARENA_DEV_MODE=true
 - Metadata: frozen
 - Ownership: renounced
 - Art and metadata source: onchain `tokenURI()`
-- ERC-8004 agent registration with spec-compliant AgentURI JSON
+- ERC-8004 agent registration with spec-compliant AgentURI (URL format)
 - Agents create their own wallets, receive Mog NFTs, and register autonomously
-- Arena games with onchain prize pools and reputation tracking
+- Trait-based agent personas: name, strategy, personality derived from Mog traits
+- Arena games with onchain prize pools and reputation tracking (+10 win, -3 loss)
+- Rate limiting on all public API endpoints
 - cc0 character IP: remix, build, and credit Monad Mogs

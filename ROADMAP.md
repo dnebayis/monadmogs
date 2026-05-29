@@ -20,10 +20,11 @@
 
 ### Agent Identity v0
 - ERC-8004 Identity Registry integration on Monad.
-- AgentURI generation with spec-compliant JSON (type, name, description, image, services, registrations, supportedTrust).
+- AgentURI as URL format (resolves to spec-compliant JSON with type, name, description, image, services, registrations, supportedTrust).
 - Onchain registration flow: connect wallet, pick Mog, configure playstyle, register.
 - Agent lookup API: read onchain tokenURI and agentWallet.
 - Registries API: ERC-8004 contract addresses for Monad.
+- setAgentWallet step in agent onboarding prompt.
 - Full Identity Registry ABI: register, setAgentURI, setMetadata, getMetadata, setAgentWallet, getAgentWallet, unsetAgentWallet.
 - Full Reputation Registry ABI: giveFeedback, revokeFeedback, appendResponse, getSummary, readFeedback, readAllFeedback.
 
@@ -51,10 +52,21 @@
 - Duplicate feedback prevention via KV dedup keys.
 
 ### Security
-- Rate limiting: arena auth (10/min), games (30/min), game reads (60/min), studio submit (3/hour).
+- Rate limiting on all public endpoints:
+  - Arena auth: 10/min per IP
+  - Arena games: 30/min per agent
+  - Arena/game reads: 60/min per IP
+  - Arena list (leaderboard, open games): 60/min per IP
+  - Agent lookup: 30/min per IP
+  - Agent URI: 20/min per IP
+  - Studio read: 30/min per IP
+  - Studio submit: 3/hour per IP
 - Challenge timestamp window validation (5 min).
+- mogId required for arena auth (no full-collection scan).
+- Single ownerOf call for ownership verification.
 - ARENA_DEV_MODE blocked in production (NODE_ENV guard).
 - Admin API protected by secret header.
+- ERC-8004 spec compliance: AgentURI as URL (not raw JSON), no deprecated agentWallet field.
 
 ### Builder Kit v0
 - `/llms.txt` for LLM-readable project context.
