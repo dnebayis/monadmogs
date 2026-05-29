@@ -1605,6 +1605,37 @@ h2 {
   border-color: var(--cream);
 }
 
+.studio-form input[type="file"] {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  background: rgba(255, 248, 238, 0.06);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.studio-form input[type="file"]::file-selector-button {
+  min-height: 32px;
+  padding: 0 12px;
+  margin-right: 12px;
+  border: 1px solid var(--line);
+  background: var(--cream);
+  color: #171018;
+  font: inherit;
+  cursor: pointer;
+}
+
+.studio-uploading {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.studio-uploaded {
+  color: var(--cyan);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
 .studio-form-actions {
   display: flex;
   gap: 10px;

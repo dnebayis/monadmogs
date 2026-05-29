@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StudioProject } from "@/lib/studio";
 
 type SubmitForm = {
@@ -18,8 +18,10 @@ export function StudioShowcase() {
   const [isLoading, setIsLoading] = useState(true);
   const [form, setForm] = useState<SubmitForm>(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ ok: boolean; message: string } | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/studio")
@@ -32,6 +34,40 @@ export function StudioShowcase() {
   function updateField(field: keyof SubmitForm, value: string) {
     setForm((current) => ({ ...current, [field]: value }));
     setSubmitResult(null);
+  }
+
+  async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setSubmitResult({ ok: false, message: "Image must be under 2MB." });
+      return;
+    }
+
+    setIsUploading(true);
+    setSubmitResult(null);
+
+    try {
+      const res = await fetch("/api/studio/upload", {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setSubmitResult({ ok: false, message: data.error || "Upload failed." });
+        return;
+      }
+
+      setForm((current) => ({ ...current, imageUrl: data.url }));
+    } catch {
+      setSubmitResult({ ok: false, message: "Upload failed. Try again." });
+    } finally {
+      setIsUploading(false);
+    }
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -149,14 +185,18 @@ export function StudioShowcase() {
               />
             </label>
             <label>
-              <span>Preview image URL</span>
+              <span>Preview image</span>
               <input
-                value={form.imageUrl}
-                onChange={(e) => updateField("imageUrl", e.target.value)}
-                placeholder="https://your-project.vercel.app/og.png"
-                type="url"
-                required
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={handleImageUpload}
+                disabled={isUploading}
               />
+              {isUploading && <span className="studio-uploading">Uploading...</span>}
+              {form.imageUrl && !isUploading && (
+                <span className="studio-uploaded">Image uploaded</span>
+              )}
             </label>
             <label>
               <span>Your name</span>
@@ -169,7 +209,11 @@ export function StudioShowcase() {
               />
             </label>
             <div className="studio-form-actions">
-              <button className="primary-action" type="submit" disabled={isSubmitting}>
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={isSubmitting || isUploading || !form.imageUrl}
+              >
                 {isSubmitting ? "Submitting..." : "Submit Project"}
               </button>
             </div>
