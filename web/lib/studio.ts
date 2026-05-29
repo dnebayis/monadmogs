@@ -75,8 +75,14 @@ export function validateStudioSubmission(body: unknown): ValidationResult {
 
 export async function getApprovedProjects(): Promise<StudioProject[]> {
   try {
-    const projects = await kv.lrange<StudioProject>(STUDIO_PROJECTS_KEY, 0, -1);
-    return projects.filter((p) => p.status === "approved");
+    const raw = await kv.lrange(STUDIO_PROJECTS_KEY, 0, -1);
+    const projects = raw.map((item) => {
+      if (typeof item === "string") {
+        try { return JSON.parse(item) as StudioProject; } catch { return null; }
+      }
+      return item as StudioProject;
+    }).filter((p): p is StudioProject => p !== null && p.status === "approved");
+    return projects;
   } catch {
     return [];
   }
