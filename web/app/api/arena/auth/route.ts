@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
     const challenge = body.challenge as string;
     const mogId = typeof body.mogId === "number" ? body.mogId : undefined;
 
-    if (!address || !signature || !challenge) {
+    if (!address || !signature || !challenge || !mogId) {
       return NextResponse.json(
-        { error: "address, signature, and challenge are required." },
+        { error: "address, signature, challenge, and mogId are required." },
         { status: 400 }
       );
     }

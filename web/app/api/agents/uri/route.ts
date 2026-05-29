@@ -7,6 +7,7 @@ import {
 } from "@/lib/erc8004";
 import { getMogMetadata, MAX_SUPPLY, parseTokenId } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { apiUrl, siteUrl } from "@/lib/urls";
 const client = createPublicClient({
   chain: MONAD_CHAIN,
@@ -33,6 +34,15 @@ function cleanCaps(value: string | null) {
  * Optional fields: services[], x402Support, active, registrations[], supportedTrust[]
  */
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = await rateLimit(`agent-uri:${ip}`, 20, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const owner = searchParams.get("owner") || "";
   const tokenId = parseTokenId(searchParams.get("mogId") || "");

@@ -1,8 +1,19 @@
 import { NextResponse } from "next/server";
 import { getOpenGames, getRecentGames, getLeaderboard } from "@/lib/arena";
 import { getOnchainPool, getPoolCount } from "@/lib/arena-pool";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
+  // Rate limit: 60 reads per minute per IP
+  const ip = getClientIp(request);
+  const rl = await rateLimit(`arena-list:${ip}`, 60, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") || "open";
 

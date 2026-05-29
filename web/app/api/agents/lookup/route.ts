@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createPublicClient, http, isAddress } from "viem";
+import { createPublicClient, http } from "viem";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   ERC8004_IDENTITY_REGISTRY_ABI,
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
@@ -17,6 +18,15 @@ const client = createPublicClient({
  * Reads the onchain tokenURI and agentWallet for a registered ERC-8004 agent.
  */
 export async function GET(request: NextRequest) {
+  const ip = getClientIp(request);
+  const rl = await rateLimit(`agent-lookup:${ip}`, 30, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const agentIdRaw = searchParams.get("agentId");
 

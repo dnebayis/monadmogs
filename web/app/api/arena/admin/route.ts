@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { resetLeaderboard } from "@/lib/arena";
+import { resetLeaderboard, getPlayerStats } from "@/lib/arena";
+import { cancelPoolOnchain } from "@/lib/arena-pool";
 
 const ADMIN_SECRET = process.env.ARENA_ADMIN_SECRET || "";
 
@@ -28,5 +29,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ error: "Invalid action." }, { status: 400 });
+  if (action === "cancel-pool") {
+    const poolId = body.poolId as number;
+    if (!poolId || poolId < 1) {
+      return NextResponse.json({ error: "Valid poolId required." }, { status: 400 });
+    }
+    try {
+      const result = await cancelPoolOnchain(poolId);
+      return NextResponse.json({ success: true, txHash: result.txHash });
+    } catch (err) {
+      return NextResponse.json({ error: "Cancel failed.", detail: String(err) }, { status: 500 });
+    }
+  }
+
+  if (action === "player-stats") {
+    const address = body.address as string;
+    if (!address) {
+      return NextResponse.json({ error: "address required." }, { status: 400 });
+    }
+    const stats = await getPlayerStats(address);
+    return NextResponse.json({ stats });
+  }
+
+  return NextResponse.json({ error: "Invalid action. Use: reset-leaderboard, cancel-pool, player-stats." }, { status: 400 });
 }
