@@ -47,6 +47,7 @@ export type LeaderboardEntry = {
   losses: number;
   draws: number;
   games: number;
+  reputation: number;
 };
 
 /* ------------------------------------------------------------------ */
@@ -322,6 +323,7 @@ async function updateStats(game: Game): Promise<void> {
       losses: 0,
       draws: 0,
       games: 0,
+      reputation: 0,
     };
 
     stats.games++;
@@ -332,12 +334,15 @@ async function updateStats(game: Game): Promise<void> {
       stats.draws++;
     } else if (game.winner === player.address) {
       stats.wins++;
+      stats.reputation += 10; // +10 rep per win
     } else {
       stats.losses++;
+      stats.reputation = Math.max(0, stats.reputation - 3); // -3 rep per loss, min 0
     }
 
     await kv.set(key, stats);
-    await kv.zadd(LEADERBOARD_KEY, { score: stats.wins, member: player.address.toLowerCase() });
+    // Sort leaderboard by reputation (not just wins)
+    await kv.zadd(LEADERBOARD_KEY, { score: stats.reputation, member: player.address.toLowerCase() });
   }
 }
 
@@ -360,5 +365,33 @@ export async function getPlayerStats(address: string): Promise<LeaderboardEntry 
     return kv.get<LeaderboardEntry>(PLAYER_STATS_KEY(address));
   } catch {
     return null;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Admin: Reset Leaderboard                                            */
+/* ------------------------------------------------------------------ */
+
+export async function resetLeaderboard(): Promise<void> {
+  try {
+    // Get all addresses from sorted set
+    const addresses = await kv.zrange<string[]>(LEADERBOARD_KEY, 0, -1);
+
+    // Delete each player's stats
+    for (const addr of addresses) {
+      await kv.del(PLAYER_STATS_KEY(addr));
+    }
+
+    // Delete the sorted set
+    await kv.del(LEADERBOARD_KEY);
+
+    // Delete all game keys
+    const gameIds = await kv.lrange<string>(GAMES_KEY, 0, -1);
+    for (const id of gameIds) {
+      await kv.del(GAME_KEY(id));
+    }
+    await kv.del(GAMES_KEY);
+  } catch {
+    // best-effort
   }
 }

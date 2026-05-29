@@ -1,5 +1,6 @@
 import { createPublicClient, createWalletClient, http, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { ERC8004_REPUTATION_REGISTRY_ABI, ERC8004_REPUTATION_REGISTRY_ADDRESS } from "@/lib/erc8004";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 
 /* ------------------------------------------------------------------ */
@@ -197,6 +198,46 @@ export async function resolvePoolOnchain(poolId: number, winnerAddress: string) 
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
   return { txHash: hash, status: receipt.status };
+}
+
+/**
+ * Give onchain reputation feedback to a player via ERC-8004 Reputation Registry.
+ * Winner gets positive feedback (+10), loser gets negative (-3).
+ */
+export async function giveReputationFeedback(
+  agentId: number,
+  value: number,
+  gameType: string,
+  gameId: string
+): Promise<{ txHash: string } | null> {
+  // agentId 0 means not registered on ERC-8004 — skip
+  if (!agentId) return null;
+
+  try {
+    const walletClient = getAdminWalletClient();
+
+    const hash = await walletClient.writeContract({
+      address: ERC8004_REPUTATION_REGISTRY_ADDRESS,
+      abi: ERC8004_REPUTATION_REGISTRY_ABI,
+      functionName: "giveFeedback",
+      args: [
+        BigInt(agentId),
+        BigInt(value),         // int128 value (+10 or -3)
+        0,                      // uint8 valueDecimals
+        "arena",                // tag1
+        gameType,               // tag2 (e.g. "rock-paper-scissors")
+        `arena:${gameId}`,      // endpoint
+        "",                     // feedbackURI
+        "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`, // feedbackHash
+      ],
+    });
+
+    await publicClient.waitForTransactionReceipt({ hash });
+    return { txHash: hash };
+  } catch (err) {
+    console.error("Failed to give reputation feedback:", err);
+    return null;
+  }
 }
 
 export async function cancelPoolOnchain(poolId: number) {

@@ -4,14 +4,14 @@ import {
   joinGame,
   submitMove,
   getGame,
-  resolveGame,
+  type Game,
   type GameType,
   type GameMove,
   type GamePlayer,
   GAME_TYPES,
 } from "@/lib/arena";
 import { validateAuthHeader } from "@/lib/arena-auth";
-import { resolvePoolOnchain, getOnchainPool } from "@/lib/arena-pool";
+import { resolvePoolOnchain, getOnchainPool, giveReputationFeedback } from "@/lib/arena-pool";
 import { rateLimit } from "@/lib/rate-limit";
 
 /* POST /api/arena/games — create, join, or move (auth required) */
@@ -93,9 +93,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Cannot join this game." }, { status: 400 });
       }
 
-      // If game finished, try to resolve onchain pool
-      if (game.status === "finished" && game.winner) {
-        await tryResolveOnchain(gameId, game.winner);
+      // If game finished, resolve pool + reputation
+      if (game.status === "finished") {
+        if (game.winner) await tryResolveOnchain(gameId, game.winner);
+        tryReputationFeedback(game).catch(() => {});
       }
 
       return NextResponse.json({ game });
@@ -119,9 +120,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Cannot submit move." }, { status: 400 });
       }
 
-      // If game finished, try to resolve onchain pool
-      if (game.status === "finished" && game.winner) {
-        await tryResolveOnchain(gameId, game.winner);
+      // If game finished, resolve pool + reputation
+      if (game.status === "finished") {
+        if (game.winner) await tryResolveOnchain(gameId, game.winner);
+        tryReputationFeedback(game).catch(() => {});
       }
 
       return NextResponse.json({ game });
@@ -168,21 +170,46 @@ async function tryResolveOnchain(gameId: string, winnerAddress: string) {
   try {
     const { kv } = await import("@vercel/kv");
     const poolId = await kv.get<number>(`arena:game-pool:${gameId}`);
-    if (!poolId) return; // no onchain pool linked
+    if (!poolId) return;
 
     const pool = await getOnchainPool(poolId);
-    if (pool.status !== "full") return; // pool not ready
+    if (pool.status !== "full") return;
 
     const result = await resolvePoolOnchain(poolId, winnerAddress);
-    // Store resolution tx
     await kv.set(`arena:game-resolve:${gameId}`, {
       poolId,
       winnerAddress,
       txHash: result.txHash,
       resolvedAt: new Date().toISOString(),
-    }, { ex: 86400 * 7 }); // keep for 7 days
+    }, { ex: 86400 * 7 });
   } catch (err) {
     console.error("Failed to resolve onchain pool:", err);
-    // Game result is still valid even if onchain resolution fails
+  }
+}
+
+/* ---- Helper: send reputation feedback for finished game ---- */
+async function tryReputationFeedback(game: Game) {
+  if (game.status !== "finished" || game.players.length !== 2) return;
+
+  const { kv } = await import("@vercel/kv");
+  // Prevent duplicate feedback
+  const feedbackKey = `arena:reputation:${game.id}`;
+  const already = await kv.get(feedbackKey);
+  if (already) return;
+
+  await kv.set(feedbackKey, true, { ex: 86400 * 7 });
+
+  // Load player sessions to get agentIds
+  for (const player of game.players) {
+    const statsKey = `arena:stats:${player.address.toLowerCase()}`;
+    const stats = await kv.get<{ agentId?: number }>(statsKey);
+    const agentId = stats && "agentId" in stats ? (stats as any).agentId : 0;
+
+    if (!agentId) continue;
+
+    const isWinner = game.winner === player.address;
+    const value = isWinner ? 10 : -3;
+
+    giveReputationFeedback(agentId, value, game.type, game.id).catch(() => {});
   }
 }

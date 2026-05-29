@@ -2103,6 +2103,11 @@ h2 {
   border: 1px solid var(--line);
 }
 
+.arena-lb-rep {
+  color: var(--cyan);
+  font-weight: 700;
+}
+
 /* === Agent Chat (disabled preview) === */
 
 .agent-chat-preview {

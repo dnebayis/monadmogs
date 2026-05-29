@@ -1,18 +1,28 @@
 "use client";
 
-import { GAME_TYPES } from "@/lib/arena";
+import { useEffect, useState } from "react";
+import { GAME_TYPES, type LeaderboardEntry } from "@/lib/arena";
 
 const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; description: string }][];
 
 export function ArenaTab() {
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+
+  useEffect(() => {
+    fetch("/api/arena?view=leaderboard")
+      .then((r) => r.json())
+      .then((data) => setLeaderboard(data.leaderboard || []))
+      .catch(() => {});
+  }, []);
+
   return (
     <section className="tab-full">
       <div className="section-heading">
         <p className="eyebrow">Arena</p>
         <h2>Mog vs Mog.</h2>
         <p className="section-copy">
-          Pick a game, choose your Mog, and challenge other players. Wins and losses are tracked on
-          the leaderboard.
+          Pick a game, choose your Mog, and challenge other players. Winners earn reputation and
+          prizes.
         </p>
       </div>
 
@@ -47,7 +57,11 @@ export function ArenaTab() {
           </article>
           <article className="endpoint-card">
             <span>3 / Win</span>
-            <p>Winners receive NFTs or $MOGS directly to their wallet. Results are public and verifiable.</p>
+            <p>Winners earn reputation and prizes. Reputation is recorded onchain via ERC-8004.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>4 / Climb</span>
+            <p>Leaderboard ranks by reputation. More wins, higher reputation, better matchmaking.</p>
           </article>
         </div>
       </div>
@@ -79,11 +93,35 @@ export function ArenaTab() {
       <div className="tab-block">
         <div className="tab-block-header">
           <p className="eyebrow">Leaderboard</p>
-          <p className="tab-block-copy">Top players by total wins.</p>
+          <p className="tab-block-copy">Ranked by reputation. Wins earn +10, losses cost -3.</p>
         </div>
-        <div className="arena-empty">
-          <p>No games played yet. Arena is coming soon.</p>
-        </div>
+        {leaderboard.length > 0 ? (
+          <div className="arena-leaderboard">
+            <div className="arena-lb-header">
+              <span>#</span>
+              <span>Player</span>
+              <span>Rep</span>
+              <span>W</span>
+              <span>L</span>
+            </div>
+            {leaderboard.map((entry, i) => (
+              <div key={entry.address} className="arena-lb-row">
+                <span>{i + 1}</span>
+                <span className="arena-lb-player">
+                  <img src={`/api/v0/mogs/${entry.mogId}/render`} alt={entry.mogName} />
+                  {entry.mogName}
+                </span>
+                <span className="arena-lb-rep">{entry.reputation ?? 0}</span>
+                <span>{entry.wins}</span>
+                <span>{entry.losses}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="arena-empty">
+            <p>No games played yet. Arena is coming soon.</p>
+          </div>
+        )}
       </div>
     </section>
   );

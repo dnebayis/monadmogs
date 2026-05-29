@@ -24,6 +24,7 @@ export type AgentSession = {
 
 const SESSION_TTL = 3600; // 1 hour
 const CHALLENGE_TTL = 300; // 5 minutes
+const DEV_MODE = process.env.ARENA_DEV_MODE === "true";
 const CHALLENGE_PREFIX = "arena:challenge:";
 const SESSION_PREFIX = "arena:session:";
 
@@ -99,91 +100,96 @@ export async function verifyAgentWallet(
   }
 
   // 3. Verify Mog ownership
-  // Agent provides their mogId — we just verify ownerOf (no full scan)
   let mogId: number | null = null;
   let mogName = "";
+  let agentId = 0;
 
-  if (claimedMogId && claimedMogId >= 1 && claimedMogId <= 5000) {
-    try {
-      const owner = await client.readContract({
-        address: MONAD_MOGS_ADDRESS,
-        abi: MONAD_MOGS_ABI,
-        functionName: "ownerOf",
-        args: [BigInt(claimedMogId)],
-      });
-      if (getAddress(owner) === getAddress(address as Address)) {
-        mogId = claimedMogId;
-        mogName = `Mog #${claimedMogId}`;
+  if (DEV_MODE) {
+    // Dev mode: skip onchain checks, use claimed mogId or random
+    mogId = claimedMogId || Math.floor(Math.random() * 5000) + 1;
+    mogName = `Mog #${mogId}`;
+    agentId = 0;
+  } else {
+    // Production: verify onchain ownership
+    if (claimedMogId && claimedMogId >= 1 && claimedMogId <= 5000) {
+      try {
+        const owner = await client.readContract({
+          address: MONAD_MOGS_ADDRESS,
+          abi: MONAD_MOGS_ABI,
+          functionName: "ownerOf",
+          args: [BigInt(claimedMogId)],
+        });
+        if (getAddress(owner) === getAddress(address as Address)) {
+          mogId = claimedMogId;
+          mogName = `Mog #${claimedMogId}`;
+        }
+      } catch {
+        // ownerOf failed
       }
-    } catch {
-      // ownerOf failed
     }
-  }
 
-  // Fallback: check balance first, then do limited scan
-  if (!mogId) {
+    // Fallback: check balance first, then do limited scan
+    if (!mogId) {
+      try {
+        const balance = await client.readContract({
+          address: MONAD_MOGS_ADDRESS,
+          abi: MONAD_MOGS_ABI,
+          functionName: "balanceOf",
+          args: [address as Address],
+        });
+
+        if (balance === 0n) {
+          return { error: "Agent wallet does not own any Monad Mogs." };
+        }
+
+        for (let start = 1; start <= 5000 && !mogId; start += 100) {
+          const end = Math.min(start + 99, 5000);
+          const checks = [];
+          for (let id = start; id <= end; id++) {
+            checks.push(
+              client
+                .readContract({
+                  address: MONAD_MOGS_ADDRESS,
+                  abi: MONAD_MOGS_ABI,
+                  functionName: "ownerOf",
+                  args: [BigInt(id)],
+                })
+                .then((owner) => ({ id, owner }))
+                .catch(() => null)
+            );
+          }
+          const results = await Promise.all(checks);
+          for (const r of results) {
+            if (r && getAddress(r.owner) === getAddress(address as Address)) {
+              mogId = r.id;
+              mogName = `Mog #${r.id}`;
+              break;
+            }
+          }
+        }
+      } catch {
+        return { error: "Could not verify Mog ownership on Monad." };
+      }
+    }
+
+    if (!mogId) {
+      return { error: "No Monad Mog found in agent wallet." };
+    }
+
+    // Check ERC-8004 registration (optional)
     try {
-      const balance = await client.readContract({
-        address: MONAD_MOGS_ADDRESS,
-        abi: MONAD_MOGS_ABI,
+      const registryBalance = await client.readContract({
+        address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+        abi: ERC8004_IDENTITY_REGISTRY_ABI,
         functionName: "balanceOf",
         args: [address as Address],
       });
-
-      if (balance === 0n) {
-        return { error: "Agent wallet does not own any Monad Mogs." };
-      }
-
-      // Limited scan — check 500 at a time with batch calls
-      for (let start = 1; start <= 5000 && !mogId; start += 100) {
-        const end = Math.min(start + 99, 5000);
-        const checks = [];
-        for (let id = start; id <= end; id++) {
-          checks.push(
-            client
-              .readContract({
-                address: MONAD_MOGS_ADDRESS,
-                abi: MONAD_MOGS_ABI,
-                functionName: "ownerOf",
-                args: [BigInt(id)],
-              })
-              .then((owner) => ({ id, owner }))
-              .catch(() => null)
-          );
-        }
-        const results = await Promise.all(checks);
-        for (const r of results) {
-          if (r && getAddress(r.owner) === getAddress(address as Address)) {
-            mogId = r.id;
-            mogName = `Mog #${r.id}`;
-            break;
-          }
-        }
+      if (registryBalance > 0n) {
+        agentId = Number(registryBalance);
       }
     } catch {
-      return { error: "Could not verify Mog ownership on Monad." };
+      // best-effort
     }
-  }
-
-  if (!mogId) {
-    return { error: "No Monad Mog found in agent wallet." };
-  }
-
-  // 4. Check ERC-8004 registration (optional — not required to play)
-  let agentId = 0;
-  try {
-    const registryBalance = await client.readContract({
-      address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-      abi: ERC8004_IDENTITY_REGISTRY_ABI,
-      functionName: "balanceOf",
-      args: [address as Address],
-    });
-
-    if (registryBalance > 0n) {
-      agentId = Number(registryBalance);
-    }
-  } catch {
-    // ERC-8004 check is best-effort
   }
 
   // 5. Create session
