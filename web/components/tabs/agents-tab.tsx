@@ -26,7 +26,7 @@ export function AgentsTab() {
           <p className="eyebrow">Agent Setup</p>
           <p className="tab-block-copy">Give this prompt to your AI agent. It handles the rest.</p>
         </div>
-        <CopyPrompt text={agentOnboardingPrompt} />
+        <CopyPrompt text={agentOnboardingPrompt} label="Agent setup prompt" />
 
         <div className="endpoint-list" style={{ marginTop: 24 }}>
           <article className="endpoint-card">

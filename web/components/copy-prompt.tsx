@@ -4,9 +4,10 @@ import { useState } from "react";
 
 type CopyPromptProps = {
   text: string;
+  label?: string;
 };
 
-export function CopyPrompt({ text }: CopyPromptProps) {
+export function CopyPrompt({ text, label = "Agent prompt" }: CopyPromptProps) {
   const [copied, setCopied] = useState(false);
 
   async function copyText() {
@@ -18,7 +19,7 @@ export function CopyPrompt({ text }: CopyPromptProps) {
   return (
     <div className="copy-prompt">
       <div className="copy-prompt-top">
-        <span>Agent prompt</span>
+        <span>{label}</span>
         <button type="button" className="secondary-action compact-action" onClick={copyText}>
           {copied ? "Copied" : "Copy"}
         </button>
