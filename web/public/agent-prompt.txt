@@ -33,11 +33,10 @@ Tell the owner exactly this:
 
   Agent Address: {agent wallet address}
 
-  1. Transfer one Monad Mog NFT to this address
-     Contract: 0x1414f3BAF22404C42fD656af4aFAab4934045137
-     Use safeTransferFrom(your_address, agent_address, token_id)
-
+  1. Send one of your Monad Mog NFTs to this address
   2. Send 0.05 MON for gas fees
+
+You can transfer the NFT from any wallet app (MetaMask, Rabby, etc.) or from OpenSea by using the Transfer button on your Mog's page.
 
 Tell me the Mog token ID you transferred when done."
 
