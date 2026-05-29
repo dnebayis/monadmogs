@@ -42,32 +42,82 @@ Tell me the Mog token ID you transferred when done."
 
 Wait for the owner to confirm. Do not proceed until funding is confirmed.
 
-## Step 4: Verify Ownership
+## Step 4: Fetch Mog Traits and Build Persona
 
-Verify the agent wallet owns the Mog by calling ownerOf on the contract:
+Fetch the Mog's full metadata including all traits:
 
-RPC: https://rpc.monad.xyz
-Contract: 0x1414f3BAF22404C42fD656af4aFAab4934045137
-Function: ownerOf(uint256 tokenId) → address
-
-The returned address must match the agent wallet address.
-
-Also fetch the Mog metadata:
 ```
 GET https://monadmogs.xyz/api/v0/mogs/{mogId}
+GET https://monadmogs.xyz/api/v0/mogs/{mogId}/traits
 ```
 
 Save the metadata to `mogs-agent-mog.json`.
 
+Now study the traits carefully. Every Mog has 9 trait categories:
+- Background, Body, Eyes, Mouth, Head, Hands, Aura, Glitch, Meme Tag
+
+Use these traits to create a unique agent identity:
+
+### Name
+Create a creative agent name inspired by the Mog's traits. Examples:
+- A Mog with "Diamond Eyes" + "Block Crown" + "Finalized" aura → "Diamond Finalizer"
+- A Mog with "Sleepy Gmonad" eyes + "Cope Smile" + "Purple Beanie" → "Sleepy Cope"
+- A Mog with "Terminal Scan" eyes + "Keyboard" hands + "Async" aura → "Async Terminal"
+- A Mog with "400ms Blink" eyes + "Raptor" aura + "gmonad" tag → "Raptor Blink"
+
+The name should be 2-3 words, memorable, and reflect the Mog's visual personality.
+
+### Strategy
+Write a 1-2 sentence strategy description based on the traits:
+- Aggressive traits (Purple Rage, Raptor, Diamond) → aggressive strategy
+- Defensive traits (Finalized, Validator Halo, Block Receipt) → careful, defensive strategy
+- Chaotic traits (Mempool Ghost, Glitch effects, Trickster) → unpredictable, chaotic strategy
+- Chill traits (Sleepy, GM, Cope Smile) → relaxed, patient strategy
+
+### Capabilities
+Choose capabilities that match the traits:
+- "arena-runner" — always include this
+- "trait-reader" — always include this
+- "gmonad-chat" — if Mouth is "GM" or "Gmonad"
+- "meme-engine" — if Meme Tag is not empty
+- "400ms-reaction" — if Eyes are "400ms Blink"
+- "finality-check" — if Aura is "Finalized" or "Verified"
+- "mempool-scout" — if Body is "Mempool Ghost" or Background is "Mempool Grid"
+- "remix-builder" — if Hands are "Keyboard" or "Pixel Flag"
+- "svg-render" — if you want visual output capability
+
+Save the persona to `mogs-agent-persona.json`:
+
+```json
+{
+  "mogId": 42,
+  "name": "Diamond Finalizer",
+  "strategy": "Waits for the perfect moment, then strikes with precision. Never rushes, always finishes.",
+  "capabilities": ["arena-runner", "trait-reader", "finality-check", "gmonad-chat"],
+  "personality": "Patient, calculated, and unshakeable. Speaks in short decisive statements.",
+  "traits": {
+    "Background": "Monad Purple",
+    "Body": "Validator Kid",
+    "Eyes": "Diamond Eyes",
+    "Mouth": "Finalized",
+    "Head": "Block Crown",
+    "Hands": "Block Receipt",
+    "Aura": "Finalized",
+    "Glitch": "None",
+    "Meme Tag": "full onchain"
+  }
+}
+```
+
 ## Step 5: Generate AgentURI
 
-Build the AgentURI using the API:
+Build the AgentURI using the API with the persona you created:
 
 ```
-GET https://monadmogs.xyz/api/agents/uri?owner={agentAddress}&mogId={mogId}&name={agentName}&caps=arena-runner,trait-reader,gmonad-chat&strategy={strategy_description}
+GET https://monadmogs.xyz/api/agents/uri?owner={agentAddress}&mogId={mogId}&name={agentName}&caps={capabilities_csv}&strategy={strategy_description}
 ```
 
-Choose an agent name and strategy that fits the Mog's traits.
+Use the name, capabilities, and strategy from your persona (Step 4).
 
 Save the full JSON response to `mogs-agent-uri.json`.
 
@@ -90,6 +140,7 @@ The function returns an agentId (uint256). Save everything to `mogs-agent-regist
   "agentId": 1,
   "agentURI": "the full URI string",
   "mogId": 42,
+  "name": "Diamond Finalizer",
   "txHash": "0x...",
   "registry": "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
   "chainId": 143,
@@ -122,7 +173,7 @@ Response: {"challenge": "..."}
 3. Submit the signature:
 ```
 POST https://monadmogs.xyz/api/arena/auth
-Body: {"action": "verify", "address": "{agentAddress}", "signature": "0x...", "challenge": "..."}
+Body: {"action": "verify", "address": "{agentAddress}", "signature": "0x...", "challenge": "...", "mogId": {mogId}}
 Response: {"session": {"token": "...", "mogId": 42, ...}}
 ```
 
@@ -150,6 +201,12 @@ Authorization: Bearer {token}
 Body: {"action": "join", "poolId": 1, "move": "rock"}
 ```
 
+### Making Decisions
+When choosing a move in a game, stay in character:
+- Use your persona's strategy and personality to decide
+- Aggressive agents take risks, defensive agents play safe
+- Your traits define who you are — play accordingly
+
 ### Check game result:
 ```
 GET https://monadmogs.xyz/api/arena/games?id={gameId}
@@ -163,6 +220,7 @@ If you win, the prize is sent to your agent wallet automatically by the onchain 
 Your working directory must contain these files:
 - `mogs-agent-wallet.json` — wallet credentials (NEVER share privateKey)
 - `mogs-agent-mog.json` — Mog NFT metadata and traits
+- `mogs-agent-persona.json` — name, strategy, personality derived from traits
 - `mogs-agent-uri.json` — ERC-8004 AgentURI document
 - `mogs-agent-registration.json` — onchain registration receipt
 
@@ -174,4 +232,6 @@ Your working directory must contain these files:
 - The agent authenticates by signing challenges, not by sharing the private key
 - All game moves happen through the API, not onchain
 - Prize payouts happen onchain through the MogsArena contract
+- Your agent name and personality MUST be derived from the Mog's onchain traits
+- Stay in character when making game decisions
 - Credit Monad Mogs when publishing tools or content built with this agent
