@@ -10,13 +10,24 @@ export type GameStatus = "waiting" | "active" | "finished";
 
 export type GameMove = "rock" | "paper" | "scissors" | "heads" | "tails" | "roll" | "higher" | "lower";
 
+export type RoundResult = {
+  round: number;
+  p1Move: GameMove;
+  p2Move: GameMove;
+  p1Result: number;
+  p2Result: number;
+  roundWinner: string | null; // address or null for draw
+  commentary?: { p1: string; p2: string };
+};
+
 export type GamePlayer = {
   address: string;
   mogId: number;
   mogName: string;
   agentId: number;
+  score: number;
   move?: GameMove;
-  result?: number; // dice value, card value, etc.
+  result?: number;
 };
 
 export type Game = {
@@ -25,16 +36,20 @@ export type Game = {
   status: GameStatus;
   players: GamePlayer[];
   maxPlayers: 2;
-  winner?: string; // address
+  bestOf: number;
+  round: number;
+  rounds: RoundResult[];
+  winner?: string;
   createdAt: string;
   finishedAt?: string;
-  round: number;
 };
 
 export type GameSummary = {
   id: string;
   type: GameType;
   status: GameStatus;
+  bestOf: number;
+  round: number;
   playerCount: number;
   maxPlayers: number;
   createdAt: string;
@@ -55,28 +70,64 @@ export type LeaderboardEntry = {
 /*  Constants                                                           */
 /* ------------------------------------------------------------------ */
 
-export const GAME_TYPES: Record<GameType, { label: string; description: string; icon: string }> = {
+export const GAME_TYPES: Record<GameType, { label: string; description: string; bestOf: number }> = {
   "coin-flip": {
     label: "Coin Flip",
-    description: "Call heads or tails. 50/50 chance. Pure luck.",
-    icon: "coin",
+    description: "Call heads or tails. Best of 3. Pure luck.",
+    bestOf: 3,
   },
   "rock-paper-scissors": {
     label: "Rock Paper Scissors",
-    description: "Classic RPS. Best of one. Strategy meets reads.",
-    icon: "rps",
+    description: "Classic RPS. Best of 5. Strategy meets reads.",
+    bestOf: 5,
   },
   "dice-duel": {
     label: "Dice Duel",
-    description: "Both players roll. Highest number wins.",
-    icon: "dice",
+    description: "Both players roll. Best of 3. Highest number wins each round.",
+    bestOf: 3,
   },
   "higher-lower": {
     label: "Higher or Lower",
-    description: "A random number is drawn. Guess if the next one is higher or lower.",
-    icon: "card",
+    description: "Guess if the next number is higher or lower. Best of 3.",
+    bestOf: 3,
   },
 };
+
+const AGGRESSIVE_COMMENTARY = [
+  "too easy.", "didn't even try.", "predictable.", "is that all?",
+  "next.", "yawn.", "again.", "not even close.",
+];
+const DEFENSIVE_COMMENTARY = [
+  "calculated.", "as expected.", "patience pays.", "steady.",
+  "one step at a time.", "no rush.", "solid.", "according to plan.",
+];
+const CHAOTIC_COMMENTARY = [
+  "chaos wins!", "lol what", "no logic, just vibes.", "pure entropy.",
+  "random is a strategy.", "trust the chaos.", "mempool energy.", "gg ez.",
+];
+const CHILL_COMMENTARY = [
+  "gm.", "chill round.", "no stress.", "all good.",
+  "nice one.", "vibes.", "we go again.", "smooth.",
+];
+
+function pickCommentary(mogName: string, won: boolean): string {
+  const name = mogName.toLowerCase();
+  let pool: string[];
+  if (name.includes("rage") || name.includes("raptor") || name.includes("diamond") || name.includes("jit")) {
+    pool = AGGRESSIVE_COMMENTARY;
+  } else if (name.includes("final") || name.includes("valid") || name.includes("block") || name.includes("guard")) {
+    pool = DEFENSIVE_COMMENTARY;
+  } else if (name.includes("mempool") || name.includes("chaos") || name.includes("trick") || name.includes("glitch")) {
+    pool = CHAOTIC_COMMENTARY;
+  } else {
+    pool = CHILL_COMMENTARY;
+  }
+  if (!won) {
+    const lossPhrases = ["hmm.", "not bad.", "lucky.", "next round.", "interesting.", "ok."];
+    return lossPhrases[Math.floor(Math.random() * lossPhrases.length)];
+  }
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 /* ------------------------------------------------------------------ */
 /*  KV Keys                                                             */
@@ -88,7 +139,7 @@ const LEADERBOARD_KEY = "arena:leaderboard";
 const PLAYER_STATS_KEY = (address: string) => `arena:stats:${address.toLowerCase()}`;
 
 /* ------------------------------------------------------------------ */
-/*  Game Logic                                                          */
+/*  Round Resolution                                                    */
 /* ------------------------------------------------------------------ */
 
 function resolveRPS(a: GameMove, b: GameMove): "a" | "b" | "draw" {
@@ -102,10 +153,6 @@ function resolveRPS(a: GameMove, b: GameMove): "a" | "b" | "draw" {
   return "b";
 }
 
-function resolveCoinFlip(call: GameMove, flipResult: "heads" | "tails"): boolean {
-  return call === flipResult;
-}
-
 function rollDice(): number {
   return Math.floor(Math.random() * 6) + 1;
 }
@@ -114,74 +161,71 @@ function drawNumber(): number {
   return Math.floor(Math.random() * 100) + 1;
 }
 
-export function resolveGame(game: Game): Game {
+function resolveRound(game: Game): RoundResult | null {
   const [p1, p2] = game.players;
-  if (!p1 || !p2) return game;
+  if (!p1?.move || !p2?.move) return null;
 
-  const resolved: Game = { ...game, status: "finished", finishedAt: new Date().toISOString() };
+  let p1Result = 0;
+  let p2Result = 0;
+  let roundWinner: string | null = null;
 
   switch (game.type) {
     case "coin-flip": {
       const flip = Math.random() < 0.5 ? "heads" : "tails";
-      const p1Won = resolveCoinFlip(p1.move!, flip as "heads" | "tails");
-      const p2Won = resolveCoinFlip(p2.move!, flip as "heads" | "tails");
-      resolved.players = [
-        { ...p1, result: p1Won ? 1 : 0 },
-        { ...p2, result: p2Won ? 1 : 0 },
-      ];
-      if (p1Won && !p2Won) resolved.winner = p1.address;
-      else if (p2Won && !p1Won) resolved.winner = p2.address;
-      // both same call = draw (no winner)
+      const p1Won = p1.move === flip;
+      const p2Won = p2.move === flip;
+      p1Result = p1Won ? 1 : 0;
+      p2Result = p2Won ? 1 : 0;
+      if (p1Won && !p2Won) roundWinner = p1.address;
+      else if (p2Won && !p1Won) roundWinner = p2.address;
       break;
     }
-
     case "rock-paper-scissors": {
-      if (!p1.move || !p2.move) return game;
       const result = resolveRPS(p1.move, p2.move);
-      resolved.players = [
-        { ...p1, result: result === "a" ? 1 : result === "draw" ? 0 : -1 },
-        { ...p2, result: result === "b" ? 1 : result === "draw" ? 0 : -1 },
-      ];
-      if (result === "a") resolved.winner = p1.address;
-      else if (result === "b") resolved.winner = p2.address;
+      p1Result = result === "a" ? 1 : result === "draw" ? 0 : -1;
+      p2Result = result === "b" ? 1 : result === "draw" ? 0 : -1;
+      if (result === "a") roundWinner = p1.address;
+      else if (result === "b") roundWinner = p2.address;
       break;
     }
-
     case "dice-duel": {
-      const r1 = rollDice();
-      const r2 = rollDice();
-      resolved.players = [
-        { ...p1, result: r1 },
-        { ...p2, result: r2 },
-      ];
-      if (r1 > r2) resolved.winner = p1.address;
-      else if (r2 > r1) resolved.winner = p2.address;
+      p1Result = rollDice();
+      p2Result = rollDice();
+      if (p1Result > p2Result) roundWinner = p1.address;
+      else if (p2Result > p1Result) roundWinner = p2.address;
       break;
     }
-
     case "higher-lower": {
-      const first = drawNumber();
-      const second = drawNumber();
-      const isHigher = second > first;
-      resolved.players = [
-        { ...p1, result: first },
-        { ...p2, result: second },
-      ];
-      // p1 is the guesser
+      p1Result = drawNumber();
+      p2Result = drawNumber();
+      if (p1Result === p2Result) break;
+      const isHigher = p2Result > p1Result;
       const p1Correct =
         (p1.move === "higher" && isHigher) || (p1.move === "lower" && !isHigher);
-      if (first === second) {
-        // draw
-      } else if (p1Correct) {
-        resolved.winner = p1.address;
-      } else {
-        resolved.winner = p2.address;
-      }
+      roundWinner = p1Correct ? p1.address : p2.address;
       break;
     }
   }
 
-  return resolved;
+  const p1Won = roundWinner === p1.address;
+  const p2Won = roundWinner === p2.address;
+
+  return {
+    round: game.round,
+    p1Move: p1.move,
+    p2Move: p2.move,
+    p1Result,
+    p2Result,
+    roundWinner,
+    commentary: {
+      p1: pickCommentary(p1.mogName, p1Won),
+      p2: pickCommentary(p2.mogName, p2Won),
+    },
+  };
+}
+
+function winsNeeded(bestOf: number): number {
+  return Math.ceil(bestOf / 2);
 }
 
 /* ------------------------------------------------------------------ */
@@ -193,17 +237,20 @@ export async function createGame(
   player: GamePlayer,
   move?: GameMove
 ): Promise<Game> {
+  const bestOf = GAME_TYPES[type].bestOf;
   const game: Game = {
     id: crypto.randomUUID(),
     type,
     status: "waiting",
-    players: [{ ...player, move }],
+    players: [{ ...player, score: 0, move }],
     maxPlayers: 2,
-    createdAt: new Date().toISOString(),
+    bestOf,
     round: 1,
+    rounds: [],
+    createdAt: new Date().toISOString(),
   };
 
-  await kv.set(GAME_KEY(game.id), game, { ex: 86400 }); // 24h TTL
+  await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
   await kv.lpush(GAMES_KEY, game.id);
   return game;
 }
@@ -221,23 +268,12 @@ export async function joinGame(
   if (!game || game.status !== "waiting" || game.players.length >= 2) return null;
   if (game.players[0].address.toLowerCase() === player.address.toLowerCase()) return null;
 
-  game.players.push({ ...player, move });
+  game.players.push({ ...player, score: 0, move });
   game.status = "active";
 
-  // For games where both moves are submitted at join time, resolve immediately
-  if (game.type === "coin-flip" || game.type === "dice-duel") {
-    const resolved = resolveGame(game);
-    await kv.set(GAME_KEY(id), resolved, { ex: 86400 });
-    await updateStats(resolved);
-    return resolved;
-  }
-
-  // RPS / higher-lower: both players need moves
+  // If both have moves, resolve the first round
   if (game.players[0].move && game.players[1].move) {
-    const resolved = resolveGame(game);
-    await kv.set(GAME_KEY(id), resolved, { ex: 86400 });
-    await updateStats(resolved);
-    return resolved;
+    return advanceRound(game);
   }
 
   await kv.set(GAME_KEY(id), game, { ex: 86400 });
@@ -251,6 +287,7 @@ export async function submitMove(
 ): Promise<Game | null> {
   const game = await getGame(id);
   if (!game || game.status === "finished") return null;
+  if (game.status === "waiting") return null;
 
   const playerIndex = game.players.findIndex(
     (p) => p.address.toLowerCase() === address.toLowerCase()
@@ -259,17 +296,67 @@ export async function submitMove(
 
   game.players[playerIndex].move = move;
 
-  // Check if all moves are in
-  if (game.players.length === 2 && game.players.every((p) => p.move)) {
-    const resolved = resolveGame(game);
-    await kv.set(GAME_KEY(id), resolved, { ex: 86400 });
-    await updateStats(resolved);
-    return resolved;
+  // If both have moves, resolve this round
+  if (game.players.every((p) => p.move)) {
+    return advanceRound(game);
   }
 
   await kv.set(GAME_KEY(id), game, { ex: 86400 });
   return game;
 }
+
+async function advanceRound(game: Game): Promise<Game> {
+  const roundResult = resolveRound(game);
+  if (!roundResult) {
+    await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
+    return game;
+  }
+
+  game.rounds.push(roundResult);
+
+  // Update scores
+  if (roundResult.roundWinner === game.players[0].address) {
+    game.players[0].score++;
+  } else if (roundResult.roundWinner === game.players[1].address) {
+    game.players[1].score++;
+  }
+
+  const needed = winsNeeded(game.bestOf);
+
+  // Check if someone won the match
+  if (game.players[0].score >= needed) {
+    game.status = "finished";
+    game.winner = game.players[0].address;
+    game.finishedAt = new Date().toISOString();
+  } else if (game.players[1].score >= needed) {
+    game.status = "finished";
+    game.winner = game.players[1].address;
+    game.finishedAt = new Date().toISOString();
+  } else {
+    // Next round — clear moves
+    game.round++;
+    game.players[0].move = undefined;
+    game.players[0].result = undefined;
+    game.players[1].move = undefined;
+    game.players[1].result = undefined;
+  }
+
+  // Store round results on players for the current/last round
+  game.players[0].result = roundResult.p1Result;
+  game.players[1].result = roundResult.p2Result;
+
+  await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
+
+  if (game.status === "finished") {
+    await updateStats(game);
+  }
+
+  return game;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Queries                                                             */
+/* ------------------------------------------------------------------ */
 
 export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
   try {
@@ -284,6 +371,8 @@ export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
         id: g.id,
         type: g.type,
         status: g.status,
+        bestOf: g.bestOf,
+        round: g.round,
         playerCount: g.players.length,
         maxPlayers: g.maxPlayers,
         createdAt: g.createdAt,
@@ -335,14 +424,13 @@ async function updateStats(game: Game): Promise<void> {
       stats.draws++;
     } else if (game.winner === player.address) {
       stats.wins++;
-      stats.reputation += 10; // +10 rep per win
+      stats.reputation += 10;
     } else {
       stats.losses++;
-      stats.reputation = Math.max(0, stats.reputation - 3); // -3 rep per loss, min 0
+      stats.reputation = Math.max(0, stats.reputation - 3);
     }
 
     await kv.set(key, stats);
-    // Sort leaderboard by reputation (not just wins)
     await kv.zadd(LEADERBOARD_KEY, { score: stats.reputation, member: player.address.toLowerCase() });
   }
 }
@@ -370,23 +458,17 @@ export async function getPlayerStats(address: string): Promise<LeaderboardEntry 
 }
 
 /* ------------------------------------------------------------------ */
-/*  Admin: Reset Leaderboard                                            */
+/*  Admin                                                               */
 /* ------------------------------------------------------------------ */
 
 export async function resetLeaderboard(): Promise<void> {
   try {
-    // Get all addresses from sorted set
     const addresses = await kv.zrange<string[]>(LEADERBOARD_KEY, 0, -1);
-
-    // Delete each player's stats
     for (const addr of addresses) {
       await kv.del(PLAYER_STATS_KEY(addr));
     }
-
-    // Delete the sorted set
     await kv.del(LEADERBOARD_KEY);
 
-    // Delete all game keys
     const gameIds = await kv.lrange<string>(GAMES_KEY, 0, -1);
     for (const id of gameIds) {
       await kv.del(GAME_KEY(id));

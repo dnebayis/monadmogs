@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
       mogId: session.mogId,
       mogName: session.mogName,
       agentId: session.agentId,
+      score: 0,
     };
 
     try {
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
       mogId: session.mogId,
       mogName: session.mogName,
       agentId: session.agentId,
+      score: 0,
     };
 
     try {
