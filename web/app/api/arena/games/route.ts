@@ -11,7 +11,7 @@ import {
   GAME_TYPES,
 } from "@/lib/arena";
 import { validateAuthHeader } from "@/lib/arena-auth";
-import { resolvePoolOnchain, getOnchainPool, giveReputationFeedback } from "@/lib/arena-pool";
+import { resolveOnchainMatch, resolveOnchainDraw, getOnchainMatch, giveReputationFeedback } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 /* POST /api/arena/games — create, join, or move (auth required) */
@@ -183,25 +183,31 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/* ---- Helper: resolve onchain prize pool ---- */
-async function tryResolveOnchain(gameId: string, winnerAddress: string) {
+/* ---- Helper: resolve onchain match ---- */
+async function tryResolveOnchain(gameId: string, winnerAddress: string | undefined) {
   try {
     const { kv } = await import("@vercel/kv");
-    const poolId = await kv.get<number>(`arena:game-pool:${gameId}`);
-    if (!poolId) return;
+    const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+    if (!matchId) return;
 
-    const pool = await getOnchainPool(poolId);
-    if (pool.status !== "full") return;
+    const match = await getOnchainMatch(matchId);
+    if (match.status !== "full") return;
 
-    const result = await resolvePoolOnchain(poolId, winnerAddress);
+    let result;
+    if (winnerAddress) {
+      result = await resolveOnchainMatch(matchId, winnerAddress);
+    } else {
+      result = await resolveOnchainDraw(matchId);
+    }
+
     await kv.set(`arena:game-resolve:${gameId}`, {
-      poolId,
-      winnerAddress,
+      matchId,
+      winnerAddress: winnerAddress || null,
       txHash: result.txHash,
       resolvedAt: new Date().toISOString(),
     }, { ex: 86400 * 7 });
   } catch (err) {
-    console.error("Failed to resolve onchain pool:", err);
+    console.error("Failed to resolve onchain match:", err);
   }
 }
 

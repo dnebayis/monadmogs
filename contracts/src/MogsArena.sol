@@ -1,31 +1,36 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-/// @title MogsArena — Prize pool for Monad Mogs agent games
-/// @notice Admin creates pools with a sponsor prize. Two players join with an entry fee.
-///         Backend resolves the game and the winner takes the full pool.
+/// @title MogsArena v2 — Hardened match-based prize system for Monad Mogs
+/// @notice Admin creates matches (2-player). Each player joins with entry fee.
+///         Backend resolves the match, winner takes the pot. Timeouts, reentrancy
+///         protection, per-player limits, and draw handling built in.
 contract MogsArena {
     /* ------------------------------------------------------------------ */
     /*  Types                                                               */
     /* ------------------------------------------------------------------ */
 
-    enum PoolStatus {
-        Open,       // waiting for players
-        Full,       // two players joined, waiting for resolution
+    enum MatchStatus {
+        Open,       // waiting for 2 players
+        Full,       // 2 players joined, waiting for resolution
         Resolved,   // winner decided, prize sent
-        Cancelled   // admin cancelled, refunds issued
+        Draw,       // draw — both players refunded
+        Cancelled,  // admin cancelled, refunds issued
+        Expired     // timed out, refunds issued
     }
 
-    struct Pool {
+    struct Match {
         uint256 id;
-        uint256 sponsorPrize;   // MON deposited by admin
-        uint256 entryFee;       // MON each player must pay
+        uint256 sponsorPrize;
+        uint256 entryFee;
         address player1;
         address player2;
         address winner;
-        PoolStatus status;
+        MatchStatus status;
         uint64 createdAt;
         uint64 resolvedAt;
+        uint64 deadline;        // auto-expire after this timestamp
+        bytes32 gameHash;       // hash of offchain game ID for verification
     }
 
     /* ------------------------------------------------------------------ */
@@ -33,20 +38,31 @@ contract MogsArena {
     /* ------------------------------------------------------------------ */
 
     address public immutable admin;
-    uint256 public poolCount;
-    mapping(uint256 => Pool) public pools;
+    uint256 public matchCount;
+    mapping(uint256 => Match) public matches;
+
+    // Per-player active match tracking — one active match at a time
+    mapping(address => uint256) public activeMatch;
 
     uint256 public constant MAX_ENTRY_FEE = 100 ether;
-    uint256 public feeCollected; // admin's cut from resolved pools
+    uint256 public constant MIN_ENTRY_FEE = 0.001 ether;
+    uint256 public constant MATCH_TIMEOUT = 2 hours;
+    uint256 public constant FEE_BPS = 500; // 5% in basis points
+    uint256 public feeCollected;
+
+    bool private _locked;
 
     /* ------------------------------------------------------------------ */
     /*  Events                                                              */
     /* ------------------------------------------------------------------ */
 
-    event PoolCreated(uint256 indexed poolId, uint256 sponsorPrize, uint256 entryFee);
-    event PlayerJoined(uint256 indexed poolId, address indexed player, uint8 slot);
-    event PoolResolved(uint256 indexed poolId, address indexed winner, uint256 prize);
-    event PoolCancelled(uint256 indexed poolId);
+    event MatchCreated(uint256 indexed matchId, uint256 sponsorPrize, uint256 entryFee, bytes32 gameHash);
+    event PlayerJoined(uint256 indexed matchId, address indexed player, uint8 slot);
+    event MatchResolved(uint256 indexed matchId, address indexed winner, uint256 prize);
+    event MatchDraw(uint256 indexed matchId);
+    event MatchCancelled(uint256 indexed matchId);
+    event MatchExpired(uint256 indexed matchId);
+    event FeesWithdrawn(uint256 amount);
 
     /* ------------------------------------------------------------------ */
     /*  Errors                                                              */
@@ -54,12 +70,17 @@ contract MogsArena {
 
     error OnlyAdmin();
     error InvalidEntryFee();
-    error PoolNotOpen();
-    error PoolNotFull();
+    error MatchNotOpen();
+    error MatchNotFull();
     error AlreadyJoined();
+    error AlreadyInMatch();
     error WrongEntryFee();
     error InvalidWinner();
     error TransferFailed();
+    error MatchNotExpired();
+    error Reentrancy();
+    error InvalidGameHash();
+    error NoFeesToWithdraw();
 
     /* ------------------------------------------------------------------ */
     /*  Modifiers                                                           */
@@ -68,6 +89,13 @@ contract MogsArena {
     modifier onlyAdmin() {
         if (msg.sender != admin) revert OnlyAdmin();
         _;
+    }
+
+    modifier noReentrant() {
+        if (_locked) revert Reentrancy();
+        _locked = true;
+        _;
+        _locked = false;
     }
 
     /* ------------------------------------------------------------------ */
@@ -79,136 +107,223 @@ contract MogsArena {
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Admin: Create Pool                                                  */
+    /*  Admin: Create Match                                                 */
     /* ------------------------------------------------------------------ */
 
-    /// @notice Create a new prize pool. msg.value is the sponsor prize.
+    /// @notice Create a new match. msg.value is the sponsor prize.
     /// @param entryFee MON each player must pay to join
-    function createPool(uint256 entryFee) external payable onlyAdmin returns (uint256 poolId) {
-        if (entryFee == 0 || entryFee > MAX_ENTRY_FEE) revert InvalidEntryFee();
+    /// @param gameHash keccak256 of the offchain game ID for cross-reference
+    function createMatch(uint256 entryFee, bytes32 gameHash) external payable onlyAdmin returns (uint256 matchId) {
+        if (entryFee < MIN_ENTRY_FEE || entryFee > MAX_ENTRY_FEE) revert InvalidEntryFee();
+        if (gameHash == bytes32(0)) revert InvalidGameHash();
 
-        poolId = ++poolCount;
-        pools[poolId] = Pool({
-            id: poolId,
+        matchId = ++matchCount;
+        matches[matchId] = Match({
+            id: matchId,
             sponsorPrize: msg.value,
             entryFee: entryFee,
             player1: address(0),
             player2: address(0),
             winner: address(0),
-            status: PoolStatus.Open,
+            status: MatchStatus.Open,
             createdAt: uint64(block.timestamp),
-            resolvedAt: 0
+            resolvedAt: 0,
+            deadline: uint64(block.timestamp + MATCH_TIMEOUT),
+            gameHash: gameHash
         });
 
-        emit PoolCreated(poolId, msg.value, entryFee);
+        emit MatchCreated(matchId, msg.value, entryFee, gameHash);
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Player: Join Pool                                                   */
+    /*  Player: Join Match                                                  */
     /* ------------------------------------------------------------------ */
 
-    /// @notice Join an open pool by paying the entry fee
-    function joinPool(uint256 poolId) external payable {
-        Pool storage pool = pools[poolId];
-        if (pool.status != PoolStatus.Open) revert PoolNotOpen();
-        if (msg.value != pool.entryFee) revert WrongEntryFee();
-        if (msg.sender == pool.player1) revert AlreadyJoined();
+    /// @notice Join an open match by paying the entry fee
+    function joinMatch(uint256 matchId) external payable noReentrant {
+        Match storage m = matches[matchId];
+        if (m.status != MatchStatus.Open) revert MatchNotOpen();
+        if (msg.value != m.entryFee) revert WrongEntryFee();
+        if (msg.sender == m.player1) revert AlreadyJoined();
 
-        if (pool.player1 == address(0)) {
-            pool.player1 = msg.sender;
-            emit PlayerJoined(poolId, msg.sender, 1);
+        // One active match per player
+        uint256 currentActive = activeMatch[msg.sender];
+        if (currentActive != 0) {
+            MatchStatus currentStatus = matches[currentActive].status;
+            if (currentStatus == MatchStatus.Open || currentStatus == MatchStatus.Full) {
+                revert AlreadyInMatch();
+            }
+        }
+
+        if (m.player1 == address(0)) {
+            m.player1 = msg.sender;
+            activeMatch[msg.sender] = matchId;
+            emit PlayerJoined(matchId, msg.sender, 1);
         } else {
-            pool.player2 = msg.sender;
-            pool.status = PoolStatus.Full;
-            emit PlayerJoined(poolId, msg.sender, 2);
+            m.player2 = msg.sender;
+            m.status = MatchStatus.Full;
+            activeMatch[msg.sender] = matchId;
+            emit PlayerJoined(matchId, msg.sender, 2);
         }
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Admin: Resolve Pool                                                 */
+    /*  Admin: Resolve Match                                                */
     /* ------------------------------------------------------------------ */
 
-    /// @notice Resolve a full pool. Winner receives sponsor prize + both entry fees.
-    /// @param poolId The pool to resolve
-    /// @param winner Must be player1 or player2
-    function resolvePool(uint256 poolId, address winner) external onlyAdmin {
-        Pool storage pool = pools[poolId];
-        if (pool.status != PoolStatus.Full) revert PoolNotFull();
-        if (winner != pool.player1 && winner != pool.player2) revert InvalidWinner();
+    /// @notice Resolve a full match with a winner
+    function resolveMatch(uint256 matchId, address winner) external onlyAdmin noReentrant {
+        Match storage m = matches[matchId];
+        if (m.status != MatchStatus.Full) revert MatchNotFull();
+        if (winner != m.player1 && winner != m.player2) revert InvalidWinner();
 
-        pool.winner = winner;
-        pool.status = PoolStatus.Resolved;
-        pool.resolvedAt = uint64(block.timestamp);
+        m.winner = winner;
+        m.status = MatchStatus.Resolved;
+        m.resolvedAt = uint64(block.timestamp);
 
-        // Winner gets: sponsor prize + both entry fees (minus 5% admin fee)
-        uint256 totalEntries = pool.entryFee * 2;
-        uint256 adminCut = totalEntries * 5 / 100;
-        uint256 prize = pool.sponsorPrize + totalEntries - adminCut;
+        uint256 totalEntries = m.entryFee * 2;
+        uint256 adminCut = (totalEntries * FEE_BPS) / 10000;
+        uint256 prize = m.sponsorPrize + totalEntries - adminCut;
 
         feeCollected += adminCut;
+
+        // Clear active match for both players
+        _clearActiveMatch(m.player1, matchId);
+        _clearActiveMatch(m.player2, matchId);
 
         (bool success,) = winner.call{value: prize}("");
         if (!success) revert TransferFailed();
 
-        emit PoolResolved(poolId, winner, prize);
+        emit MatchResolved(matchId, winner, prize);
+    }
+
+    /// @notice Resolve a full match as a draw — both players refunded entry + split sponsor
+    function resolveDraw(uint256 matchId) external onlyAdmin noReentrant {
+        Match storage m = matches[matchId];
+        if (m.status != MatchStatus.Full) revert MatchNotFull();
+
+        m.status = MatchStatus.Draw;
+        m.resolvedAt = uint64(block.timestamp);
+
+        uint256 refundEach = m.entryFee + (m.sponsorPrize / 2);
+
+        _clearActiveMatch(m.player1, matchId);
+        _clearActiveMatch(m.player2, matchId);
+
+        (bool s1,) = m.player1.call{value: refundEach}("");
+        if (!s1) revert TransferFailed();
+        (bool s2,) = m.player2.call{value: refundEach}("");
+        if (!s2) revert TransferFailed();
+
+        emit MatchDraw(matchId);
     }
 
     /* ------------------------------------------------------------------ */
-    /*  Admin: Cancel Pool                                                  */
+    /*  Admin: Cancel Match                                                 */
     /* ------------------------------------------------------------------ */
 
-    /// @notice Cancel an open or full pool. Refunds all participants.
-    function cancelPool(uint256 poolId) external onlyAdmin {
-        Pool storage pool = pools[poolId];
-        if (pool.status == PoolStatus.Resolved || pool.status == PoolStatus.Cancelled) {
-            revert PoolNotOpen();
+    /// @notice Cancel an open or full match. Refunds all participants.
+    function cancelMatch(uint256 matchId) external onlyAdmin noReentrant {
+        Match storage m = matches[matchId];
+        if (m.status == MatchStatus.Resolved || m.status == MatchStatus.Cancelled
+            || m.status == MatchStatus.Draw || m.status == MatchStatus.Expired) {
+            revert MatchNotOpen();
         }
 
-        pool.status = PoolStatus.Cancelled;
+        m.status = MatchStatus.Cancelled;
 
-        // Refund players
-        if (pool.player1 != address(0)) {
-            (bool s1,) = pool.player1.call{value: pool.entryFee}("");
+        if (m.player1 != address(0)) {
+            _clearActiveMatch(m.player1, matchId);
+            (bool s1,) = m.player1.call{value: m.entryFee}("");
             if (!s1) revert TransferFailed();
         }
-        if (pool.player2 != address(0)) {
-            (bool s2,) = pool.player2.call{value: pool.entryFee}("");
+        if (m.player2 != address(0)) {
+            _clearActiveMatch(m.player2, matchId);
+            (bool s2,) = m.player2.call{value: m.entryFee}("");
             if (!s2) revert TransferFailed();
         }
 
-        // Refund sponsor prize to admin
-        if (pool.sponsorPrize > 0) {
-            (bool s3,) = admin.call{value: pool.sponsorPrize}("");
+        if (m.sponsorPrize > 0) {
+            (bool s3,) = admin.call{value: m.sponsorPrize}("");
             if (!s3) revert TransferFailed();
         }
 
-        emit PoolCancelled(poolId);
+        emit MatchCancelled(matchId);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Anyone: Expire Timed-Out Match                                      */
+    /* ------------------------------------------------------------------ */
+
+    /// @notice Expire a match that passed its deadline. Anyone can call this.
+    ///         Refunds all participants and sponsor prize.
+    function expireMatch(uint256 matchId) external noReentrant {
+        Match storage m = matches[matchId];
+        if (m.status != MatchStatus.Open && m.status != MatchStatus.Full) revert MatchNotOpen();
+        if (block.timestamp < m.deadline) revert MatchNotExpired();
+
+        m.status = MatchStatus.Expired;
+
+        if (m.player1 != address(0)) {
+            _clearActiveMatch(m.player1, matchId);
+            (bool s1,) = m.player1.call{value: m.entryFee}("");
+            if (!s1) revert TransferFailed();
+        }
+        if (m.player2 != address(0)) {
+            _clearActiveMatch(m.player2, matchId);
+            (bool s2,) = m.player2.call{value: m.entryFee}("");
+            if (!s2) revert TransferFailed();
+        }
+
+        if (m.sponsorPrize > 0) {
+            (bool s3,) = admin.call{value: m.sponsorPrize}("");
+            if (!s3) revert TransferFailed();
+        }
+
+        emit MatchExpired(matchId);
     }
 
     /* ------------------------------------------------------------------ */
     /*  Admin: Withdraw Fees                                                */
     /* ------------------------------------------------------------------ */
 
-    /// @notice Withdraw accumulated admin fees
-    function withdrawFees() external onlyAdmin {
+    function withdrawFees() external onlyAdmin noReentrant {
         uint256 amount = feeCollected;
+        if (amount == 0) revert NoFeesToWithdraw();
         feeCollected = 0;
         (bool success,) = admin.call{value: amount}("");
         if (!success) revert TransferFailed();
+        emit FeesWithdrawn(amount);
     }
 
     /* ------------------------------------------------------------------ */
     /*  Views                                                               */
     /* ------------------------------------------------------------------ */
 
-    function getPool(uint256 poolId) external view returns (Pool memory) {
-        return pools[poolId];
+    function getMatch(uint256 matchId) external view returns (Match memory) {
+        return matches[matchId];
     }
 
-    function getTotalPrize(uint256 poolId) external view returns (uint256) {
-        Pool memory pool = pools[poolId];
-        uint256 totalEntries = pool.entryFee * 2;
-        uint256 adminCut = totalEntries * 5 / 100;
-        return pool.sponsorPrize + totalEntries - adminCut;
+    function getTotalPrize(uint256 matchId) external view returns (uint256) {
+        Match memory m = matches[matchId];
+        uint256 totalEntries = m.entryFee * 2;
+        uint256 adminCut = (totalEntries * FEE_BPS) / 10000;
+        return m.sponsorPrize + totalEntries - adminCut;
+    }
+
+    function isMatchExpired(uint256 matchId) external view returns (bool) {
+        Match memory m = matches[matchId];
+        return block.timestamp >= m.deadline
+            && (m.status == MatchStatus.Open || m.status == MatchStatus.Full);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  Internal                                                            */
+    /* ------------------------------------------------------------------ */
+
+    function _clearActiveMatch(address player, uint256 matchId) internal {
+        if (activeMatch[player] == matchId) {
+            activeMatch[player] = 0;
+        }
     }
 }

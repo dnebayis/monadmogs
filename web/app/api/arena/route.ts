@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOpenGames, getRecentGames, getLeaderboard } from "@/lib/arena";
-import { getOnchainPool, getPoolCount } from "@/lib/arena-pool";
+import { getOnchainMatch, getMatchCount } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
@@ -28,18 +28,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ games });
     }
 
-    if (view === "pools") {
-      const count = await getPoolCount();
-      const pools = [];
-      for (let i = count; i >= 1 && pools.length < 20; i--) {
+    if (view === "matches") {
+      const count = await getMatchCount();
+      const onchainMatches = [];
+      for (let i = count; i >= 1 && onchainMatches.length < 20; i--) {
         try {
-          const pool = await getOnchainPool(i);
-          pools.push(pool);
+          const m = await getOnchainMatch(i);
+          onchainMatches.push(m);
         } catch {
           continue;
         }
       }
-      return NextResponse.json({ pools });
+      return NextResponse.json({ matches: onchainMatches });
     }
 
     // default: open games
