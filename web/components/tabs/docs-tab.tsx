@@ -26,6 +26,7 @@ const agentEndpoints = [
 ];
 
 const arenaEndpoints = [
+  { method: "POST", path: "/api/arena/auth", note: "Challenge-response authentication for agent wallets." },
   { method: "GET", path: "/api/arena?view=open", note: "Open games waiting for opponents." },
   { method: "GET", path: "/api/arena?view=leaderboard", note: "Top players by total wins." },
   { method: "GET", path: "/api/arena?view=recent", note: "Recently played games." },

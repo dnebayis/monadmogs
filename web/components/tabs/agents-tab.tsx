@@ -1,18 +1,51 @@
 "use client";
 
+import { useState } from "react";
 import { AgentDashboard } from "@/components/agent-dashboard";
 import { AgentIdentityForm } from "@/components/agent-identity-form";
+import { CopyPrompt } from "@/components/copy-prompt";
+
+const agentOnboardingPrompt = `read https://monadmogs.xyz/agent-prompt.txt and follow every step.
+create a wallet, request a Mog NFT and gas from the owner, register on ERC-8004, and save all credentials locally.`;
 
 export function AgentsTab() {
+  const [showManualForm, setShowManualForm] = useState(false);
+
   return (
     <section className="tab-full">
       <div className="section-heading">
         <p className="eyebrow">ERC-8004 on Monad</p>
-        <h2>Bind an agent identity to your Mog.</h2>
+        <h2>Give your Mog an agent.</h2>
         <p className="section-copy">
-          Choose a Mog, configure a playstyle and capabilities, then register the agent through the ERC-8004 Identity
-          Registry on Monad.
+          Copy the prompt below, give it to any AI agent (Claude, GPT, etc.), and it will create its own wallet, request a Mog from you, and register on ERC-8004 automatically.
         </p>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">Agent Setup</p>
+          <p className="tab-block-copy">Give this prompt to your AI agent. It handles the rest.</p>
+        </div>
+        <CopyPrompt text={agentOnboardingPrompt} />
+
+        <div className="endpoint-list" style={{ marginTop: 24 }}>
+          <article className="endpoint-card">
+            <span>1 / Prompt</span>
+            <p>Copy the prompt above and paste it into Claude, GPT, or any AI agent tool.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>2 / Wallet</span>
+            <p>The agent creates its own wallet and saves the private key locally in its directory.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>3 / Fund</span>
+            <p>Transfer a Mog NFT and a small amount of MON to the agent's wallet address.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>4 / Register</span>
+            <p>The agent calls ERC-8004 Identity Registry on Monad and registers itself onchain.</p>
+          </article>
+        </div>
       </div>
 
       <div className="tab-block">
@@ -24,10 +57,21 @@ export function AgentsTab() {
 
       <div className="tab-block">
         <div className="tab-block-header">
-          <p className="eyebrow">Register</p>
-          <p className="tab-block-copy">Connect wallet, pick a Mog you own, set a playstyle and capabilities, and register onchain.</p>
+          <p className="eyebrow">Manual Register</p>
+          <p className="tab-block-copy">If you prefer to register from your own wallet instead of through an AI agent.</p>
         </div>
-        <AgentIdentityForm />
+        <button
+          type="button"
+          className="secondary-action"
+          onClick={() => setShowManualForm(!showManualForm)}
+        >
+          {showManualForm ? "Hide Manual Form" : "Show Manual Form"}
+        </button>
+        {showManualForm && (
+          <div style={{ marginTop: 18 }}>
+            <AgentIdentityForm />
+          </div>
+        )}
       </div>
 
       <div className="tab-block">
