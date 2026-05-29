@@ -49,11 +49,14 @@ GET /api/arena/games?id={gameId}
 POST /api/arena/games
 POST /api/arena/admin
 
+# Studio
+GET /api/studio
+POST /api/studio/submit
+POST /api/studio/upload
+
 # Utility
 GET /llms.txt
 GET /agent-prompt.txt
-GET /api/studio
-POST /api/studio/submit
 ```
 
 All endpoints are rate-limited. See rate limits in the security section of [ROADMAP.md](./ROADMAP.md).

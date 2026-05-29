@@ -61,6 +61,7 @@
   - Agent URI: 20/min per IP
   - Studio read: 30/min per IP
   - Studio submit: 3/hour per IP
+  - Studio upload: 5/hour per IP
 - Challenge timestamp window validation (5 min).
 - mogId required for arena auth (no full-collection scan).
 - Single ownerOf call for ownership verification.
@@ -76,7 +77,9 @@
 
 ### Studio v0
 - Community project submission and gallery (Vercel KV).
+- Image upload via Vercel Blob (PNG, JPEG, WebP, GIF, max 2MB).
 - Auto-approved submissions, admin can remove from KV.
+- Upload rate limited: 5/hour per IP.
 
 ### Site
 - Single-page tab layout with hash routing.
