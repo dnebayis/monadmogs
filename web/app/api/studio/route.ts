@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     { projects },
     {
       headers: {
-        "Cache-Control": "public, max-age=300",
+        "Cache-Control": "public, max-age=10",
       },
     },
   );
