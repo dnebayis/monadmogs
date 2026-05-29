@@ -12,6 +12,7 @@ import {
 } from "@/lib/arena";
 import { validateAuthHeader } from "@/lib/arena-auth";
 import { resolvePoolOnchain, getOnchainPool } from "@/lib/arena-pool";
+import { rateLimit } from "@/lib/rate-limit";
 
 /* POST /api/arena/games — create, join, or move (auth required) */
 export async function POST(request: NextRequest) {
@@ -21,6 +22,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { error: "Authentication required. Use POST /api/arena/auth to get a session token." },
       { status: 401 }
+    );
+  }
+
+  // Rate limit: 30 game actions per minute per agent
+  const rl = await rateLimit(`arena-game:${session.address}`, 30, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
     );
   }
 

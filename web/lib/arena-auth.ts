@@ -71,6 +71,17 @@ export async function verifyAgentWallet(
     return { error: "Invalid or expired challenge." };
   }
 
+  // 1b. Verify challenge timestamp is within window (5 min)
+  const timestampMatch = challenge.match(/Timestamp: (\d+)/);
+  if (timestampMatch) {
+    const challengeTime = Number(timestampMatch[1]);
+    const now = Date.now();
+    if (now - challengeTime > CHALLENGE_TTL * 1000) {
+      await kv.del(`${CHALLENGE_PREFIX}${normalizedAddress}`);
+      return { error: "Challenge expired." };
+    }
+  }
+
   // 2. Verify signature
   let isValid: boolean;
   try {

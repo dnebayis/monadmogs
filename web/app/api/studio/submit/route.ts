@@ -1,7 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { submitProject, validateStudioSubmission } from "@/lib/studio";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 3 submissions per hour per IP
+  const ip = getClientIp(request);
+  const rl = await rateLimit(`studio-submit:${ip}`, 3, 3600);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many submissions. Try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();
