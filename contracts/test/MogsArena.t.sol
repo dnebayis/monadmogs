@@ -3,9 +3,11 @@ pragma solidity ^0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {MogsArena} from "../src/MogsArena.sol";
+import {MockERC721} from "./MockERC721.sol";
 
 contract MogsArenaTest is Test {
     MogsArena public arena;
+    MockERC721 public nft;
     address public adm = address(this);
     address public p1 = makeAddr("player1");
     address public p2 = makeAddr("player2");
@@ -18,8 +20,13 @@ contract MogsArenaTest is Test {
 
     receive() external payable {}
 
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
     function setUp() public {
         arena = new MogsArena();
+        nft = new MockERC721();
         vm.deal(adm, 200 ether);
         vm.deal(p1, 50 ether);
         vm.deal(p2, 50 ether);
@@ -363,6 +370,69 @@ contract MogsArenaTest is Test {
         // resolve should still work when paused (to settle existing matches)
         arena.resolveMatch(id, p1);
         assertEq(uint8(arena.getMatch(id).status), 2);
+    }
+
+    /* ---- NFT Prize ---- */
+
+    function _mintAndApproveNft(uint256 tokenId) internal {
+        nft.mint(adm, tokenId);
+        nft.approve(address(arena), tokenId);
+    }
+
+    function test_createMatchWithNft() public {
+        _mintAndApproveNft(42);
+        uint256 id = arena.createMatchWithNft{value: SPONSOR}(ENTRY, HASH, address(nft), 42);
+        assertEq(id, 1);
+        assertEq(nft.ownerOf(42), address(arena));
+        (address col, uint256 tid) = arena.getMatchNftPrize(1);
+        assertEq(col, address(nft));
+        assertEq(tid, 42);
+    }
+
+    function test_resolveMatch_nftGoesToWinner() public {
+        _mintAndApproveNft(42);
+        arena.createMatchWithNft{value: SPONSOR}(ENTRY, HASH, address(nft), 42);
+        vm.prank(p1);
+        arena.joinMatch{value: ENTRY}(1);
+        vm.prank(p2);
+        arena.joinMatch{value: ENTRY}(1);
+
+        arena.resolveMatch(1, p1);
+        assertEq(nft.ownerOf(42), p1);
+    }
+
+    function test_resolveDraw_nftReturnsToAdmin() public {
+        _mintAndApproveNft(42);
+        arena.createMatchWithNft{value: SPONSOR}(ENTRY, HASH, address(nft), 42);
+        vm.prank(p1);
+        arena.joinMatch{value: ENTRY}(1);
+        vm.prank(p2);
+        arena.joinMatch{value: ENTRY}(1);
+
+        arena.resolveDraw(1);
+        assertEq(nft.ownerOf(42), adm);
+    }
+
+    function test_cancelMatch_nftReturnsToAdmin() public {
+        _mintAndApproveNft(42);
+        arena.createMatchWithNft{value: SPONSOR}(ENTRY, HASH, address(nft), 42);
+        arena.cancelMatch(1);
+        assertEq(nft.ownerOf(42), adm);
+    }
+
+    function test_expireMatch_nftReturnsToAdmin() public {
+        _mintAndApproveNft(42);
+        arena.createMatchWithNft{value: SPONSOR}(ENTRY, HASH, address(nft), 42);
+        vm.warp(block.timestamp + 2 hours + 1);
+        arena.expireMatch(1);
+        assertEq(nft.ownerOf(42), adm);
+    }
+
+    function test_createMatch_noNft() public {
+        arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+        (address col, uint256 tid) = arena.getMatchNftPrize(1);
+        assertEq(col, address(0));
+        assertEq(tid, 0);
     }
 
     /* ---- Multiple Matches ---- */

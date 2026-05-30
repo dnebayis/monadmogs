@@ -8,7 +8,7 @@ import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 /* ------------------------------------------------------------------ */
 
 export const MOGS_ARENA_ADDRESS = (process.env.MOGS_ARENA_ADDRESS ||
-  "0xa2c39E325e298653045C43bEB544737D655fbFa5") as Address;
+  "0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5") as Address;
 
 export const MOGS_ARENA_ABI = [
   {
@@ -131,6 +131,28 @@ export const MOGS_ARENA_ABI = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "createMatchWithNft",
+    stateMutability: "payable",
+    inputs: [
+      { name: "entryFee", type: "uint256" },
+      { name: "gameHash", type: "bytes32" },
+      { name: "nftCollection", type: "address" },
+      { name: "nftTokenId", type: "uint256" },
+    ],
+    outputs: [{ name: "matchId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "getMatchNftPrize",
+    stateMutability: "view",
+    inputs: [{ name: "matchId", type: "uint256" }],
+    outputs: [
+      { name: "collection", type: "address" },
+      { name: "tokenId", type: "uint256" },
+    ],
   },
 ] as const;
 
