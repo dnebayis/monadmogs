@@ -323,6 +323,48 @@ contract MogsArenaTest is Test {
         assertTrue(arena.isMatchExpired(1));
     }
 
+    /* ---- Pause ---- */
+
+    function test_pause() public {
+        arena.pause();
+        assertTrue(arena.paused());
+    }
+
+    function test_pause_blocksCreate() public {
+        arena.pause();
+        vm.expectRevert(MogsArena.ContractPaused.selector);
+        arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+    }
+
+    function test_pause_blocksJoin() public {
+        arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+        arena.pause();
+        vm.prank(p1);
+        vm.expectRevert(MogsArena.ContractPaused.selector);
+        arena.joinMatch{value: ENTRY}(1);
+    }
+
+    function test_unpause() public {
+        arena.pause();
+        arena.unpause();
+        arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+        assertEq(arena.matchCount(), 1);
+    }
+
+    function test_pause_revert_notAdmin() public {
+        vm.prank(attacker);
+        vm.expectRevert(MogsArena.OnlyAdmin.selector);
+        arena.pause();
+    }
+
+    function test_pause_resolveStillWorks() public {
+        uint256 id = _createFullMatch();
+        arena.pause();
+        // resolve should still work when paused (to settle existing matches)
+        arena.resolveMatch(id, p1);
+        assertEq(uint8(arena.getMatch(id).status), 2);
+    }
+
     /* ---- Multiple Matches ---- */
 
     function test_multipleMatches() public {

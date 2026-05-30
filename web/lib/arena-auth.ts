@@ -135,6 +135,10 @@ export async function verifyAgentWallet(
     }
 
     // Check ERC-8004 registration (optional — for reputation tracking)
+    // balanceOf returns token count, not token ID. We need to check if they
+    // have at least one registration. The actual agentId would require
+    // tokenOfOwnerByIndex or event scanning, which is expensive.
+    // For now, we mark agentId=0 (unregistered) unless we can resolve it.
     try {
       const registryBalance = await client.readContract({
         address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
@@ -143,7 +147,10 @@ export async function verifyAgentWallet(
         args: [address as Address],
       });
       if (registryBalance > 0n) {
-        agentId = Number(registryBalance);
+        // Agent is registered but we don't know the exact agentId
+        // Reputation feedback requires the agentId, so it will be skipped
+        // until we implement proper agentId resolution
+        agentId = -1; // marker: registered but ID unknown
       }
     } catch {
       // best-effort

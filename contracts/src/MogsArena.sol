@@ -50,6 +50,7 @@ contract MogsArena {
     uint256 public constant FEE_BPS = 500; // 5% in basis points
     uint256 public feeCollected;
 
+    bool public paused;
     bool private _locked;
 
     /* ------------------------------------------------------------------ */
@@ -63,6 +64,8 @@ contract MogsArena {
     event MatchCancelled(uint256 indexed matchId);
     event MatchExpired(uint256 indexed matchId);
     event FeesWithdrawn(uint256 amount);
+    event Paused();
+    event Unpaused();
 
     /* ------------------------------------------------------------------ */
     /*  Errors                                                              */
@@ -81,6 +84,7 @@ contract MogsArena {
     error Reentrancy();
     error InvalidGameHash();
     error NoFeesToWithdraw();
+    error ContractPaused();
 
     /* ------------------------------------------------------------------ */
     /*  Modifiers                                                           */
@@ -98,6 +102,11 @@ contract MogsArena {
         _locked = false;
     }
 
+    modifier whenNotPaused() {
+        if (paused) revert ContractPaused();
+        _;
+    }
+
     /* ------------------------------------------------------------------ */
     /*  Constructor                                                         */
     /* ------------------------------------------------------------------ */
@@ -113,7 +122,7 @@ contract MogsArena {
     /// @notice Create a new match. msg.value is the sponsor prize.
     /// @param entryFee MON each player must pay to join
     /// @param gameHash keccak256 of the offchain game ID for cross-reference
-    function createMatch(uint256 entryFee, bytes32 gameHash) external payable onlyAdmin returns (uint256 matchId) {
+    function createMatch(uint256 entryFee, bytes32 gameHash) external payable onlyAdmin whenNotPaused returns (uint256 matchId) {
         if (entryFee < MIN_ENTRY_FEE || entryFee > MAX_ENTRY_FEE) revert InvalidEntryFee();
         if (gameHash == bytes32(0)) revert InvalidGameHash();
 
@@ -140,9 +149,10 @@ contract MogsArena {
     /* ------------------------------------------------------------------ */
 
     /// @notice Join an open match by paying the entry fee
-    function joinMatch(uint256 matchId) external payable noReentrant {
+    function joinMatch(uint256 matchId) external payable noReentrant whenNotPaused {
         Match storage m = matches[matchId];
         if (m.status != MatchStatus.Open) revert MatchNotOpen();
+        if (block.timestamp >= m.deadline) revert MatchNotExpired(); // don't join expired matches
         if (msg.value != m.entryFee) revert WrongEntryFee();
         if (msg.sender == m.player1) revert AlreadyJoined();
 
@@ -205,14 +215,17 @@ contract MogsArena {
         m.status = MatchStatus.Draw;
         m.resolvedAt = uint64(block.timestamp);
 
-        uint256 refundEach = m.entryFee + (m.sponsorPrize / 2);
+        uint256 halfSponsor = m.sponsorPrize / 2;
+        uint256 remainder = m.sponsorPrize - (halfSponsor * 2); // 0 or 1 wei
+        uint256 refundP1 = m.entryFee + halfSponsor + remainder; // P1 gets the extra wei
+        uint256 refundP2 = m.entryFee + halfSponsor;
 
         _clearActiveMatch(m.player1, matchId);
         _clearActiveMatch(m.player2, matchId);
 
-        (bool s1,) = m.player1.call{value: refundEach}("");
+        (bool s1,) = m.player1.call{value: refundP1}("");
         if (!s1) revert TransferFailed();
-        (bool s2,) = m.player2.call{value: refundEach}("");
+        (bool s2,) = m.player2.call{value: refundP2}("");
         if (!s2) revert TransferFailed();
 
         emit MatchDraw(matchId);
@@ -223,6 +236,7 @@ contract MogsArena {
     /* ------------------------------------------------------------------ */
 
     /// @notice Cancel an open or full match. Refunds all participants.
+    ///         Uses pending withdrawals if direct transfer fails.
     function cancelMatch(uint256 matchId) external onlyAdmin noReentrant {
         Match storage m = matches[matchId];
         if (m.status == MatchStatus.Resolved || m.status == MatchStatus.Cancelled
@@ -234,18 +248,15 @@ contract MogsArena {
 
         if (m.player1 != address(0)) {
             _clearActiveMatch(m.player1, matchId);
-            (bool s1,) = m.player1.call{value: m.entryFee}("");
-            if (!s1) revert TransferFailed();
+            _safeTransfer(m.player1, m.entryFee);
         }
         if (m.player2 != address(0)) {
             _clearActiveMatch(m.player2, matchId);
-            (bool s2,) = m.player2.call{value: m.entryFee}("");
-            if (!s2) revert TransferFailed();
+            _safeTransfer(m.player2, m.entryFee);
         }
 
         if (m.sponsorPrize > 0) {
-            (bool s3,) = admin.call{value: m.sponsorPrize}("");
-            if (!s3) revert TransferFailed();
+            _safeTransfer(admin, m.sponsorPrize);
         }
 
         emit MatchCancelled(matchId);
@@ -266,18 +277,15 @@ contract MogsArena {
 
         if (m.player1 != address(0)) {
             _clearActiveMatch(m.player1, matchId);
-            (bool s1,) = m.player1.call{value: m.entryFee}("");
-            if (!s1) revert TransferFailed();
+            _safeTransfer(m.player1, m.entryFee);
         }
         if (m.player2 != address(0)) {
             _clearActiveMatch(m.player2, matchId);
-            (bool s2,) = m.player2.call{value: m.entryFee}("");
-            if (!s2) revert TransferFailed();
+            _safeTransfer(m.player2, m.entryFee);
         }
 
         if (m.sponsorPrize > 0) {
-            (bool s3,) = admin.call{value: m.sponsorPrize}("");
-            if (!s3) revert TransferFailed();
+            _safeTransfer(admin, m.sponsorPrize);
         }
 
         emit MatchExpired(matchId);
@@ -286,6 +294,16 @@ contract MogsArena {
     /* ------------------------------------------------------------------ */
     /*  Admin: Withdraw Fees                                                */
     /* ------------------------------------------------------------------ */
+
+    function pause() external onlyAdmin {
+        paused = true;
+        emit Paused();
+    }
+
+    function unpause() external onlyAdmin {
+        paused = false;
+        emit Unpaused();
+    }
 
     function withdrawFees() external onlyAdmin noReentrant {
         uint256 amount = feeCollected;
@@ -318,12 +336,37 @@ contract MogsArena {
     }
 
     /* ------------------------------------------------------------------ */
+    /*  Pending Withdrawals (fallback if direct transfer fails)             */
+    /* ------------------------------------------------------------------ */
+
+    mapping(address => uint256) public pendingWithdrawals;
+
+    event WithdrawalPending(address indexed player, uint256 amount);
+
+    /// @notice Withdraw pending funds if a direct transfer failed during cancel/expire
+    function withdraw() external noReentrant {
+        uint256 amount = pendingWithdrawals[msg.sender];
+        if (amount == 0) revert NoFeesToWithdraw();
+        pendingWithdrawals[msg.sender] = 0;
+        (bool success,) = msg.sender.call{value: amount}("");
+        if (!success) revert TransferFailed();
+    }
+
+    /* ------------------------------------------------------------------ */
     /*  Internal                                                            */
     /* ------------------------------------------------------------------ */
 
     function _clearActiveMatch(address player, uint256 matchId) internal {
         if (activeMatch[player] == matchId) {
             activeMatch[player] = 0;
+        }
+    }
+
+    function _safeTransfer(address to, uint256 amount) internal {
+        (bool success,) = to.call{value: amount}("");
+        if (!success) {
+            pendingWithdrawals[to] += amount;
+            emit WithdrawalPending(to, amount);
         }
     }
 }

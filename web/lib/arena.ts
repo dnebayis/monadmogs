@@ -229,9 +229,18 @@ export async function joinGame(
 ): Promise<Game | null> {
   const game = await getGame(id);
   if (!game || game.status !== "waiting" || game.players.length >= 2) return null;
-  if (game.players[0].address.toLowerCase() === player.address.toLowerCase()) return null;
+
+  // Prevent same player joining twice
+  if (game.players.some((p) => p.address.toLowerCase() === player.address.toLowerCase())) return null;
 
   game.players.push({ ...player, score: 0, move });
+
+  // Two players = game is active
+  if (game.players.length < 2) {
+    await kv.set(GAME_KEY(id), game, { ex: 86400 });
+    return game;
+  }
+
   game.status = "active";
 
   // If both have moves, resolve the first round
@@ -249,25 +258,35 @@ export async function submitMove(
   move: GameMove,
   commentary?: string
 ): Promise<Game | null> {
-  const game = await getGame(id);
-  if (!game || game.status === "finished") return null;
-  if (game.status === "waiting") return null;
+  const lockKey = `arena:lock:${id}`;
 
-  const playerIndex = game.players.findIndex(
-    (p) => p.address.toLowerCase() === address.toLowerCase()
-  );
-  if (playerIndex === -1) return null;
+  // Simple lock to prevent race conditions
+  const locked = await kv.set(lockKey, "1", { ex: 10, nx: true });
+  if (!locked) return null; // another move is being processed
 
-  game.players[playerIndex].move = move;
-  if (commentary) game.players[playerIndex].commentary = commentary;
+  try {
+    const game = await getGame(id);
+    if (!game || game.status === "finished") return null;
+    if (game.status === "waiting") return null;
 
-  // If both have moves, resolve this round
-  if (game.players.every((p) => p.move)) {
-    return advanceRound(game);
+    const playerIndex = game.players.findIndex(
+      (p) => p.address.toLowerCase() === address.toLowerCase()
+    );
+    if (playerIndex === -1) return null;
+    if (game.players[playerIndex].move) return game; // already moved this round
+
+    game.players[playerIndex].move = move;
+    if (commentary) game.players[playerIndex].commentary = commentary;
+
+    if (game.players.every((p) => p.move)) {
+      return advanceRound(game);
+    }
+
+    await kv.set(GAME_KEY(id), game, { ex: 86400 });
+    return game;
+  } finally {
+    await kv.del(lockKey);
   }
-
-  await kv.set(GAME_KEY(id), game, { ex: 86400 });
-  return game;
 }
 
 async function advanceRound(game: Game): Promise<Game> {

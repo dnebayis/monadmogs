@@ -43,32 +43,35 @@ export async function POST(request: NextRequest) {
 
   const action = body.action as string;
 
-  /* ---- CREATE ---- */
+  /* ---- CREATE (admin only) ---- */
   if (action === "create") {
+    const adminSecret = request.headers.get("x-admin-secret");
+    if (!process.env.ARENA_ADMIN_SECRET || adminSecret !== process.env.ARENA_ADMIN_SECRET) {
+      return NextResponse.json({ error: "Only the arena admin can create games." }, { status: 403 });
+    }
+
     const type = body.type as GameType;
     if (!type || !GAME_TYPES[type]) {
       return NextResponse.json({ error: "Invalid game type." }, { status: 400 });
     }
 
-    const poolId = typeof body.poolId === "number" ? body.poolId : undefined;
-    const move = body.move as GameMove | undefined;
-    const commentary = typeof body.commentary === "string" ? body.commentary.slice(0, 200) : undefined;
-
-    const player: GamePlayer = {
-      address: session.address,
-      mogId: session.mogId,
-      mogName: session.mogName,
-      agentId: session.agentId,
-      score: 0,
-      commentary,
-    };
+    const matchId = typeof body.matchId === "number" ? body.matchId : undefined;
 
     try {
-      const game = await createGame(type, player, move);
-      // Store poolId association if provided
-      if (poolId) {
-        const { kv } = await import("@vercel/kv");
-        await kv.set(`arena:game-pool:${game.id}`, poolId, { ex: 86400 });
+      const game = await createGame(type, {
+        address: "admin",
+        mogId: 0,
+        mogName: "Arena",
+        agentId: 0,
+        score: 0,
+      });
+      // Remove the placeholder admin player — game starts empty, players join
+      game.players = [];
+      game.status = "waiting";
+      const { kv } = await import("@vercel/kv");
+      await kv.set(`arena:game:${game.id}`, game, { ex: 86400 });
+      if (matchId) {
+        await kv.set(`arena:game-match:${game.id}`, matchId, { ex: 86400 });
       }
       return NextResponse.json({ game }, { status: 201 });
     } catch {
