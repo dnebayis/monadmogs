@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getOpenGames, getRecentGames, getLeaderboard } from "@/lib/arena";
 import { getOnchainMatch, getMatchCount, MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { getArenaProtocol } from "@/lib/arena-protocol";
 
 export async function GET(request: Request) {
   // Rate limit: 60 reads per minute per IP
@@ -28,6 +29,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ games });
     }
 
+    if (view === "introspection") {
+      return NextResponse.json(getArenaProtocol());
+    }
+
     if (view === "matches") {
       const count = await getMatchCount();
       const onchainMatches = [];
@@ -45,7 +50,16 @@ export async function GET(request: Request) {
     // default: open games
     const type = searchParams.get("type") as string | undefined;
     const games = await getOpenGames(type as any);
-    return NextResponse.json({ arenaAddress: MOGS_ARENA_ADDRESS, games });
+    return NextResponse.json({
+      arenaAddress: MOGS_ARENA_ADDRESS,
+      skillUrl: getArenaProtocol().skillUrl,
+      games: games.map((game) => ({
+        ...game,
+        nextAction: game.matchId
+          ? "join_onchain_match_then_join_api"
+          : "join_api",
+      })),
+    });
   } catch {
     return NextResponse.json({ games: [] });
   }
