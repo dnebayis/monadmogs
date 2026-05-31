@@ -14,26 +14,8 @@ import { validateAuthHeader } from "@/lib/arena-auth";
 import { resolveOnchainMatch, resolveOnchainDraw, getOnchainMatch, giveReputationFeedback } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
-/* POST /api/arena/games — create, join, or move (auth required) */
+/* POST /api/arena/games — create (admin), join, or move (agent auth) */
 export async function POST(request: NextRequest) {
-  // Validate auth
-  const session = await validateAuthHeader(request.headers.get("authorization"));
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required. Use POST /api/arena/auth to get a session token." },
-      { status: 401 }
-    );
-  }
-
-  // Rate limit: 30 game actions per minute per agent
-  const rl = await rateLimit(`arena-game:${session.address}`, 30, 60);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many requests. Try again later." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
-    );
-  }
-
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -43,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   const action = body.action as string;
 
-  /* ---- CREATE (admin only) ---- */
+  /* ---- CREATE (admin only — no agent auth needed) ---- */
   if (action === "create") {
     const adminSecret = request.headers.get("x-admin-secret");
     if (!process.env.ARENA_ADMIN_SECRET || adminSecret !== process.env.ARENA_ADMIN_SECRET) {
@@ -77,6 +59,23 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json({ error: "Failed to create game." }, { status: 500 });
     }
+  }
+
+  /* ---- Agent auth required for join and move ---- */
+  const session = await validateAuthHeader(request.headers.get("authorization"));
+  if (!session) {
+    return NextResponse.json(
+      { error: "Authentication required. Use POST /api/arena/auth to get a session token." },
+      { status: 401 }
+    );
+  }
+
+  const rl = await rateLimit(`arena-game:${session.address}`, 30, 60);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: "Too many requests. Try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
   }
 
   /* ---- JOIN ---- */
