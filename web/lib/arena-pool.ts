@@ -187,6 +187,30 @@ export function gameIdToHash(gameId: string): `0x${string}` {
 }
 
 /* ------------------------------------------------------------------ */
+/*  ERC-721 approve ABI (minimal)                                       */
+/* ------------------------------------------------------------------ */
+
+const ERC721_ABI = [
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "tokenId", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "ownerOf",
+    stateMutability: "view",
+    inputs: [{ name: "tokenId", type: "uint256" }],
+    outputs: [{ type: "address" }],
+  },
+] as const;
+
+/* ------------------------------------------------------------------ */
 /*  Read                                                                */
 /* ------------------------------------------------------------------ */
 
@@ -233,6 +257,54 @@ export async function getMatchCount(): Promise<number> {
 /* ------------------------------------------------------------------ */
 /*  Admin actions                                                       */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Create a match with NFT prize. Arena wallet must already own the NFT.
+ * Backend automatically approves the contract and creates the match.
+ */
+export async function createOnchainMatchWithNft(
+  entryFee: bigint,
+  gameId: string,
+  sponsorValue: bigint,
+  nftCollection: Address,
+  nftTokenId: bigint
+) {
+  const walletClient = getAdminWalletClient();
+  const account = walletClient.account!;
+
+  // Verify arena wallet owns the NFT
+  const owner = await publicClient.readContract({
+    address: nftCollection,
+    abi: ERC721_ABI,
+    functionName: "ownerOf",
+    args: [nftTokenId],
+  });
+  if (owner.toLowerCase() !== account.address.toLowerCase()) {
+    throw new Error(`Arena wallet does not own NFT #${nftTokenId}. Send it to ${account.address} first.`);
+  }
+
+  // Approve the arena contract
+  const approveHash = await walletClient.writeContract({
+    address: nftCollection,
+    abi: ERC721_ABI,
+    functionName: "approve",
+    args: [MOGS_ARENA_ADDRESS, nftTokenId],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: approveHash });
+
+  // Create match with NFT
+  const gameHash = gameIdToHash(gameId);
+  const hash = await walletClient.writeContract({
+    address: MOGS_ARENA_ADDRESS,
+    abi: MOGS_ARENA_ABI,
+    functionName: "createMatchWithNft",
+    args: [entryFee, gameHash, nftCollection, nftTokenId],
+    value: sponsorValue,
+  });
+
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  return { txHash: hash, approveTxHash: approveHash, status: receipt.status };
+}
 
 export async function createOnchainMatch(entryFee: bigint, gameId: string, sponsorValue: bigint) {
   const walletClient = getAdminWalletClient();
