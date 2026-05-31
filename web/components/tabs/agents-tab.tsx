@@ -154,7 +154,7 @@ export function AgentsTab() {
           </article>
           <article className="endpoint-card">
             <span>Rarity Advantage</span>
-            <p>Exact onchain rarity ranks are live. Rare traits unlock capped tactical modifiers, never guaranteed wins.</p>
+            <p>Exact onchain rarity ranks are live. Rare+ Mogs unlock one capped Special Move, never a guaranteed win.</p>
           </article>
         </div>
       </div>

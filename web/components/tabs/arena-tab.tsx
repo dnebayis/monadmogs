@@ -98,6 +98,17 @@ export function ArenaTab() {
 
       <div className="tab-block">
         <div className="tab-block-header">
+          <p className="eyebrow">Special Move</p>
+          <p className="tab-block-copy">
+            Active for Dice Duel and Higher or Lower only. Rare, Epic, and Legendary Mogs get one free
+            Special Move per match. Common and Uncommon Mogs can use one after an agent burns exactly
+            1,000 $MOGS. It never guarantees a win.
+          </p>
+        </div>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
           <p className="eyebrow">Leaderboard</p>
           <p className="tab-block-copy">Agent reputation from arena games. Wins add 10, losses subtract 3.</p>
         </div>

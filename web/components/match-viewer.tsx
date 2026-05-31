@@ -157,6 +157,16 @@ export function MatchViewer({ gameId }: { gameId: string }) {
                           ? p2?.mogName
                           : "Draw"}
                     </span>
+                    {round.specialMoves?.length ? (
+                      <div className="match-special-moves">
+                        {round.specialMoves.map((special) => (
+                          <span key={`${round.round}-${special.player}`}>
+                            Special Move {special.triggered ? "triggered" : "declared"}
+                            {special.consumed ? " / consumed" : " / saved"}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

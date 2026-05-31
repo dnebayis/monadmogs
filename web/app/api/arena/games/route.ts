@@ -11,10 +11,14 @@ import {
   type GamePlayer,
   GAME_TYPES,
   isValidMoveForGame,
+  supportsSpecialMove,
+  type SpecialMoveRequest,
 } from "@/lib/arena";
 import { validateAuthHeader } from "@/lib/arena-auth";
 import { resolveOnchainMatch, resolveOnchainDraw, getOnchainMatch, giveReputationFeedback } from "@/lib/arena-pool";
+import { validateAndReserveSpecialMoveBurn } from "@/lib/mogs-burn";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { getMogRarity, type RarityTier } from "@/lib/rarity";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -101,13 +105,17 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      const specialMove = await validateSpecialMove(body.specialMove, existingGame, session, move);
+      if (!specialMove.ok) {
+        return NextResponse.json({ error: specialMove.error }, { status: specialMove.status });
+      }
 
       const onchainCheck = await validateOnchainParticipant(gameId, session.address);
       if (!onchainCheck.ok) {
         return NextResponse.json({ error: onchainCheck.error }, { status: 403 });
       }
 
-      const game = await joinGame(gameId, player, move);
+      const game = await joinGame(gameId, player, move, specialMove.specialMove);
       if (!game) {
         return NextResponse.json({ error: "Cannot join this game." }, { status: 400 });
       }
@@ -145,8 +153,12 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      const specialMove = await validateSpecialMove(body.specialMove, existingGame, session, move);
+      if (!specialMove.ok) {
+        return NextResponse.json({ error: specialMove.error }, { status: specialMove.status });
+      }
 
-      const game = await submitMove(gameId, session.address, move, commentary);
+      const game = await submitMove(gameId, session.address, move, commentary, specialMove.specialMove);
       if (!game) {
         return NextResponse.json({ error: "Cannot submit move." }, { status: 400 });
       }
@@ -196,7 +208,12 @@ export async function GET(request: NextRequest) {
       const resolve = await kv.get(`arena:game-resolve:${id}`);
       const sanitized = {
         ...game,
-        players: game.players.map((p) => ({ ...p, move: undefined })),
+        players: game.players.map((p) => ({
+          ...p,
+          move: undefined,
+          commentary: undefined,
+          pendingSpecialMove: undefined,
+        })),
       };
       return NextResponse.json({ game: sanitized, resolve });
     }
@@ -228,6 +245,80 @@ async function validateOnchainParticipant(gameId: string, address: string): Prom
   }
 
   return { ok: true };
+}
+
+type AgentSession = NonNullable<Awaited<ReturnType<typeof validateAuthHeader>>>;
+
+type SpecialMoveValidation =
+  | { ok: true; specialMove?: SpecialMoveRequest }
+  | { ok: false; status: number; error: string };
+
+const RARE_PLUS_TIERS: RarityTier[] = ["rare", "epic", "legendary"];
+
+async function validateSpecialMove(
+  input: unknown,
+  game: Game,
+  session: AgentSession,
+  move?: GameMove
+): Promise<SpecialMoveValidation> {
+  if (input === undefined || input === null) return { ok: true };
+  if (!move) {
+    return { ok: false, status: 400, error: "Special Move must be submitted with a move." };
+  }
+  if (!supportsSpecialMove(game.type)) {
+    return { ok: false, status: 400, error: "Special Move is only supported in Dice Duel and Higher or Lower." };
+  }
+  if (typeof input !== "object" || Array.isArray(input)) {
+    return { ok: false, status: 400, error: "specialMove must be an object." };
+  }
+
+  const specialMove = input as Record<string, unknown>;
+  if (specialMove.use !== true) {
+    return { ok: false, status: 400, error: "specialMove.use must be true." };
+  }
+  const source = specialMove.source;
+  if (source !== "rarity" && source !== "burn") {
+    return { ok: false, status: 400, error: "specialMove.source must be rarity or burn." };
+  }
+
+  const existingPlayer = game.players.find((p) => p.address.toLowerCase() === session.address.toLowerCase());
+  if (existingPlayer?.specialMoveUsed) {
+    return { ok: false, status: 400, error: "This Mog already used its Special Move in this match." };
+  }
+
+  const rarity = getMogRarity(session.mogId);
+  if (!rarity) {
+    return { ok: false, status: 400, error: "Mog rarity could not be verified." };
+  }
+
+  if (source === "rarity") {
+    if (!RARE_PLUS_TIERS.includes(rarity.tier)) {
+      return { ok: false, status: 400, error: "Only rare, epic, or legendary Mogs can use a free Special Move." };
+    }
+    return { ok: true, specialMove: { use: true, source } };
+  }
+
+  if (rarity.tier !== "common" && rarity.tier !== "uncommon") {
+    return { ok: false, status: 400, error: "Rare, epic, and legendary Mogs cannot stack a burn Special Move." };
+  }
+
+  const burnTxHash = typeof specialMove.burnTxHash === "string" ? specialMove.burnTxHash : "";
+  if (!burnTxHash) {
+    return { ok: false, status: 400, error: "burnTxHash is required for a burn Special Move." };
+  }
+
+  const burn = await validateAndReserveSpecialMoveBurn({
+    txHash: burnTxHash,
+    agentAddress: session.address,
+    gameId: game.id,
+    mogId: session.mogId,
+    gameCreatedAt: game.createdAt,
+  });
+  if (!burn.ok) {
+    return { ok: false, status: 400, error: burn.error };
+  }
+
+  return { ok: true, specialMove: { use: true, source, burnTxHash } };
 }
 
 /* ---- Helper: resolve onchain match ---- */

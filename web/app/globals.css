@@ -2449,6 +2449,16 @@ h2 {
   text-align: right;
 }
 
+.match-special-moves {
+  grid-column: 2 / 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--cyan);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
 .match-final-result {
   padding: 14px;
   border: 1px solid var(--cyan);

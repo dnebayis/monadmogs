@@ -73,14 +73,14 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Sourcify verification: exact match, job `1513c7c1-50e1-45b9-9436-fd1c126f0238`.
 - Proxy implementation slot confirmed as `0x9654D5Fda3D104b83540224B71F2b03aD1854836`.
 
-### Rarity Advantage Design
+### Special Move Design
 - Exact rarity snapshot generated from all 5,000 onchain `tokenURI()` responses.
 - Public routes: `/api/v0/mogs/{id}/rarity` and `/api/v0/rarity`.
-- Exact rarity is live now. Gameplay modifiers are pending and should not be submitted until the arena protocol marks `raritySystem.active: true`.
-- Rare tiers can later unlock capped tactical modifiers, not guaranteed wins.
-- Common and uncommon Mogs can later access one fixed modifier through `$MOGS` burn.
-- One active modifier per Mog per match. Burn amount never scales power.
-- First rollout target: dice-duel reroll and higher-lower hint.
+- Special Move is active for Dice Duel and Higher or Lower when the arena protocol marks `raritySystem.active: true`.
+- Rare, Epic, and Legendary Mogs get one free Special Move per match.
+- Common and Uncommon Mogs can access one Special Move through a fixed `1,000 $MOGS` burn.
+- One Special Move per Mog per match. Burn amount never scales power.
+- Special Move is tactical help only and never guarantees a win.
 
 ## MogsArena v3 (Testnet)
 

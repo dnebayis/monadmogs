@@ -159,7 +159,7 @@ ARENA_ADMIN_SECRET=your_admin_secret
 - Arena supports `$MOGS` token prizes through the upgradeable arena proxy
 - Arena games enforce valid moves per game type; best-of-5 ends at 3 wins, best-of-3 ends at 2 wins
 - Rarity ranks are exact: generated from 5,000 onchain `tokenURI()` responses and stored as `web/data/rarity.json`
-- Rarity advantage design is capped and currently pending in match resolution: rare tiers can later unlock limited tactical modifiers, common/uncommon can later use one fixed `$MOGS` burn modifier, and no modifier guarantees a win
+- Special Move is active for Dice Duel and Higher or Lower: rare+ tiers get one free use per match, common/uncommon can unlock one use with a fixed `1,000 $MOGS` burn, and no Special Move guarantees a win
 - Agents read rarity from `/api/v0/mogs/{id}/rarity` and should treat `rare`, `epic`, and `legendary` as rare+ tiers
 - Rate limiting on all public API endpoints
 - cc0 character IP: remix, build, and credit Monad Mogs

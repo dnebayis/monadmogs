@@ -10,6 +10,26 @@ export type GameStatus = "waiting" | "active" | "finished";
 
 export type GameMove = "rock" | "paper" | "scissors" | "heads" | "tails" | "roll" | "higher" | "lower";
 
+export type SpecialMoveSource = "rarity" | "burn";
+
+export type SpecialMoveRequest = {
+  use: true;
+  source: SpecialMoveSource;
+  burnTxHash?: string;
+};
+
+export type RoundSpecialMoveResult = {
+  player: string;
+  source?: SpecialMoveSource;
+  burnTxHash?: string;
+  declared: boolean;
+  triggered: boolean;
+  consumed: boolean;
+  effect?: "dice-reroll" | "higher-lower-second-chance";
+  before?: number;
+  after?: number;
+};
+
 export type RoundResult = {
   round: number;
   p1Move: GameMove;
@@ -18,6 +38,7 @@ export type RoundResult = {
   p2Result: number;
   roundWinner: string | null;
   commentary: { p1: string; p2: string };
+  specialMoves?: RoundSpecialMoveResult[];
 };
 
 export type GamePlayer = {
@@ -29,6 +50,11 @@ export type GamePlayer = {
   move?: GameMove;
   commentary?: string;
   result?: number;
+  specialMoveAvailable?: boolean;
+  specialMoveUsed?: boolean;
+  specialMoveSource?: SpecialMoveSource;
+  burnTxHash?: string;
+  pendingSpecialMove?: boolean;
 };
 
 export type Game = {
@@ -106,8 +132,17 @@ export const VALID_MOVES: Record<GameType, GameMove[]> = {
   "higher-lower": ["higher", "lower"],
 };
 
+export const SPECIAL_MOVE_TERM = "Special Move";
+export const SPECIAL_MOVE_SUPPORTED_GAMES: GameType[] = ["dice-duel", "higher-lower"];
+export const SPECIAL_MOVE_BURN_AMOUNT = "1000";
+export const SPECIAL_MOVE_MAX_PER_MATCH = 1;
+
 export function isValidMoveForGame(type: GameType, move: GameMove): boolean {
   return VALID_MOVES[type].includes(move);
+}
+
+export function supportsSpecialMove(type: GameType): boolean {
+  return SPECIAL_MOVE_SUPPORTED_GAMES.includes(type);
 }
 
 /* ------------------------------------------------------------------ */
@@ -162,6 +197,42 @@ function deterministicInt(seed: string, max: number): number {
   return Math.floor(seededUnit(seed) * max) + 1;
 }
 
+function declaredSpecialMove(player: GamePlayer): boolean {
+  return Boolean(player.pendingSpecialMove && player.specialMoveAvailable && !player.specialMoveUsed);
+}
+
+function consumeSpecialMove(
+  player: GamePlayer,
+  effect: RoundSpecialMoveResult["effect"],
+  before: number,
+  after: number
+): RoundSpecialMoveResult {
+  player.specialMoveUsed = true;
+  player.pendingSpecialMove = false;
+  return {
+    player: player.address,
+    source: player.specialMoveSource,
+    burnTxHash: player.burnTxHash,
+    declared: true,
+    triggered: true,
+    consumed: true,
+    effect,
+    before,
+    after,
+  };
+}
+
+function untriggeredSpecialMove(player: GamePlayer): RoundSpecialMoveResult {
+  return {
+    player: player.address,
+    source: player.specialMoveSource,
+    burnTxHash: player.burnTxHash,
+    declared: true,
+    triggered: false,
+    consumed: false,
+  };
+}
+
 function resolveRound(game: Game): RoundResult | null {
   const [p1, p2] = game.players;
   if (!p1?.move || !p2?.move) return null;
@@ -169,6 +240,7 @@ function resolveRound(game: Game): RoundResult | null {
   let p1Result = 0;
   let p2Result = 0;
   let roundWinner: string | null = null;
+  const specialMoves: RoundSpecialMoveResult[] = [];
 
   switch (game.type) {
     case "coin-flip": {
@@ -192,18 +264,65 @@ function resolveRound(game: Game): RoundResult | null {
     case "dice-duel": {
       p1Result = deterministicInt(roundSeed(game, "p1-dice"), 6);
       p2Result = deterministicInt(roundSeed(game, "p2-dice"), 6);
+
+      if (p1Result < p2Result && declaredSpecialMove(p1)) {
+        const before = p1Result;
+        p1Result = deterministicInt(roundSeed(game, "p1-dice-special"), 6);
+        specialMoves.push(consumeSpecialMove(p1, "dice-reroll", before, p1Result));
+      } else if (p2Result < p1Result && declaredSpecialMove(p2)) {
+        const before = p2Result;
+        p2Result = deterministicInt(roundSeed(game, "p2-dice-special"), 6);
+        specialMoves.push(consumeSpecialMove(p2, "dice-reroll", before, p2Result));
+      }
+
+      if (declaredSpecialMove(p1)) specialMoves.push(untriggeredSpecialMove(p1));
+      if (declaredSpecialMove(p2)) specialMoves.push(untriggeredSpecialMove(p2));
+
       if (p1Result > p2Result) roundWinner = p1.address;
       else if (p2Result > p1Result) roundWinner = p2.address;
       break;
     }
     case "higher-lower": {
-      p1Result = deterministicInt(roundSeed(game, "p1-number"), 100);
-      p2Result = deterministicInt(roundSeed(game, "p2-number"), 100);
-      if (p1Result === p2Result) break;
-      const isHigher = p2Result > p1Result;
-      const p1Correct =
-        (p1.move === "higher" && isHigher) || (p1.move === "lower" && !isHigher);
-      roundWinner = p1Correct ? p1.address : p2.address;
+      const p1Current = deterministicInt(roundSeed(game, "p1-current"), 100);
+      const p1Next = deterministicInt(roundSeed(game, "p1-next"), 100);
+      const p2Current = deterministicInt(roundSeed(game, "p2-current"), 100);
+      const p2Next = deterministicInt(roundSeed(game, "p2-next"), 100);
+
+      let p1Correct = p1Next !== p1Current && (
+        (p1.move === "higher" && p1Next > p1Current) ||
+        (p1.move === "lower" && p1Next < p1Current)
+      );
+      let p2Correct = p2Next !== p2Current && (
+        (p2.move === "higher" && p2Next > p2Current) ||
+        (p2.move === "lower" && p2Next < p2Current)
+      );
+      p1Result = p1Correct ? 1 : 0;
+      p2Result = p2Correct ? 1 : 0;
+
+      if (!p1Correct && declaredSpecialMove(p1)) {
+        const secondNext = deterministicInt(roundSeed(game, "p1-second-chance"), 100);
+        p1Correct = secondNext !== p1Current && (
+          (p1.move === "higher" && secondNext > p1Current) ||
+          (p1.move === "lower" && secondNext < p1Current)
+        );
+        p1Result = p1Correct ? 1 : 0;
+        specialMoves.push(consumeSpecialMove(p1, "higher-lower-second-chance", p1Next, secondNext));
+      }
+      if (!p2Correct && declaredSpecialMove(p2)) {
+        const secondNext = deterministicInt(roundSeed(game, "p2-second-chance"), 100);
+        p2Correct = secondNext !== p2Current && (
+          (p2.move === "higher" && secondNext > p2Current) ||
+          (p2.move === "lower" && secondNext < p2Current)
+        );
+        p2Result = p2Correct ? 1 : 0;
+        specialMoves.push(consumeSpecialMove(p2, "higher-lower-second-chance", p2Next, secondNext));
+      }
+
+      if (declaredSpecialMove(p1)) specialMoves.push(untriggeredSpecialMove(p1));
+      if (declaredSpecialMove(p2)) specialMoves.push(untriggeredSpecialMove(p2));
+
+      if (p1Correct && !p2Correct) roundWinner = p1.address;
+      else if (p2Correct && !p1Correct) roundWinner = p2.address;
       break;
     }
   }
@@ -219,11 +338,22 @@ function resolveRound(game: Game): RoundResult | null {
       p1: p1.commentary || "",
       p2: p2.commentary || "",
     },
+    ...(specialMoves.length ? { specialMoves } : {}),
   };
 }
 
 function winsNeeded(bestOf: number): number {
   return Math.ceil(bestOf / 2);
+}
+
+function specialMoveFields(specialMove?: SpecialMoveRequest): Partial<GamePlayer> {
+  if (!specialMove?.use) return {};
+  return {
+    specialMoveAvailable: true,
+    specialMoveSource: specialMove.source,
+    burnTxHash: specialMove.burnTxHash,
+    pendingSpecialMove: true,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -233,14 +363,15 @@ function winsNeeded(bestOf: number): number {
 export async function createGame(
   type: GameType,
   player: GamePlayer,
-  move?: GameMove
+  move?: GameMove,
+  specialMove?: SpecialMoveRequest
 ): Promise<Game> {
   const bestOf = GAME_TYPES[type].bestOf;
   const game: Game = {
     id: crypto.randomUUID(),
     type,
     status: "waiting",
-    players: [{ ...player, score: 0, move }],
+    players: [{ ...player, score: 0, move, ...specialMoveFields(specialMove) }],
     maxPlayers: 2,
     bestOf,
     round: 1,
@@ -283,7 +414,8 @@ export async function getGame(id: string): Promise<Game | null> {
 export async function joinGame(
   id: string,
   player: GamePlayer,
-  move?: GameMove
+  move?: GameMove,
+  specialMove?: SpecialMoveRequest
 ): Promise<Game | null> {
   const game = await getGame(id);
   if (!game || game.status !== "waiting" || game.players.length >= 2) return null;
@@ -291,7 +423,7 @@ export async function joinGame(
   // Prevent same player joining twice
   if (game.players.some((p) => p.address.toLowerCase() === player.address.toLowerCase())) return null;
 
-  game.players.push({ ...player, score: 0, move });
+  game.players.push({ ...player, score: 0, move, ...specialMoveFields(specialMove) });
 
   // Two players = game is active
   if (game.players.length < 2) {
@@ -314,7 +446,8 @@ export async function submitMove(
   id: string,
   address: string,
   move: GameMove,
-  commentary?: string
+  commentary?: string,
+  specialMove?: SpecialMoveRequest
 ): Promise<Game | null> {
   const lockKey = `arena:lock:${id}`;
 
@@ -335,6 +468,7 @@ export async function submitMove(
 
     game.players[playerIndex].move = move;
     if (commentary) game.players[playerIndex].commentary = commentary;
+    Object.assign(game.players[playerIndex], specialMoveFields(specialMove));
 
     if (game.players.every((p) => p.move)) {
       return advanceRound(game);
@@ -380,9 +514,11 @@ async function advanceRound(game: Game): Promise<Game> {
     game.players[0].move = undefined;
     game.players[0].result = undefined;
     game.players[0].commentary = undefined;
+    game.players[0].pendingSpecialMove = undefined;
     game.players[1].move = undefined;
     game.players[1].result = undefined;
     game.players[1].commentary = undefined;
+    game.players[1].pendingSpecialMove = undefined;
   }
 
   // Store round results on players for the current/last round

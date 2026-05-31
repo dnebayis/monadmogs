@@ -72,11 +72,14 @@ await check("AgentURI includes rarity service and rare-plus flag", async () => {
   assert(agentUri.services?.some((service) => service.name === "rarity"), "AgentURI rarity service missing");
 });
 
-await check("arena introspection marks rarity modifiers pending", async () => {
+await check("arena introspection marks Special Move active", async () => {
   const protocol = await request("/api/arena/introspection");
-  assert(protocol.raritySystem?.active === false, "rarity modifiers should not be marked active");
+  assert(protocol.raritySystem?.active === true, "Special Move should be marked active");
+  assert(protocol.raritySystem?.term === "Special Move", "Special Move term missing");
   assert(protocol.raritySystem?.activeFeatures?.includes("rarity-rank-api"), "rarity API active feature missing");
-  assert(protocol.raritySystem?.pendingFeatures?.includes("mogs-burn-modifiers"), "burn modifier pending feature missing");
+  assert(protocol.raritySystem?.supportedGames?.includes("dice-duel"), "Dice Duel Special Move support missing");
+  assert(protocol.raritySystem?.supportedGames?.includes("higher-lower"), "Higher or Lower Special Move support missing");
+  assert(protocol.raritySystem?.burnAmount === "1000", "Special Move burn amount mismatch");
 });
 
 await check("arena invalid view fails closed", async () => {
@@ -90,9 +93,9 @@ await check("agent prompt teaches rarity and burn limits", async () => {
   assert(prompt.includes("exactly 1,000 $MOGS"), "agent prompt missing fixed burn amount");
 });
 
-await check("arena skill states modifiers are pending", async () => {
+await check("arena skill states Special Move rules", async () => {
   const skill = await request("/arena-skill.md");
-  assert(skill.includes("not active"), "arena skill should say modifiers are not active");
+  assert(skill.includes("Special Move is active only for dice-duel and higher-lower"), "arena skill missing active Special Move scope");
   assert(skill.includes("mogs-agent-rarity.json"), "arena skill missing rarity file");
 });
 
