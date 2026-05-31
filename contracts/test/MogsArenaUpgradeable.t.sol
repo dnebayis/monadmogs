@@ -130,6 +130,53 @@ contract MogsArenaUpgradeableTest is Test {
         assertEq(mogs.balanceOf(address(arena)), 0);
     }
 
+    function test_expireMatch_canBeCalledByAnyoneWithoutTakingFunds() public {
+        uint256 adminMonBefore = adm.balance;
+        uint256 adminTokenBefore = mogs.balanceOf(adm);
+        uint256 attackerMonBefore = attacker.balance;
+        uint256 attackerTokenBefore = mogs.balanceOf(attacker);
+
+        mogs.approve(address(arena), TOKEN_PRIZE);
+        uint256 id = arena.createMatchWithToken{value: SPONSOR}(ENTRY, HASH, address(mogs), TOKEN_PRIZE);
+        vm.prank(p1);
+        arena.joinMatch{value: ENTRY}(id);
+
+        vm.warp(block.timestamp + 2 hours + 1);
+        vm.prank(attacker);
+        arena.expireMatch(id);
+
+        assertEq(attacker.balance, attackerMonBefore);
+        assertEq(mogs.balanceOf(attacker), attackerTokenBefore);
+        assertEq(p1.balance, 50 ether);
+        assertEq(adm.balance, adminMonBefore);
+        assertEq(mogs.balanceOf(adm), adminTokenBefore);
+        assertEq(mogs.balanceOf(address(arena)), 0);
+    }
+
+    function test_expireMatch_fullMatchPublicCallerOnlyRefundsPlayers() public {
+        uint256 attackerMonBefore = attacker.balance;
+        uint256 id = _createFullTokenMatch();
+
+        vm.warp(block.timestamp + 2 hours + 1);
+        vm.prank(attacker);
+        arena.expireMatch(id);
+
+        assertEq(attacker.balance, attackerMonBefore);
+        assertEq(p1.balance, 50 ether);
+        assertEq(p2.balance, 50 ether);
+        assertEq(mogs.balanceOf(adm), 10_000 ether);
+        assertEq(mogs.balanceOf(address(arena)), 0);
+    }
+
+    function test_expireMatch_revertsBeforeDeadlineForAnyone() public {
+        mogs.approve(address(arena), TOKEN_PRIZE);
+        uint256 id = arena.createMatchWithToken{value: SPONSOR}(ENTRY, HASH, address(mogs), TOKEN_PRIZE);
+
+        vm.prank(attacker);
+        vm.expectRevert(MogsArenaUpgradeable.MatchNotExpired.selector);
+        arena.expireMatch(id);
+    }
+
     function test_createMatchWithNftAndToken_sendsBothToWinner() public {
         nft.mint(adm, 42);
         nft.approve(address(arena), 42);

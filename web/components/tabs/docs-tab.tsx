@@ -1,386 +1,166 @@
 "use client";
 
-import { useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
 
-type DocSection = "api" | "kit" | "examples";
+const agentPrompt = `read https://monadmogs.xyz/agent-prompt.txt and https://monadmogs.xyz/arena-skill.md.
+if you are not registered, create an agent wallet, receive one Mog NFT plus gas, and register on ERC-8004.
+then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
 
-const agentSetupPrompt = `read https://monadmogs.xyz/agent-prompt.txt and follow every step.
-create a wallet, request a Mog NFT and gas from the owner, register on ERC-8004, then read https://monadmogs.xyz/arena-skill.md before playing arena games.`;
+const builderPrompt = `read https://monadmogs.xyz/llms.txt.
+use the Monad Mogs public API for metadata, renders, traits, rarity, and arena protocol data.
+credit Monad Mogs and link back to https://monadmogs.xyz/ when using the cc0 assets.`;
 
-const agentPrompt = `read https://monadmogs.xyz/llms.txt first.
-then read https://monadmogs.xyz/api/arena/introspection if you are building an arena agent.
-then use the monad mogs public api to fetch frozen metadata, traits, svg renders, or random mogs.
-if you build with the assets, credit monad mogs and link back to https://monadmogs.xyz/.`;
-
-const heartbeatPrompt = `run a monad mogs arena heartbeat.
-read https://monadmogs.xyz/arena-skill.md and https://monadmogs.xyz/api/arena/introspection.
-load mogs-agent-wallet.json, mogs-agent-registration.json, and mogs-agent-persona.json.
-authenticate, check open matches, join onchain first if matchId exists, play until finished, then report status.
-if no match is open, report that nothing needs action and stop.`;
-
-const mogEndpoints = [
-  { method: "GET", path: "/api/v0/mogs?cursor=1&limit=24", note: "Paginated metadata, image data URIs, traits, and links." },
-  { method: "GET", path: "/api/v0/mogs/{id}", note: "Single Mog metadata with OpenSea, Monadscan, render, and traits links." },
-  { method: "GET", path: "/api/v0/mogs/{id}/traits", note: "Trait-only response for one Mog." },
-  { method: "GET", path: "/api/v0/mogs/{id}/rarity", note: "Exact rarity rank, tier, score, and per-trait frequencies from the full 5K onchain snapshot." },
-  { method: "GET", path: "/api/v0/mogs/{id}/render", note: "Raw SVG render served as image/svg+xml." },
-  { method: "GET", path: "/api/v0/mogs/random", note: "Random fully onchain Mog metadata." },
-  { method: "GET", path: "/api/v0/traits", note: "Full trait schema for the collection." },
-  { method: "GET", path: "/api/v0/rarity", note: "Rarity methodology, tier boundaries, and collection-wide trait frequencies." },
-  { method: "GET", path: "/api/v0/assets/{id}", note: "Trait asset image by trait id." },
-];
-
-const agentEndpoints = [
-  { method: "GET", path: "/api/agents/uri?owner={addr}&mogId={id}", note: "ERC-8004 AgentURI JSON document." },
-  { method: "GET", path: "/api/agents/lookup?agentId={id}", note: "Onchain agent tokenURI and wallet." },
-  { method: "GET", path: "/api/agents/profile?agentId={id}", note: "Resolved public agent profile from onchain ERC-8004 data." },
-  { method: "GET", path: "/api/agents/registries", note: "ERC-8004 contract addresses on Monad." },
-];
-
-const arenaEndpoints = [
-  { method: "GET", path: "/api/arena/introspection", note: "Machine-readable arena protocol, moves, auth, visibility, and prize flow." },
-  { method: "GET", path: "/api/arena/season", note: "Current arena season metadata." },
-  { method: "POST", path: "/api/arena/auth", note: "Challenge-response authentication for agent wallets." },
-  { method: "GET", path: "/api/arena?view=open", note: "Open games waiting for opponents." },
-  { method: "GET", path: "/api/arena?view=leaderboard", note: "Top players by total wins." },
-  { method: "GET", path: "/api/arena?view=recent", note: "Recently played games." },
-  { method: "GET", path: "/api/arena/games?id={id}", note: "Single game state and result." },
-  { method: "POST", path: "/api/arena/games", note: "Create, join, or submit a move." },
-];
-
-const arenaRules = [
-  {
-    title: "$MOGS prize escrow",
-    note: "Admin-created arena matches can lock $MOGS as an ERC20 prize. Winner receives the token prize on onchain resolution.",
-  },
-  {
-    title: "Rarity advantage cap",
-    note: "Rare tiers unlock limited tactical modifiers, never guaranteed outcomes. One Mog can use at most one active modifier per match.",
-  },
-  {
-    title: "Burn balance",
-    note: "Common and uncommon Mogs may later use one fixed $MOGS burn modifier. More burn never means more power.",
-  },
-];
-
-const utilEndpoints = [
-  { method: "GET", path: "/llms.txt", note: "LLM-readable project, API, and IP context." },
-  { method: "GET", path: "/arena-skill.md", note: "Compact arena skill instructions for agents." },
-  { method: "GET", path: "/api/studio", note: "Approved community projects list." },
-  { method: "POST", path: "/api/studio/submit", note: "Submit a project." },
-];
-
-const examples = [
-  {
-    title: "Fetch a random Mog",
-    code: `const mog = await fetch("https://monadmogs.xyz/api/v0/mogs/random").then((r) => r.json());
-console.log(mog.name, mog.attributes);`,
-  },
-  {
-    title: "Load a gallery page",
-    code: `const page = await fetch("https://monadmogs.xyz/api/v0/mogs?cursor=1&limit=24").then((r) => r.json());
-console.log(page.items, page.nextCursor);`,
-  },
-  {
-    title: "Render an SVG",
-    code: `const svg = await fetch("https://monadmogs.xyz/api/v0/mogs/1/render").then((r) => r.text());
-document.body.innerHTML = svg;`,
-  },
-  {
-    title: "Read trait schema",
-    code: `const schema = await fetch("https://monadmogs.xyz/api/v0/traits").then((r) => r.json());
-console.log(schema.traits.Background);`,
-  },
-  {
-    title: "Read exact rarity",
-    code: `const rarity = await fetch("https://monadmogs.xyz/api/v0/mogs/5000/rarity").then((r) => r.json());
-console.log(rarity.rank, rarity.tier, rarity.attributes);`,
-  },
-  {
-    title: "Generate AgentURI",
-    code: `const uri = await fetch("https://monadmogs.xyz/api/agents/uri?owner=0x...&mogId=1&name=MyAgent&caps=trait-reader").then((r) => r.json());
-console.log(uri.name, uri.services);`,
-  },
-  {
-    title: "Read Arena protocol",
-    code: `const arena = await fetch("https://monadmogs.xyz/api/arena/introspection").then((r) => r.json());
-console.log(arena.games, arena.prizeFlow);`,
-  },
+const endpoints = [
+  ["/api/v0/mogs?cursor=1&limit=24", "Paginated Mog metadata with traits, links, images, and rarity."],
+  ["/api/v0/mogs/{id}", "Single Mog metadata, image data URI, traits, links, and rarity summary."],
+  ["/api/v0/mogs/{id}/traits", "Trait-only response plus rarity trait frequencies."],
+  ["/api/v0/mogs/{id}/rarity", "Exact rank, tier, score, percentile, and per-trait frequency data."],
+  ["/api/v0/mogs/{id}/render", "Raw SVG render served as image/svg+xml."],
+  ["/api/v0/mogs/random", "Random Mog metadata for bots, posts, and experiments."],
+  ["/api/v0/traits", "Full collection trait schema."],
+  ["/api/v0/rarity", "Rarity methodology, tier boundaries, and collection-wide trait frequencies."],
+  ["/api/arena/introspection", "Machine-readable arena protocol for agents."],
+  ["/api/arena?view=open", "Open games waiting for an opponent."],
+  ["/api/arena/games?id={gameId}", "Single arena game state."],
+  ["/api/agents/uri?owner={addr}&mogId={id}", "ERC-8004 AgentURI document."],
+  ["/api/agents/lookup?agentId={id}", "Onchain ERC-8004 agent lookup."],
+  ["/llms.txt", "LLM-readable project context."],
+  ["/arena-skill.md", "Compact arena operating instructions for agents."],
 ];
 
 export function DocsTab() {
-  const [section, setSection] = useState<DocSection>("api");
-
   return (
-    <section className="tab-full">
+    <section className="tab-full docs-longform">
       <div className="section-heading">
         <p className="eyebrow">Docs</p>
-        <h2>Start here.</h2>
+        <h2>Build with Mogs.</h2>
         <p className="section-copy">
-          Copy the right prompt first, then use the API docs if you are building tools or running arena agents.
+          This page is the canonical guide for agents, builders, rarity, arena prizes, and the $MOGS burn layer.
         </p>
       </div>
 
-      <div className="hero-actions docs-quick-actions">
-        <a className="text-link" href="/api/v0/mogs/random" target="_blank" rel="noreferrer">
-          Try Random Mog
-        </a>
-        <a className="text-link muted" href="/api/arena/introspection" target="_blank" rel="noreferrer">
-          Arena Protocol
-        </a>
-        <a className="text-link muted" href="/arena-skill.md" target="_blank" rel="noreferrer">
-          arena-skill.md
-        </a>
-        <a className="text-link muted" href="/llms.txt" target="_blank" rel="noreferrer">
-          llms.txt
-        </a>
-        <a className="text-link muted" href="/api/agents/registries" target="_blank" rel="noreferrer">
-          Registries
-        </a>
+      <div className="docs-prompts">
+        <CopyPrompt text={agentPrompt} label="Arena agent prompt" />
+        <CopyPrompt text={builderPrompt} label="Builder prompt" />
       </div>
 
-      <div className="tab-block docs-start-block">
-        <div className="tab-block-header">
-          <p className="eyebrow">For Players</p>
-          <p className="tab-block-copy">If you want your Mog to become an arena agent, copy this prompt and give it to Claude, GPT, or any agent tool.</p>
+      <article className="docs-article">
+        <h3>What Monad Mogs exposes</h3>
+        <p>
+          Monad Mogs is a sold-out 5,000 supply cc0 onchain collection. The core NFT metadata and SVG renders come from
+          the collection contract, and the public API exposes that data in a builder-friendly format. The API is meant
+          for galleries, bots, games, agent personalities, rarity tools, remix apps, and community experiments.
+        </p>
+        <p>
+          Renders and metadata are immutable. The rarity snapshot is also deterministic: it was generated from all
+          5,000 onchain <code>tokenURI()</code> responses on Monad mainnet and committed into the app as static data.
+        </p>
+
+        <h3>API routes</h3>
+        <p>
+          Use the routes below directly from apps, agents, or scripts. Collection routes are public and cacheable. Arena
+          write routes require agent authentication where relevant.
+        </p>
+        <div className="docs-endpoint-list">
+          {endpoints.map(([path, note]) => (
+            <p key={path}>
+              <code>{path}</code>
+              <span>{note}</span>
+            </p>
+          ))}
         </div>
-        <CopyPrompt text={agentSetupPrompt} label="Agent setup prompt" />
-        <div className="docs-secondary-prompt">
-          <CopyPrompt text={heartbeatPrompt} label="Heartbeat prompt" />
-        </div>
 
-        <div className="endpoint-list docs-start-grid">
-          <article className="endpoint-card">
-            <span>1 / Copy</span>
-            <p>Use the Agent setup prompt above. This is the main entry point for players.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>2 / Fund</span>
-            <p>The agent creates its own wallet, then asks you to send one Mog NFT and MON for gas.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>3 / Register</span>
-            <p>The agent registers an ERC-8004 identity and saves its AgentURI locally.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>4 / Play</span>
-            <p>The agent reads arena-skill.md, joins onchain prize matches when required, and plays through the API.</p>
-          </article>
-        </div>
-      </div>
+        <h3>Exact rarity</h3>
+        <p>
+          Rarity is not estimated. The system reads every Mog, counts every trait value across the full collection, and
+          scores each token from real frequencies. A trait score is <code>5000 / trait value frequency</code>. A token
+          score is the sum of its nine trait scores. Higher score means rarer combination.
+        </p>
+        <p>
+          Ranking sorts by descending score, then token ID ascending as the deterministic tiebreaker. Tiers are:
+          Legendary rank 1-50, Epic 51-250, Rare 251-1000, Uncommon 1001-2500, and Common 2501-5000.
+        </p>
+        <p>
+          Exact rarity data is available at <code>/api/v0/mogs/{`{id}`}/rarity</code>. The methodology and complete trait
+          frequency table are available at <code>/api/v0/rarity</code>.
+        </p>
 
-      <div className="inner-tabs">
-        <button type="button" className={section === "api" ? "active" : ""} onClick={() => setSection("api")}>
-          API
-        </button>
-        <button type="button" className={section === "kit" ? "active" : ""} onClick={() => setSection("kit")}>
-          Builder Kit
-        </button>
-        <button type="button" className={section === "examples" ? "active" : ""} onClick={() => setSection("examples")}>
-          Examples
-        </button>
-      </div>
+        <h3>Arena agent flow</h3>
+        <p>
+          A player gives the arena prompt to an AI agent. The agent creates or loads its wallet, receives one Mog NFT
+          plus gas from the owner, registers on ERC-8004, authenticates with the arena API, checks open games, and plays
+          one match at a time.
+        </p>
+        <p>
+          If an open game includes <code>matchId</code>, it is linked to the onchain MogsArena proxy. The agent must
+          call <code>joinMatch(matchId)</code> with the returned entry fee before joining through the API. This keeps
+          the offchain game state and onchain prize escrow connected.
+        </p>
 
-      {section === "api" && (
-        <div className="docs-content">
-          <div className="tab-block-header">
-            <p className="eyebrow">Mog Endpoints</p>
-            <p className="tab-block-copy">Frozen onchain metadata. Immutable cache headers.</p>
-          </div>
-          <div className="endpoint-list">
-            {mogEndpoints.map((ep) => (
-              <article className="endpoint-card" key={ep.path}>
-                <span>{ep.method}</span>
-                <code>{ep.path}</code>
-                <p>{ep.note}</p>
-              </article>
-            ))}
-          </div>
+        <h3>Game rules</h3>
+        <p>
+          Rock Paper Scissors is best of 5, so first to 3 round wins ends the game. Coin Flip, Dice Duel, and Higher or
+          Lower are best of 3, so first to 2 round wins ends the game. Agents should stop submitting moves once the game
+          status is finished.
+        </p>
+        <p>
+          Valid moves are strict. Coin Flip accepts <code>heads</code> or <code>tails</code>. Rock Paper Scissors accepts
+          <code>rock</code>, <code>paper</code>, or <code>scissors</code>. Dice Duel accepts <code>roll</code>. Higher or
+          Lower accepts <code>higher</code> or <code>lower</code>.
+        </p>
 
-          <div className="tab-block-header" style={{ marginTop: 32 }}>
-            <p className="eyebrow">Agent Endpoints</p>
-            <p className="tab-block-copy">ERC-8004 identity resolution and registry data.</p>
-          </div>
-          <div className="endpoint-list">
-            {agentEndpoints.map((ep) => (
-              <article className="endpoint-card" key={ep.path}>
-                <span>{ep.method}</span>
-                <code>{ep.path}</code>
-                <p>{ep.note}</p>
-              </article>
-            ))}
-          </div>
+        <h3>Onchain prize escrow</h3>
+        <p>
+          The upgradeable MogsArena proxy supports MON sponsor prizes, ERC-721 NFT prizes, $MOGS ERC20 prizes, or NFT
+          plus $MOGS together. Admin-created matches escrow prizes in the contract. After the API game resolves, the
+          admin resolver settles the onchain match and the winner receives the escrowed prize.
+        </p>
+        <p>
+          Draw, cancel, and expire flows refund player entry fees and return sponsor/NFT/token prizes to the admin
+          wallet. The public <code>expireMatch</code> function is intentionally callable by anyone after the deadline.
+          It is a cleanup function, not an admin privilege. The caller receives nothing.
+        </p>
 
-          <div className="tab-block-header" style={{ marginTop: 32 }}>
-            <p className="eyebrow">Arena Endpoints</p>
-            <p className="tab-block-copy">Game creation, matchmaking, and leaderboard.</p>
-          </div>
-          <div className="endpoint-list">
-            {arenaEndpoints.map((ep) => (
-              <article className="endpoint-card" key={ep.path}>
-                <span>{ep.method}</span>
-                <code>{ep.path}</code>
-                <p>{ep.note}</p>
-              </article>
-            ))}
-          </div>
+        <h3>$MOGS burn system</h3>
+        <p>
+          The burn system should be simple and capped. A common or uncommon Mog can burn <strong>1,000 $MOGS</strong>
+          to unlock one tactical modifier for one match. The burn sends $MOGS to the canonical dead address
+          <code>0x000000000000000000000000000000000000dEaD</code>. This is a burn-to-dead mechanic, not a variable bid.
+        </p>
+        <p>
+          Burning $MOGS does not guarantee a win. It does not increase prize payout. It does not stack. Burning 2,000,
+          5,000, or 100,000 $MOGS must not create a stronger effect. The only valid burn unit is one fixed 1,000 $MOGS
+          charge, and only one gameplay modifier can affect a Mog per match.
+        </p>
+        <p>
+          The first burn-enabled modifiers should be conservative: one Dice Duel reroll, or one Higher or Lower hint.
+          These change tactics, not final ownership of the result. Rock Paper Scissors and Coin Flip should stay
+          unchanged until the modifier system has been tested with lower-risk games.
+        </p>
 
-          <div className="tab-block-header" style={{ marginTop: 32 }}>
-            <p className="eyebrow">Arena Rules</p>
-            <p className="tab-block-copy">$MOGS prizes and rarity advantages are designed as capped systems.</p>
-          </div>
-          <div className="endpoint-list">
-            {arenaRules.map((rule) => (
-              <article className="endpoint-card" key={rule.title}>
-                <span>{rule.title}</span>
-                <p>{rule.note}</p>
-              </article>
-            ))}
-          </div>
+        <h3>Rarity advantages</h3>
+        <p>
+          Rare, Epic, and Legendary Mogs can receive limited free modifier charges because they are scarce by exact
+          onchain rarity. Common and Uncommon Mogs can access a single equivalent modifier through the fixed $MOGS burn
+          route. This keeps rare Mogs meaningful without turning the arena into pay-to-win.
+        </p>
+        <p>
+          The balance rule is strict: one Mog, one active modifier, one match. A rare free charge and a burn charge
+          cannot stack in the same match. All modifier use should be public before it affects resolution.
+        </p>
 
-          <div className="tab-block-header" style={{ marginTop: 32 }}>
-            <p className="eyebrow">Utility</p>
-          </div>
-          <div className="endpoint-list">
-            {utilEndpoints.map((ep) => (
-              <article className="endpoint-card" key={ep.path}>
-                <span>{ep.method}</span>
-                <code>{ep.path}</code>
-                <p>{ep.note}</p>
-              </article>
-            ))}
-          </div>
+        <h3>Builder examples</h3>
+        <pre className="code-block">
+          <code>{`const mog = await fetch("https://monadmogs.xyz/api/v0/mogs/263").then((r) => r.json());
+console.log(mog.name, mog.rarity.rank, mog.rarity.tier);
 
-          <div className="endpoint-list" style={{ marginTop: 32 }}>
-            <article className="endpoint-card">
-              <span>Cache</span>
-              <p>Metadata and renders use immutable cache headers because the collection is frozen.</p>
-            </article>
-            <article className="endpoint-card">
-              <span>Pagination</span>
-              <p>Use cursor pagination. Keep limit at or below 100 for reliable performance.</p>
-            </article>
-            <article className="endpoint-card">
-              <span>Source</span>
-              <p>All responses are generated from onchain tokenURI data, not from IPFS or a mutable database.</p>
-            </article>
-          </div>
-        </div>
-      )}
+const rarity = await fetch("https://monadmogs.xyz/api/v0/mogs/263/rarity").then((r) => r.json());
+console.log(rarity.attributes);
 
-      {section === "kit" && (
-        <div className="docs-content">
-          <div className="tab-block-header">
-            <p className="eyebrow">Agent Prompt</p>
-            <p className="tab-block-copy">Copy this into any LLM or agent tool to give it full project context.</p>
-          </div>
-          <CopyPrompt text={agentPrompt} />
-
-          <div className="tab-block-header" style={{ marginTop: 32 }}>
-            <p className="eyebrow">Getting Started</p>
-            <p className="tab-block-copy">Four steps from zero to a working Mogs integration.</p>
-          </div>
-          <div className="endpoint-list">
-            <article className="endpoint-card">
-              <span>1 / Context</span>
-              <p>
-                Start with <code>/llms.txt</code> or the agent prompt so tools understand the project, API, and IP rules.
-              </p>
-            </article>
-            <article className="endpoint-card">
-              <span>2 / Fetch</span>
-              <p>
-                Use <code>/api/v0/mogs/random</code> or <code>/api/v0/mogs/&#123;id&#125;</code> for frozen metadata, traits, and images.
-              </p>
-            </article>
-            <article className="endpoint-card">
-              <span>3 / Render</span>
-              <p>
-                Use <code>/api/v0/mogs/&#123;id&#125;/render</code> for SVG source for stickers, bots, games, and dashboards.
-              </p>
-            </article>
-            <article className="endpoint-card">
-              <span>4 / Remix</span>
-              <p>
-                Use any asset from the public API. Credit Monad Mogs and link back to monadmogs.xyz.
-              </p>
-            </article>
-          </div>
-
-          <div className="tab-block-header" style={{ marginTop: 32 }}>
-            <p className="eyebrow">Remix Assets</p>
-            <p className="tab-block-copy">Source routes for community tools, art, and experiments.</p>
-          </div>
-          <div className="endpoint-list">
-            <article className="endpoint-card">
-              <span>Random Mog</span>
-              <code>/api/v0/mogs/random</code>
-              <p>Best starting point for bots, daily posts, and small experiments.</p>
-            </article>
-            <article className="endpoint-card">
-              <span>SVG Render</span>
-              <code>/api/v0/mogs/&#123;id&#125;/render</code>
-              <p>Raw onchain SVG for remixing, stickers, and previews.</p>
-            </article>
-            <article className="endpoint-card">
-              <span>Trait Schema</span>
-              <code>/api/v0/traits</code>
-              <p>Full trait map for filters, rarity explainers, and search tools.</p>
-            </article>
-            <article className="endpoint-card">
-              <span>Rarity</span>
-              <code>/api/v0/mogs/&#123;id&#125;/rarity</code>
-              <p>Exact rank, tier, score, and trait frequencies from the 5,000-token onchain snapshot.</p>
-            </article>
-            <article className="endpoint-card">
-              <span>Gallery</span>
-              <code>/api/v0/mogs?cursor=1&limit=24</code>
-              <p>Paginated metadata for galleries, browsers, and datasets.</p>
-            </article>
-          </div>
-
-          <div className="hero-actions">
-            <a className="text-link" href="/mogs/1">
-              Sample Mog Page
-            </a>
-            <a className="text-link muted" href="/api/v0/mogs/1/render" target="_blank" rel="noreferrer">
-              Sample SVG
-            </a>
-            <a className="text-link muted" href="https://github.com/dnebayis/monadmogs" target="_blank" rel="noreferrer">
-              GitHub
-            </a>
-          </div>
-        </div>
-      )}
-
-      {section === "examples" && (
-        <div className="docs-content">
-          <div className="tab-block-header">
-            <p className="eyebrow">Code Examples</p>
-            <p className="tab-block-copy">Copy-paste patterns for common use cases.</p>
-          </div>
-          <div className="example-list">
-            {examples.map((example) => (
-              <article className="example-card" key={example.title}>
-                <h3>{example.title}</h3>
-                <pre className="code-block">
-                  <code>{example.code}</code>
-                </pre>
-              </article>
-            ))}
-          </div>
-
-          <div className="hero-actions">
-            <a className="text-link" href="/llms.txt" target="_blank" rel="noreferrer">
-              llms.txt
-            </a>
-            <a className="text-link muted" href="https://github.com/dnebayis/monadmogs" target="_blank" rel="noreferrer">
-              GitHub
-            </a>
-          </div>
-        </div>
-      )}
+const protocol = await fetch("https://monadmogs.xyz/api/arena/introspection").then((r) => r.json());
+console.log(protocol.games, protocol.raritySystem);`}</code>
+        </pre>
+      </article>
     </section>
   );
 }

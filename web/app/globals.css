@@ -925,6 +925,58 @@ h2 {
   color: var(--ink);
 }
 
+.docs-longform {
+  max-width: 1040px;
+}
+
+.docs-prompts {
+  display: grid;
+  gap: 18px;
+  max-width: 920px;
+  margin-bottom: 28px;
+}
+
+.docs-article {
+  max-width: 920px;
+  display: grid;
+  gap: 18px;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1.55;
+}
+
+.docs-article h3 {
+  margin: 24px 0 0;
+  color: var(--cream);
+  font-size: clamp(30px, 3vw, 48px);
+  line-height: 1;
+}
+
+.docs-article p {
+  margin: 0;
+}
+
+.docs-article code,
+.docs-endpoint-list code {
+  color: var(--cream);
+  font-size: 0.95em;
+}
+
+.docs-endpoint-list {
+  display: grid;
+  gap: 10px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.docs-endpoint-list p {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.65fr) 1fr;
+  gap: 16px;
+  align-items: baseline;
+}
+
 .collection-section {
   background:
     linear-gradient(180deg, #09080f 0%, #100c15 100%);
