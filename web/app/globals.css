@@ -1182,6 +1182,33 @@ h2 {
   min-height: 0;
 }
 
+.rarity-summary {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 8px;
+  width: fit-content;
+  border: 1px solid rgba(255, 236, 185, 0.36);
+  background: rgba(255, 236, 185, 0.08);
+  padding: 16px 18px;
+  margin: 8px 0 20px;
+}
+
+.rarity-summary span {
+  color: var(--cyan);
+  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+.rarity-summary strong {
+  color: var(--cream);
+  font-size: 1.25rem;
+}
+
+.rarity-summary p,
+.mog-trait-grid small {
+  color: var(--muted);
+}
+
 .agent-panel {
   display: grid;
   gap: 16px;

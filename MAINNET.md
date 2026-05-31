@@ -66,6 +66,8 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
 
 ### Rarity Advantage Design
+- Exact rarity snapshot generated from all 5,000 onchain `tokenURI()` responses.
+- Public routes: `/api/v0/mogs/{id}/rarity` and `/api/v0/rarity`.
 - Rare tiers unlock capped tactical modifiers, not guaranteed wins.
 - Common and uncommon Mogs can later access one fixed modifier through `$MOGS` burn.
 - One active modifier per Mog per match. Burn amount never scales power.

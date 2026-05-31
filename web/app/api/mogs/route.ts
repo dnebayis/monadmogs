@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { MAX_SUPPLY, getMogBatch, immutableHeaders } from "@/lib/mogs";
+import { getMogRarity } from "@/lib/rarity";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,10 @@ export async function GET(request: NextRequest) {
   }
 
   const batch = await getMogBatch(cursor, limit);
+  const items = batch.items.map((item) => ({
+    ...item,
+    rarity: getMogRarity(item.tokenId),
+  }));
 
   return NextResponse.json(
     {
@@ -27,9 +32,9 @@ export async function GET(request: NextRequest) {
       maxSupply: MAX_SUPPLY,
       cursor,
       limit,
-      count: batch.items.length,
+      count: items.length,
       nextCursor: batch.nextCursor,
-      items: batch.items,
+      items,
     },
     { headers: immutableHeaders() },
   );

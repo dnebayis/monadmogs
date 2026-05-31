@@ -7,6 +7,7 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "generate:rarity": "node scripts/generate-rarity.mjs",
     "lint": "next lint"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { MogDetailActions } from "@/components/mog-detail-actions";
 import { enrichMogMetadata, getMogMetadata, parseTokenId } from "@/lib/mogs";
+import { getMogRarity, getTierLabel } from "@/lib/rarity";
 import { API_BASE_URL, SITE_URL } from "@/lib/urls";
 
 type MogPageProps = {
@@ -38,6 +39,7 @@ export async function generateMetadata({ params }: MogPageProps): Promise<Metada
 export default async function MogPage({ params }: MogPageProps) {
   const { id } = await params;
   const mog = await loadMog(id);
+  const rarity = getMogRarity(mog.tokenId);
   const apiUrl = `${API_BASE_URL}/api/v0/mogs/${mog.tokenId}`;
   const previousId = mog.tokenId === 1 ? 5000 : mog.tokenId - 1;
   const nextId = mog.tokenId === 5000 ? 1 : mog.tokenId + 1;
@@ -63,6 +65,14 @@ export default async function MogPage({ params }: MogPageProps) {
             Frozen onchain metadata, SVG render, and traits for one permanently minted Monad Mog.
           </p>
 
+          {rarity ? (
+            <div className="rarity-summary">
+              <span>{getTierLabel(rarity.tier)}</span>
+              <strong>Rank #{rarity.rank} / 5,000</strong>
+              <p>Score {rarity.score.toFixed(3)} · Top {rarity.percentile.toFixed(2)}%</p>
+            </div>
+          ) : null}
+
           <div className="hero-actions">
             <a className="text-link" href={mog.links.opensea} target="_blank" rel="noreferrer">
               OpenSea
@@ -72,6 +82,9 @@ export default async function MogPage({ params }: MogPageProps) {
             </a>
             <a className="text-link muted" href={`/api/v0/mogs/${mog.tokenId}/render`} target="_blank" rel="noreferrer">
               SVG Render
+            </a>
+            <a className="text-link muted" href={`/api/v0/mogs/${mog.tokenId}/rarity`} target="_blank" rel="noreferrer">
+              Rarity JSON
             </a>
             <Link className="text-link muted" href="/">
               Back Home
@@ -85,6 +98,11 @@ export default async function MogPage({ params }: MogPageProps) {
               <article className="endpoint-card" key={attribute.trait_type}>
                 <span>{attribute.trait_type}</span>
                 <p>{attribute.value}</p>
+                {rarity ? (
+                  <small>
+                    {rarity.attributes.find((item) => item.trait_type === attribute.trait_type)?.frequency} / 5,000
+                  </small>
+                ) : null}
               </article>
             ))}
           </div>

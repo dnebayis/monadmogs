@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getMogMetadata, immutableHeaders, parseTokenId } from "@/lib/mogs";
+import { getMogRarity } from "@/lib/rarity";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +13,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   }
 
   const metadata = await getMogMetadata(tokenId);
+  const rarity = getMogRarity(tokenId);
 
   return NextResponse.json(
     {
@@ -19,6 +21,15 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
       name: metadata.name,
       attributes: metadata.attributes,
       traits: Object.fromEntries(metadata.attributes.map((attribute) => [attribute.trait_type, attribute.value])),
+      rarity: rarity
+        ? {
+            rank: rarity.rank,
+            tier: rarity.tier,
+            score: rarity.score,
+            percentile: rarity.percentile,
+            attributes: rarity.attributes,
+          }
+        : null,
     },
     { headers: immutableHeaders() },
   );

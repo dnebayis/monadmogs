@@ -18,9 +18,11 @@ The collection metadata is frozen and ownership has been renounced.
 - GET ${API_BASE_URL}/api/v0/mogs?cursor=1&limit=24
 - GET ${API_BASE_URL}/api/v0/mogs/{id}
 - GET ${API_BASE_URL}/api/v0/mogs/{id}/traits
+- GET ${API_BASE_URL}/api/v0/mogs/{id}/rarity
 - GET ${API_BASE_URL}/api/v0/mogs/{id}/render
 - GET ${API_BASE_URL}/api/v0/mogs/random
 - GET ${API_BASE_URL}/api/v0/traits
+- GET ${API_BASE_URL}/api/v0/rarity
 - GET ${API_BASE_URL}/api/v0/assets/{id}
 
 ## Agent API
@@ -60,6 +62,8 @@ The collection metadata is frozen and ownership has been renounced.
 - Use /api/v0/mogs/random for bots, daily posts, and lightweight experiments.
 - Use /api/v0/mogs/{id}/render for SVG source material.
 - Use /api/v0/traits for trait filters, search, and explainers.
+- Use /api/v0/mogs/{id}/rarity for exact rank, tier, score, and per-trait frequency data.
+- Use /api/v0/rarity for methodology, tier boundaries, and collection-wide trait frequencies.
 - Use /api/agents/uri to resolve ERC-8004-compatible AgentURI JSON.
 - Use /api/agents/lookup to read onchain agent data.
 - Use /api/agents/profile to read onchain agent data plus the resolved AgentURI profile.

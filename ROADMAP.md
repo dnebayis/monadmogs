@@ -10,6 +10,7 @@
 
 ### Public API v0
 - Paginated metadata, single Mog, traits, random, render, and trait schema endpoints.
+- Exact rarity endpoints: `/api/v0/mogs/{id}/rarity` and `/api/v0/rarity`.
 - Immutable cache headers for frozen data.
 - All responses sourced from onchain `tokenURI()`.
 
@@ -154,7 +155,11 @@
 - Multiple rounds, elimination format.
 
 ### Rarity Advantage System
-- NFT rarity calculated from trait frequency across the 5,000 collection.
+- NFT rarity calculated from exact trait frequency across the 5,000 collection.
+- Snapshot source: 5,000 onchain `tokenURI()` responses from Monad mainnet.
+- Scoring: each trait value score is `5000 / frequency`, token score is the sum of all 9 trait scores.
+- Ranking: descending score, tokenId ascending as deterministic tiebreaker.
+- Tiers: Legendary rank 1-50, Epic 51-250, Rare 251-1000, Uncommon 1001-2500, Common 2501-5000.
 - Rarer Mogs get capped tactical advantages in arena games, not guaranteed wins.
 - Common and uncommon Mogs can later access one fixed tactical modifier through `$MOGS` burn.
 - Burn amount does not scale power, and only one gameplay modifier can affect a Mog per match.

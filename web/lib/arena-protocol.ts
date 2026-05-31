@@ -5,6 +5,7 @@ import {
   ERC8004_REPUTATION_REGISTRY_ADDRESS,
 } from "@/lib/erc8004";
 import { MONAD_CHAIN } from "@/lib/network";
+import { getRaritySummary } from "@/lib/rarity";
 import { apiUrl, siteUrl } from "@/lib/urls";
 
 export const ARENA_PROTOCOL_VERSION = "0.1.0";
@@ -84,7 +85,10 @@ export function getArenaProtocol() {
       ],
     },
     raritySystem: {
-      status: "design locked, gameplay activation pending",
+      status: "exact onchain snapshot live, gameplay activation pending",
+      endpoint: apiUrl("/api/v0/mogs/{id}/rarity"),
+      summaryEndpoint: apiUrl("/api/v0/rarity"),
+      snapshot: getRaritySummary(),
       rule: "Rarity never guarantees a win. It unlocks at most one declared tactical modifier per Mog per match.",
       tiers: {
         common: "no free modifier; may use one fixed $MOGS burn modifier when enabled",

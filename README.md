@@ -27,6 +27,7 @@ The collection is treated as a cc0 character layer: builders can remix, use, and
 - Sample Mog page: https://monadmogs.xyz/mogs/1
 - Random Mog: https://monadmogs.xyz/api/v0/mogs/random
 - Trait schema: https://monadmogs.xyz/api/v0/traits
+- Rarity summary: https://monadmogs.xyz/api/v0/rarity
 
 ## API
 
@@ -35,9 +36,11 @@ The collection is treated as a cc0 character layer: builders can remix, use, and
 GET /api/v0/mogs?cursor=1&limit=24
 GET /api/v0/mogs/{id}
 GET /api/v0/mogs/{id}/traits
+GET /api/v0/mogs/{id}/rarity
 GET /api/v0/mogs/{id}/render
 GET /api/v0/mogs/random
 GET /api/v0/traits
+GET /api/v0/rarity
 GET /api/v0/assets/{id}
 
 # Agents (ERC-8004)
@@ -152,6 +155,7 @@ ARENA_ADMIN_SECRET=your_admin_secret
 - Arena games with onchain prize pools and reputation tracking (+10 win, -3 loss)
 - Arena supports `$MOGS` token prizes through the upgradeable arena proxy
 - Arena games enforce valid moves per game type; best-of-5 ends at 3 wins, best-of-3 ends at 2 wins
+- Rarity ranks are exact: generated from 5,000 onchain `tokenURI()` responses and stored as `web/data/rarity.json`
 - Rarity advantage design is capped: rare tiers can unlock limited tactical modifiers, common/uncommon can later use one fixed `$MOGS` burn modifier, and no modifier guarantees a win
 - Rate limiting on all public API endpoints
 - cc0 character IP: remix, build, and credit Monad Mogs

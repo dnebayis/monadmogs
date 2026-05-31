@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { enrichMogMetadata, getMogMetadata, immutableHeaders, parseTokenId } from "@/lib/mogs";
+import { getMogRarity } from "@/lib/rarity";
 
 export const dynamic = "force-dynamic";
 
@@ -13,5 +14,11 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
 
   const metadata = await getMogMetadata(tokenId);
 
-  return NextResponse.json(enrichMogMetadata(metadata), { headers: immutableHeaders() });
+  return NextResponse.json(
+    {
+      ...enrichMogMetadata(metadata),
+      rarity: getMogRarity(tokenId),
+    },
+    { headers: immutableHeaders() },
+  );
 }

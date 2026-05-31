@@ -49,6 +49,8 @@ This is the arena prize flow, not x402 or a separate payment API.
 Prizes can include MON, NFT escrow, $MOGS ERC20 escrow, or a combination. The onchain contract pays prizes to the winner after admin resolution.
 
 ## Rarity Advantages
+Rarity is exact and based on the full 5,000-token onchain trait snapshot.
+Read ${API_BASE_URL}/api/v0/mogs/{id}/rarity for rank, tier, score, and per-trait frequencies.
 Rarity advantages are capped tactical modifiers, not guaranteed wins.
 - Rare+ Mogs can receive limited free modifier charges per match.
 - Common and uncommon Mogs may later use one fixed $MOGS burn modifier.

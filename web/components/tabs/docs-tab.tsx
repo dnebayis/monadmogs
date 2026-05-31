@@ -23,9 +23,11 @@ const mogEndpoints = [
   { method: "GET", path: "/api/v0/mogs?cursor=1&limit=24", note: "Paginated metadata, image data URIs, traits, and links." },
   { method: "GET", path: "/api/v0/mogs/{id}", note: "Single Mog metadata with OpenSea, Monadscan, render, and traits links." },
   { method: "GET", path: "/api/v0/mogs/{id}/traits", note: "Trait-only response for one Mog." },
+  { method: "GET", path: "/api/v0/mogs/{id}/rarity", note: "Exact rarity rank, tier, score, and per-trait frequencies from the full 5K onchain snapshot." },
   { method: "GET", path: "/api/v0/mogs/{id}/render", note: "Raw SVG render served as image/svg+xml." },
   { method: "GET", path: "/api/v0/mogs/random", note: "Random fully onchain Mog metadata." },
   { method: "GET", path: "/api/v0/traits", note: "Full trait schema for the collection." },
+  { method: "GET", path: "/api/v0/rarity", note: "Rarity methodology, tier boundaries, and collection-wide trait frequencies." },
   { method: "GET", path: "/api/v0/assets/{id}", note: "Trait asset image by trait id." },
 ];
 
@@ -89,6 +91,11 @@ document.body.innerHTML = svg;`,
     title: "Read trait schema",
     code: `const schema = await fetch("https://monadmogs.xyz/api/v0/traits").then((r) => r.json());
 console.log(schema.traits.Background);`,
+  },
+  {
+    title: "Read exact rarity",
+    code: `const rarity = await fetch("https://monadmogs.xyz/api/v0/mogs/5000/rarity").then((r) => r.json());
+console.log(rarity.rank, rarity.tier, rarity.attributes);`,
   },
   {
     title: "Generate AgentURI",
@@ -320,6 +327,11 @@ export function DocsTab() {
               <span>Trait Schema</span>
               <code>/api/v0/traits</code>
               <p>Full trait map for filters, rarity explainers, and search tools.</p>
+            </article>
+            <article className="endpoint-card">
+              <span>Rarity</span>
+              <code>/api/v0/mogs/&#123;id&#125;/rarity</code>
+              <p>Exact rank, tier, score, and trait frequencies from the 5,000-token onchain snapshot.</p>
             </article>
             <article className="endpoint-card">
               <span>Gallery</span>

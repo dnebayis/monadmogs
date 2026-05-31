@@ -94,6 +94,7 @@ export function enrichMogMetadata(metadata: MogMetadata) {
       monadscan: `${MONAD_EXPLORER_URL}/token/${MONAD_MOGS_ADDRESS}?a=${metadata.tokenId}`,
       render: `/api/mogs/${metadata.tokenId}/render`,
       traits: `/api/mogs/${metadata.tokenId}/traits`,
+      rarity: `/api/mogs/${metadata.tokenId}/rarity`,
     },
   };
 }
