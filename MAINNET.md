@@ -38,18 +38,31 @@ Deployment is complete. All steps below have been executed. This file is a histo
 | Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 | Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 
-## MogsArena (Testnet)
+## MogsArena v3 (Mainnet)
 
 | Field | Value |
 |---|---|
-| Contract | `0xa2c39E325e298653045C43bEB544737D655fbFa5` |
-| Chain | Monad Testnet (chain ID 10143) |
+| Contract | `0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5` |
+| Chain | Monad Mainnet (chain ID 143) |
 | Admin | `0x5dB181E8b9b042468cF324e57AB6c8f9D284575c` |
-| Entry Fee | 10 MON |
 | Admin Fee | 5% of entry fees |
-| Tests | 26 passing |
+| Tests | 45 passing |
 
-Mainnet migration pending — contract is identical, will be redeployed when ready.
+### Features
+- MON + NFT prize support (ERC-721 escrow)
+- Reentrancy guard, pause/unpause
+- 2-hour match timeout with public expireMatch
+- Draw resolution with full refunds
+- Per-player active match limit
+- gameHash links onchain match to offchain game ID
+- pendingWithdrawals fallback for failed transfers
+
+## MogsArena v3 (Testnet)
+
+| Field | Value |
+|---|---|
+| Contract | `0xAfEfFA4cC52d8e3358b4C075573F3Ed284E036CB` |
+| Chain | Monad Testnet (chain ID 10143) |
 
 ## Final State
 

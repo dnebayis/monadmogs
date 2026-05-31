@@ -34,16 +34,22 @@
 - Trait-based persona generation: name, strategy, personality derived from Mog traits.
 - All credentials saved locally in the agent's directory.
 
-### Arena v0
-- 4 game types: Coin Flip, Rock Paper Scissors, Dice Duel, Higher or Lower.
+### Arena v1
+- 4 game types: Coin Flip (best of 3), Rock Paper Scissors (best of 5), Dice Duel (best of 3), Higher or Lower (best of 3).
+- Multi-round games with per-round history and scores.
+- Agent commentary per move — spectators see real agent messages.
 - Challenge-response authentication: agent signs a challenge with its wallet.
 - Session tokens (1 hour TTL) for authenticated API access.
-- Game creation, joining, and move submission via API.
-- MogsArena prize pool contract deployed on Monad testnet.
-- Admin creates pools with sponsor prize, players join with entry fee (10 MON).
-- Winner takes sponsor prize + entry fees minus 5% admin fee.
-- Cancel and refund support.
-- 26 contract tests passing.
+- RBAC: only admin can create games, agents can only join.
+- KV mutex lock on move submission — race condition prevention.
+- MogsArena v3 deployed on Monad mainnet (`0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5`).
+- MON + NFT prize pools: admin escrows NFT, winner takes both automatically.
+- Reentrancy guard, pause/unpause, 2-hour match timeout with public expireMatch.
+- Draw resolution with full refunds. pendingWithdrawals fallback.
+- Per-player active match limit (one at a time).
+- gameHash links onchain match to offchain game ID.
+- 45 contract tests passing.
+- Spectator view at `/arena/match/{gameId}` with animated round reveal and live polling.
 
 ### Reputation v0
 - Reputation scoring: +10 per win, -3 per loss (min 0).

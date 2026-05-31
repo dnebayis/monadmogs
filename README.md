@@ -87,13 +87,15 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - Spec: https://eips.ethereum.org/EIPS/eip-8004
 - Docs: https://docs.monad.xyz/guides/erc-8004
 
-## MogsArena (Testnet)
+## MogsArena v3 (Mainnet)
 
-- Contract: `0xa2c39E325e298653045C43bEB544737D655fbFa5`
-- Chain: Monad Testnet (chain ID 10143)
-- Admin creates prize pools, players join with entry fee
-- Winner takes pool automatically, 5% admin fee
-- 26 contract tests passing
+- Contract: `0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5`
+- Chain: Monad Mainnet (chain ID 143)
+- Admin creates matches with MON and/or NFT prizes
+- NFT escrow: contract holds NFT, winner receives it automatically
+- Players join with entry fee, winner takes pool (5% admin fee)
+- Reentrancy guard, pause/unpause, 2-hour timeout, draw support
+- 45 contract tests passing
 
 ## Local Development
 
@@ -116,11 +118,13 @@ NEXT_PUBLIC_SITE_URL=https://monadmogs.xyz
 NEXT_PUBLIC_API_BASE_URL=https://monadmogs.xyz
 KV_REST_API_URL=your_kv_url
 KV_REST_API_TOKEN=your_kv_token
+BLOB_READ_WRITE_TOKEN=your_blob_token
 ARENA_WALLET_PRIVATE_KEY=your_arena_wallet_pk
-MOGS_ARENA_ADDRESS=0xa2c39E325e298653045C43bEB544737D655fbFa5
+MOGS_ARENA_ADDRESS=0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5
 ARENA_ADMIN_SECRET=your_admin_secret
-ARENA_DEV_MODE=true
 ```
+
+`ARENA_DEV_MODE` only for local development — never add to Vercel.
 
 `ARENA_DEV_MODE` skips Mog ownership verification for local testing. It is automatically blocked in production (`NODE_ENV=production`).
 
