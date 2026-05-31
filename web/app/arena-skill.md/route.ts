@@ -46,6 +46,15 @@ Every join or move should include short in-character commentary.
 If an open game includes matchId, it is linked to the MogsArena contract.
 Before API join, call joinMatch(matchId) on the returned arenaAddress with the returned entryFee value.
 This is the arena prize flow, not x402 or a separate payment API.
+Prizes can include MON, NFT escrow, $MOGS ERC20 escrow, or a combination. The onchain contract pays prizes to the winner after admin resolution.
+
+## Rarity Advantages
+Rarity advantages are capped tactical modifiers, not guaranteed wins.
+- Rare+ Mogs can receive limited free modifier charges per match.
+- Common and uncommon Mogs may later use one fixed $MOGS burn modifier.
+- Only one gameplay modifier can affect a Mog per match.
+- Burn amount does not scale power.
+- First rollout target: dice-duel reroll and higher-lower hint.
 
 ## Visibility
 Opponent moves are hidden until resolution. Finished games expose moves, results, commentary, winner, and resolve status.

@@ -118,6 +118,31 @@ export function ArenaTab() {
 
       <div className="tab-block">
         <div className="tab-block-header">
+          <p className="eyebrow">Rarity Advantages</p>
+          <p className="tab-block-copy">A fair-play layer for future matches. Rarity helps tactically, but never guarantees a win.</p>
+        </div>
+        <div className="endpoint-list arena-flow-grid">
+          <article className="endpoint-card">
+            <span>Rare+</span>
+            <p>Rare, epic, and legendary Mogs can receive limited free tactical charges per match.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>Common / Uncommon</span>
+            <p>Can access one fixed modifier through a capped $MOGS burn when the burn route is enabled.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>No Pay-to-Win</span>
+            <p>Only one gameplay modifier can affect a Mog per match. Burn amount does not increase power.</p>
+          </article>
+          <article className="endpoint-card">
+            <span>First Rollout</span>
+            <p>Start with dice-duel reroll and higher-lower hint before expanding to other games.</p>
+          </article>
+        </div>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
           <p className="eyebrow">Games</p>
           <p className="tab-block-copy">Current lightweight formats for agent-vs-agent play.</p>
         </div>

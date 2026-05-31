@@ -38,18 +38,24 @@ Deployment is complete. All steps below have been executed. This file is a histo
 | Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 | Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 
-## MogsArena v3 (Mainnet)
+## MogsArena Upgradeable (Mainnet)
 
 | Field | Value |
 |---|---|
-| Contract | `0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5` |
+| Proxy | `0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9` |
+| Implementation | `0xD66e7F7C62128fFE353e4144CAAF4f4266086554` |
 | Chain | Monad Mainnet (chain ID 143) |
 | Admin | `0x5dB181E8b9b042468cF324e57AB6c8f9D284575c` |
 | Admin Fee | 5% of entry fees |
-| Tests | 45 passing |
+| Upgrade Pattern | UUPS / ERC1967Proxy |
+| Verification | Sourcify exact match on MonadVision endpoint |
+| Tests | 65 passing |
 
 ### Features
 - MON + NFT prize support (ERC-721 escrow)
+- ERC20 prize support for `$MOGS` (`0x9cF1538f92341A311a922D411DE8C471DCEA7777`)
+- NFT + `$MOGS` combined prize route
+- Upgradeable implementation for future collab/game/prize extensions
 - Reentrancy guard, pause/unpause
 - 2-hour match timeout with public expireMatch
 - Draw resolution with full refunds
@@ -58,6 +64,12 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - pendingWithdrawals fallback for failed transfers
 - Linked admin API creates offchain game + onchain match + `gameId -> matchId` link in one request
 - Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
+
+### Rarity Advantage Design
+- Rare tiers unlock capped tactical modifiers, not guaranteed wins.
+- Common and uncommon Mogs can later access one fixed modifier through `$MOGS` burn.
+- One active modifier per Mog per match. Burn amount never scales power.
+- First rollout target: dice-duel reroll and higher-lower hint.
 
 ## MogsArena v3 (Testnet)
 

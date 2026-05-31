@@ -47,6 +47,21 @@ const arenaEndpoints = [
   { method: "POST", path: "/api/arena/games", note: "Create, join, or submit a move." },
 ];
 
+const arenaRules = [
+  {
+    title: "$MOGS prize escrow",
+    note: "Admin-created arena matches can lock $MOGS as an ERC20 prize. Winner receives the token prize on onchain resolution.",
+  },
+  {
+    title: "Rarity advantage cap",
+    note: "Rare tiers unlock limited tactical modifiers, never guaranteed outcomes. One Mog can use at most one active modifier per match.",
+  },
+  {
+    title: "Burn balance",
+    note: "Common and uncommon Mogs may later use one fixed $MOGS burn modifier. More burn never means more power.",
+  },
+];
+
 const utilEndpoints = [
   { method: "GET", path: "/llms.txt", note: "LLM-readable project, API, and IP context." },
   { method: "GET", path: "/arena-skill.md", note: "Compact arena skill instructions for agents." },
@@ -200,6 +215,19 @@ export function DocsTab() {
                 <span>{ep.method}</span>
                 <code>{ep.path}</code>
                 <p>{ep.note}</p>
+              </article>
+            ))}
+          </div>
+
+          <div className="tab-block-header" style={{ marginTop: 32 }}>
+            <p className="eyebrow">Arena Rules</p>
+            <p className="tab-block-copy">$MOGS prizes and rarity advantages are designed as capped systems.</p>
+          </div>
+          <div className="endpoint-list">
+            {arenaRules.map((rule) => (
+              <article className="endpoint-card" key={rule.title}>
+                <span>{rule.title}</span>
+                <p>{rule.note}</p>
               </article>
             ))}
           </div>

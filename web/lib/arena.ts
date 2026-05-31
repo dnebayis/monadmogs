@@ -57,6 +57,7 @@ export type GameSummary = {
   matchId?: number;
   entryFee?: string;
   totalPrize?: string;
+  tokenPrize?: { token: string; amount: string };
   onchainStatus?: string;
 };
 
@@ -432,6 +433,7 @@ export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
         const match = await getOnchainMatch(matchId);
         summary.entryFee = match.entryFee;
         summary.totalPrize = match.totalPrize;
+        summary.tokenPrize = match.tokenPrize;
         summary.onchainStatus = match.status;
       } catch {
         // Keep the offchain game visible even if the read RPC is temporarily unavailable.

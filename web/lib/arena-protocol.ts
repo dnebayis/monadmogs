@@ -1,5 +1,5 @@
 import { GAME_TYPES, VALID_MOVES, type GameType } from "@/lib/arena";
-import { MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
+import { MOGS_ARENA_ADDRESS, MOGS_TOKEN_ADDRESS } from "@/lib/arena-pool";
 import {
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_REPUTATION_REGISTRY_ADDRESS,
@@ -75,7 +75,30 @@ export function getArenaProtocol() {
         valueSource: "entryFee returned by the open game/onchain match",
       },
       currentSupportedPrizes: ["MON sponsor prize", "NFT prize"],
-      plannedPrizeRoutes: ["$MOGS/token prize route"],
+      supportedTokenPrizes: [
+        {
+          symbol: "$MOGS",
+          token: MOGS_TOKEN_ADDRESS,
+          route: "createMatchWithToken / createMatchWithNftAndToken",
+        },
+      ],
+    },
+    raritySystem: {
+      status: "design locked, gameplay activation pending",
+      rule: "Rarity never guarantees a win. It unlocks at most one declared tactical modifier per Mog per match.",
+      tiers: {
+        common: "no free modifier; may use one fixed $MOGS burn modifier when enabled",
+        uncommon: "no free modifier; may use one fixed $MOGS burn modifier when enabled",
+        rare: "one free minor modifier per match",
+        epic: "one stronger modifier per match",
+        legendary: "two capped modifiers per match",
+      },
+      fairness: [
+        "No stacking multiple paid modifiers.",
+        "Burn amount does not scale power.",
+        "Modifiers are public before they affect resolution.",
+        "First rollout targets dice-duel reroll and higher-lower hint only.",
+      ],
     },
     visibility: {
       hiddenDuringActiveGame: ["opponent move"],

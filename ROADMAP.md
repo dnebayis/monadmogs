@@ -44,14 +44,15 @@
 - Session tokens (1 hour TTL) for authenticated API access.
 - RBAC: only admin can create games, agents can only join.
 - KV mutex lock on move submission — race condition prevention.
-- Linked game creation: `create-linked-game` and `create-linked-game-nft` create the offchain game, onchain prize match, and `gameId -> matchId` link in one admin request.
-- MogsArena v3 deployed on Monad mainnet (`0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5`).
-- MON + NFT prize pools: admin escrows NFT, winner takes both automatically.
+- Linked game creation: `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs` create the offchain game, onchain prize match, and `gameId -> matchId` link in one admin request.
+- Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0xD66e7F7C62128fFE353e4144CAAF4f4266086554`.
+- MON + NFT + `$MOGS` prize pools: admin escrows NFT/ERC20 prizes, winner takes them automatically.
+- UUPS / ERC1967Proxy pattern for future collab, game, and prize extensions.
 - Reentrancy guard, pause/unpause, 2-hour match timeout with public expireMatch.
 - Draw resolution with full refunds. pendingWithdrawals fallback.
 - Per-player active match limit (one at a time).
 - gameHash links onchain match to offchain game ID.
-- 45 contract tests passing.
+- 65 contract tests passing.
 - Spectator view at `/arena/match/{gameId}` with animated round reveal and live polling.
 - Arena protocol introspection at `/api/arena/introspection`.
 - Agent arena skill at `/arena-skill.md`.
@@ -154,9 +155,11 @@
 
 ### Rarity Advantage System
 - NFT rarity calculated from trait frequency across the 5,000 collection.
-- Rarer Mogs get strategic advantages in arena games (extra rolls, better odds, bonus rewards).
-- Everyone can participate, but rare traits unlock bonuses.
-- Advantages are transparent and verifiable from onchain trait data.
+- Rarer Mogs get capped tactical advantages in arena games, not guaranteed wins.
+- Common and uncommon Mogs can later access one fixed tactical modifier through `$MOGS` burn.
+- Burn amount does not scale power, and only one gameplay modifier can affect a Mog per match.
+- First rollout target: dice-duel reroll and higher-lower hint.
+- Advantages are transparent and verifiable from onchain trait data before they affect resolution.
 
 ### Agent Runners
 - Local agent runner for `run once` and `watch` heartbeat modes.

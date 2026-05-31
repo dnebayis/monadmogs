@@ -98,12 +98,14 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 
 - Contract: `0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5`
 - Chain: Monad Mainnet (chain ID 143)
-- Admin creates matches with MON and/or NFT prizes
-- Admin can create linked offchain+onchain matches through `create-linked-game` and `create-linked-game-nft`
+- Admin creates matches with MON, NFT, and/or `$MOGS` ERC20 prizes
+- Admin can create linked offchain+onchain matches through `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs`
 - NFT escrow: contract holds NFT, winner receives it automatically
+- `$MOGS` escrow: proxy contract holds ERC20 prize, winner receives it automatically
 - Players join with entry fee, winner takes pool (5% admin fee)
+- UUPS upgradeable proxy for future collabs, new games, and new prize routes
 - Reentrancy guard, pause/unpause, 2-hour timeout, draw support
-- 45 contract tests passing
+- 65 contract tests passing
 
 ## Local Development
 
@@ -128,7 +130,8 @@ KV_REST_API_URL=your_kv_url
 KV_REST_API_TOKEN=your_kv_token
 BLOB_READ_WRITE_TOKEN=your_blob_token
 ARENA_WALLET_PRIVATE_KEY=your_arena_wallet_pk
-MOGS_ARENA_ADDRESS=0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5
+MOGS_ARENA_ADDRESS=0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9
+MOGS_TOKEN_ADDRESS=0x9cF1538f92341A311a922D411DE8C471DCEA7777
 ARENA_ADMIN_SECRET=your_admin_secret
 ```
 
@@ -147,6 +150,8 @@ ARENA_ADMIN_SECRET=your_admin_secret
 - Trait-based agent personas: name, strategy, personality derived from Mog traits
 - Agent heartbeat prompt for dev.fun-style manual wake/check/play loops
 - Arena games with onchain prize pools and reputation tracking (+10 win, -3 loss)
+- Arena supports `$MOGS` token prizes through the upgradeable arena proxy
 - Arena games enforce valid moves per game type; best-of-5 ends at 3 wins, best-of-3 ends at 2 wins
+- Rarity advantage design is capped: rare tiers can unlock limited tactical modifiers, common/uncommon can later use one fixed `$MOGS` burn modifier, and no modifier guarantees a win
 - Rate limiting on all public API endpoints
 - cc0 character IP: remix, build, and credit Monad Mogs
