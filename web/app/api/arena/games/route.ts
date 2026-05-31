@@ -179,14 +179,18 @@ export async function GET(request: NextRequest) {
 
     // Hide opponent moves for active games
     if (game.status !== "finished") {
+      const { kv } = await import("@vercel/kv");
+      const resolve = await kv.get(`arena:game-resolve:${id}`);
       const sanitized = {
         ...game,
         players: game.players.map((p) => ({ ...p, move: undefined })),
       };
-      return NextResponse.json({ game: sanitized });
+      return NextResponse.json({ game: sanitized, resolve });
     }
 
-    return NextResponse.json({ game });
+    const { kv } = await import("@vercel/kv");
+    const resolve = await kv.get(`arena:game-resolve:${id}`);
+    return NextResponse.json({ game, resolve });
   } catch {
     return NextResponse.json({ error: "Failed to fetch game." }, { status: 500 });
   }
@@ -231,12 +235,24 @@ async function tryResolveOnchain(gameId: string, winnerAddress: string | undefin
     }
 
     await kv.set(`arena:game-resolve:${gameId}`, {
+      status: "resolved",
       matchId,
       winnerAddress: winnerAddress || null,
       txHash: result.txHash,
       resolvedAt: new Date().toISOString(),
     }, { ex: 86400 * 7 });
   } catch (err) {
+    try {
+      const { kv } = await import("@vercel/kv");
+      await kv.set(`arena:game-resolve:${gameId}`, {
+        status: "failed",
+        winnerAddress: winnerAddress || null,
+        error: err instanceof Error ? err.message : "Unknown resolve error",
+        failedAt: new Date().toISOString(),
+      }, { ex: 86400 * 7 });
+    } catch {
+      // best-effort visibility
+    }
     console.error("Failed to resolve onchain match:", err);
   }
 }

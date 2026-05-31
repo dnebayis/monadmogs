@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
     const signature = body.signature as string;
     const challenge = body.challenge as string;
     const mogId = typeof body.mogId === "number" ? body.mogId : undefined;
+    const agentId = typeof body.agentId === "number" ? body.agentId : undefined;
 
     if (!address || !signature || !challenge || !mogId) {
       return NextResponse.json(
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const result = await verifyAgentWallet(address, signature, challenge, mogId);
+      const result = await verifyAgentWallet(address, signature, challenge, mogId, agentId);
       if ("error" in result) {
         return NextResponse.json({ error: result.error }, { status: 403 });
       }

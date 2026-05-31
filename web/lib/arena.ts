@@ -123,12 +123,32 @@ function resolveRPS(a: GameMove, b: GameMove): "a" | "b" | "draw" {
   return "b";
 }
 
-function rollDice(): number {
-  return Math.floor(Math.random() * 6) + 1;
+function seededUnit(seed: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) / 4294967296;
 }
 
-function drawNumber(): number {
-  return Math.floor(Math.random() * 100) + 1;
+function roundSeed(game: Game, label: string) {
+  const [p1, p2] = game.players;
+  return [
+    game.id,
+    game.createdAt,
+    game.type,
+    game.round,
+    label,
+    p1?.address || "",
+    p1?.move || "",
+    p2?.address || "",
+    p2?.move || "",
+  ].join(":");
+}
+
+function deterministicInt(seed: string, max: number): number {
+  return Math.floor(seededUnit(seed) * max) + 1;
 }
 
 function resolveRound(game: Game): RoundResult | null {
@@ -141,7 +161,7 @@ function resolveRound(game: Game): RoundResult | null {
 
   switch (game.type) {
     case "coin-flip": {
-      const flip = Math.random() < 0.5 ? "heads" : "tails";
+      const flip = seededUnit(roundSeed(game, "coin-flip")) < 0.5 ? "heads" : "tails";
       const p1Won = p1.move === flip;
       const p2Won = p2.move === flip;
       p1Result = p1Won ? 1 : 0;
@@ -159,15 +179,15 @@ function resolveRound(game: Game): RoundResult | null {
       break;
     }
     case "dice-duel": {
-      p1Result = rollDice();
-      p2Result = rollDice();
+      p1Result = deterministicInt(roundSeed(game, "p1-dice"), 6);
+      p2Result = deterministicInt(roundSeed(game, "p2-dice"), 6);
       if (p1Result > p2Result) roundWinner = p1.address;
       else if (p2Result > p1Result) roundWinner = p2.address;
       break;
     }
     case "higher-lower": {
-      p1Result = drawNumber();
-      p2Result = drawNumber();
+      p1Result = deterministicInt(roundSeed(game, "p1-number"), 100);
+      p2Result = deterministicInt(roundSeed(game, "p2-number"), 100);
       if (p1Result === p2Result) break;
       const isHigher = p2Result > p1Result;
       const p1Correct =

@@ -63,7 +63,8 @@ export async function verifyAgentWallet(
   address: string,
   signature: string,
   challenge: string,
-  claimedMogId?: number
+  claimedMogId?: number,
+  claimedAgentId?: number
 ): Promise<(AgentSession & { token: string }) | { error: string }> {
   const normalizedAddress = address.toLowerCase();
 
@@ -134,26 +135,25 @@ export async function verifyAgentWallet(
       return { error: "Could not verify Mog ownership on Monad." };
     }
 
-    // Check ERC-8004 registration (optional — for reputation tracking)
-    // balanceOf returns token count, not token ID. We need to check if they
-    // have at least one registration. The actual agentId would require
-    // tokenOfOwnerByIndex or event scanning, which is expensive.
-    // For now, we mark agentId=0 (unregistered) unless we can resolve it.
-    try {
-      const registryBalance = await client.readContract({
-        address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-        abi: ERC8004_IDENTITY_REGISTRY_ABI,
-        functionName: "balanceOf",
-        args: [address as Address],
-      });
-      if (registryBalance > 0n) {
-        // Agent is registered but we don't know the exact agentId
-        // Reputation feedback requires the agentId, so it will be skipped
-        // until we implement proper agentId resolution
-        agentId = -1; // marker: registered but ID unknown
+    if (claimedAgentId !== undefined) {
+      if (!Number.isInteger(claimedAgentId) || claimedAgentId < 1) {
+        return { error: "agentId must be a positive integer." };
       }
-    } catch {
-      // best-effort
+
+      try {
+        const agentOwner = await client.readContract({
+          address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+          abi: ERC8004_IDENTITY_REGISTRY_ABI,
+          functionName: "ownerOf",
+          args: [BigInt(claimedAgentId)],
+        });
+        if (getAddress(agentOwner) !== getAddress(address as Address)) {
+          return { error: `Agent #${claimedAgentId} is not owned by this wallet.` };
+        }
+        agentId = claimedAgentId;
+      } catch {
+        return { error: "Could not verify ERC-8004 agent ownership." };
+      }
     }
   }
 
