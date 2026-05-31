@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
-  createGame,
+  createOpenGame,
+  linkGameToMatch,
   joinGame,
   submitMove,
   getGame,
@@ -42,20 +43,9 @@ export async function POST(request: NextRequest) {
     const matchId = typeof body.matchId === "number" ? body.matchId : undefined;
 
     try {
-      const game = await createGame(type, {
-        address: "admin",
-        mogId: 0,
-        mogName: "Arena",
-        agentId: 0,
-        score: 0,
-      });
-      // Remove the placeholder admin player — game starts empty, players join
-      game.players = [];
-      game.status = "waiting";
-      const { kv } = await import("@vercel/kv");
-      await kv.set(`arena:game:${game.id}`, game, { ex: 86400 });
+      const game = await createOpenGame(type);
       if (matchId) {
-        await kv.set(`arena:game-match:${game.id}`, matchId, { ex: 86400 });
+        await linkGameToMatch(game.id, matchId);
       }
       return NextResponse.json({ game }, { status: 201 });
     } catch {

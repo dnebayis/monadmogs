@@ -242,6 +242,29 @@ export async function createGame(
   return game;
 }
 
+export async function createOpenGame(type: GameType, id = crypto.randomUUID()): Promise<Game> {
+  const bestOf = GAME_TYPES[type].bestOf;
+  const game: Game = {
+    id,
+    type,
+    status: "waiting",
+    players: [],
+    maxPlayers: 2,
+    bestOf,
+    round: 1,
+    rounds: [],
+    createdAt: new Date().toISOString(),
+  };
+
+  await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
+  await kv.lpush(GAMES_KEY, game.id);
+  return game;
+}
+
+export async function linkGameToMatch(gameId: string, matchId: number): Promise<void> {
+  await kv.set(`arena:game-match:${gameId}`, matchId, { ex: 86400 });
+}
+
 export async function getGame(id: string): Promise<Game | null> {
   return kv.get<Game>(GAME_KEY(id));
 }

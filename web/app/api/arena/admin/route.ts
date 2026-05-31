@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { resetLeaderboard, getPlayerStats } from "@/lib/arena";
+import { resetLeaderboard, getPlayerStats, createOpenGame, linkGameToMatch, GAME_TYPES } from "@/lib/arena";
 import {
   cancelOnchainMatch,
   createOnchainMatch,
@@ -9,6 +9,7 @@ import {
   gameIdToHash,
 } from "@/lib/arena-pool";
 import type { Address } from "viem";
+import type { GameType } from "@/lib/arena";
 
 const ADMIN_SECRET = process.env.ARENA_ADMIN_SECRET || "";
 
@@ -27,6 +28,91 @@ export async function POST(request: NextRequest) {
   }
 
   const action = body.action as string;
+
+  /* ---- Create linked offchain game + onchain MON match ---- */
+  if (action === "create-linked-game") {
+    const { type, entryFee, sponsorMon } = body as {
+      type: GameType;
+      entryFee: string;
+      sponsorMon: string;
+    };
+    if (!type || !GAME_TYPES[type]) {
+      return NextResponse.json({ error: "Valid type required." }, { status: 400 });
+    }
+    if (!entryFee || !sponsorMon) {
+      return NextResponse.json(
+        { error: "entryFee and sponsorMon required." },
+        { status: 400 }
+      );
+    }
+
+    const gameId = crypto.randomUUID();
+    try {
+      const match = await createOnchainMatch(BigInt(entryFee), gameId, BigInt(sponsorMon));
+      const count = await import("@/lib/arena-pool").then((mod) => mod.getMatchCount());
+      const game = await createOpenGame(type, gameId);
+      await linkGameToMatch(game.id, count);
+      return NextResponse.json(
+        {
+          success: true,
+          game,
+          matchId: count,
+          txHash: match.txHash,
+          arenaFlow: "linked",
+        },
+        { status: 201 }
+      );
+    } catch (err) {
+      return NextResponse.json({ error: String(err), gameId }, { status: 500 });
+    }
+  }
+
+  /* ---- Create linked offchain game + onchain NFT match ---- */
+  if (action === "create-linked-game-nft") {
+    const { type, entryFee, sponsorMon, nftCollection, nftTokenId } = body as {
+      type: GameType;
+      entryFee: string;
+      sponsorMon: string;
+      nftCollection: string;
+      nftTokenId: string;
+    };
+    if (!type || !GAME_TYPES[type]) {
+      return NextResponse.json({ error: "Valid type required." }, { status: 400 });
+    }
+    if (!entryFee || !nftCollection || !nftTokenId) {
+      return NextResponse.json(
+        { error: "entryFee, nftCollection, nftTokenId required." },
+        { status: 400 }
+      );
+    }
+
+    const gameId = crypto.randomUUID();
+    try {
+      const match = await createOnchainMatchWithNft(
+        BigInt(entryFee),
+        gameId,
+        BigInt(sponsorMon || "0"),
+        nftCollection as Address,
+        BigInt(nftTokenId)
+      );
+      const count = await import("@/lib/arena-pool").then((mod) => mod.getMatchCount());
+      const game = await createOpenGame(type, gameId);
+      await linkGameToMatch(game.id, count);
+      return NextResponse.json(
+        {
+          success: true,
+          game,
+          matchId: count,
+          txHash: match.txHash,
+          approveTxHash: match.approveTxHash,
+          arenaFlow: "linked",
+        },
+        { status: 201 }
+      );
+    } catch (err) {
+      return NextResponse.json({ error: String(err), gameId }, { status: 500 });
+    }
+  }
 
   /* ---- Create onchain match (MON only) ---- */
   if (action === "create-match") {
@@ -163,6 +249,8 @@ export async function POST(request: NextRequest) {
       valid: [
         "create-match",
         "create-match-nft",
+        "create-linked-game",
+        "create-linked-game-nft",
         "resolve-match",
         "resolve-draw",
         "cancel-match",
