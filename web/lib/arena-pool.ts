@@ -79,6 +79,14 @@ export const MOGS_ARENA_ABI = [
           { name: "resolvedAt", type: "uint64" },
           { name: "deadline", type: "uint64" },
           { name: "gameHash", type: "bytes32" },
+          {
+            name: "nftPrize",
+            type: "tuple",
+            components: [
+              { name: "collection", type: "address" },
+              { name: "tokenId", type: "uint256" },
+            ],
+          },
         ],
       },
     ],
@@ -242,6 +250,10 @@ export async function getOnchainMatch(matchId: number) {
     resolvedAt: Number(m.resolvedAt),
     deadline: Number(m.deadline),
     gameHash: m.gameHash,
+    nftPrize: {
+      collection: m.nftPrize.collection,
+      tokenId: m.nftPrize.tokenId.toString(),
+    },
   };
 }
 

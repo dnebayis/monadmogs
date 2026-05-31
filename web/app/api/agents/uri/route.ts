@@ -35,7 +35,7 @@ function cleanCaps(value: string | null) {
  */
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
-  const rl = await rateLimit(`agent-uri:${ip}`, 20, 60);
+  const rl = await rateLimit(`agent-uri:${ip}`, 300, 60);
   if (!rl.ok) {
     return NextResponse.json(
       { error: "Too many requests." },
@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
   const render = apiUrl(`/api/v0/mogs/${tokenId}/render`);
   const traits = apiUrl(`/api/v0/mogs/${tokenId}/traits`);
   const agentRegistry = `eip155:${MONAD_CHAIN.id}:${ERC8004_IDENTITY_REGISTRY_ADDRESS}`;
+  const agentWallet = `eip155:${MONAD_CHAIN.id}:${getAddress(owner)}`;
 
   /* ---------------------------------------------------------------- */
   /*  ERC-8004 spec-compliant services array                          */
@@ -111,6 +112,10 @@ export async function GET(request: NextRequest) {
       version: "1.0.0",
       skills: ["trait-read"],
     },
+    {
+      name: "agentWallet",
+      endpoint: agentWallet,
+    },
   ];
 
   /* ---------------------------------------------------------------- */
@@ -125,9 +130,14 @@ export async function GET(request: NextRequest) {
     name,
     description: `${name} is a Monad Mogs agent identity bound to ${mog.name}. It uses the Mog's onchain traits as strategy context for future games, tools, and agent workflows.`,
     image,
+    image_url: image,
+    imageUrl: image,
+    avatar: image,
+    thumbnail_url: image,
 
     // --- Optional spec fields ---
     services,
+    endpoints: services,
     x402Support: false,
     active: true,
     registrations: [
@@ -142,6 +152,7 @@ export async function GET(request: NextRequest) {
     version: "1.0.0",
     external_url: detail,
     owner,
+    agentWallet,
     capabilities,
     strategy,
     context: siteUrl("/llms.txt"),

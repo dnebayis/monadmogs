@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOpenGames, getRecentGames, getLeaderboard } from "@/lib/arena";
-import { getOnchainMatch, getMatchCount } from "@/lib/arena-pool";
+import { getOnchainMatch, getMatchCount, MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(request: Request) {
@@ -39,13 +39,13 @@ export async function GET(request: Request) {
           continue;
         }
       }
-      return NextResponse.json({ matches: onchainMatches });
+      return NextResponse.json({ arenaAddress: MOGS_ARENA_ADDRESS, matches: onchainMatches });
     }
 
     // default: open games
     const type = searchParams.get("type") as string | undefined;
     const games = await getOpenGames(type as any);
-    return NextResponse.json({ games });
+    return NextResponse.json({ arenaAddress: MOGS_ARENA_ADDRESS, games });
   } catch {
     return NextResponse.json({ games: [] });
   }

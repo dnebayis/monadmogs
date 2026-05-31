@@ -14,6 +14,8 @@ import { validateAuthHeader } from "@/lib/arena-auth";
 import { resolveOnchainMatch, resolveOnchainDraw, getOnchainMatch, giveReputationFeedback } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 /* POST /api/arena/games — create (admin), join, or move (agent auth) */
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
@@ -98,6 +100,11 @@ export async function POST(request: NextRequest) {
     };
 
     try {
+      const onchainCheck = await validateOnchainParticipant(gameId, session.address);
+      if (!onchainCheck.ok) {
+        return NextResponse.json({ error: onchainCheck.error }, { status: 403 });
+      }
+
       const game = await joinGame(gameId, player, move);
       if (!game) {
         return NextResponse.json({ error: "Cannot join this game." }, { status: 400 });
@@ -183,6 +190,27 @@ export async function GET(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Failed to fetch game." }, { status: 500 });
   }
+}
+
+/* ---- Helper: ensure offchain players match onchain entrants ---- */
+async function validateOnchainParticipant(gameId: string, address: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { kv } = await import("@vercel/kv");
+  const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+  if (!matchId) return { ok: true };
+
+  const match = await getOnchainMatch(matchId);
+  const participants = [match.player1, match.player2]
+    .filter((player) => player && player !== ZERO_ADDRESS)
+    .map((player) => player.toLowerCase());
+
+  if (!participants.includes(address.toLowerCase())) {
+    return {
+      ok: false,
+      error: "This wallet has not joined the linked onchain match.",
+    };
+  }
+
+  return { ok: true };
 }
 
 /* ---- Helper: resolve onchain match ---- */

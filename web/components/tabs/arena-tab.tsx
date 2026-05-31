@@ -60,6 +60,7 @@ export function ArenaTab() {
                 <span>{GAME_TYPES[g.type]?.label}</span>
                 <span className="arena-open-game-meta">Best of {g.bestOf}</span>
                 <span className="arena-open-game-meta">{g.playerCount}/{g.maxPlayers}</span>
+                {g.matchId ? <span className="arena-open-game-meta">Match #{g.matchId}</span> : null}
                 <a className="text-link muted compact-action" href={`/arena/match/${g.id}`}>
                   Watch
                 </a>

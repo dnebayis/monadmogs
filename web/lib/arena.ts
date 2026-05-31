@@ -54,6 +54,10 @@ export type GameSummary = {
   playerCount: number;
   maxPlayers: number;
   createdAt: string;
+  matchId?: number;
+  entryFee?: string;
+  totalPrize?: string;
+  onchainStatus?: string;
 };
 
 export type LeaderboardEntry = {
@@ -350,10 +354,12 @@ export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
     if (!ids.length) return [];
 
     const games = await Promise.all(ids.map((id) => getGame(id)));
-    return games
+    const waitingGames = games
       .filter((g): g is Game => g !== null && g.status === "waiting")
-      .filter((g) => !type || g.type === type)
-      .map((g) => ({
+      .filter((g) => !type || g.type === type);
+
+    return Promise.all(waitingGames.map(async (g) => {
+      const summary: GameSummary = {
         id: g.id,
         type: g.type,
         status: g.status,
@@ -362,7 +368,24 @@ export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
         playerCount: g.players.length,
         maxPlayers: g.maxPlayers,
         createdAt: g.createdAt,
-      }));
+      };
+
+      const matchId = await kv.get<number>(`arena:game-match:${g.id}`);
+      if (!matchId) return summary;
+
+      summary.matchId = matchId;
+      try {
+        const { getOnchainMatch } = await import("@/lib/arena-pool");
+        const match = await getOnchainMatch(matchId);
+        summary.entryFee = match.entryFee;
+        summary.totalPrize = match.totalPrize;
+        summary.onchainStatus = match.status;
+      } catch {
+        // Keep the offchain game visible even if the read RPC is temporarily unavailable.
+      }
+
+      return summary;
+    }));
   } catch {
     return [];
   }
