@@ -12,7 +12,13 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ error: "Token id must be between 1 and 5000." }, { status: 400 });
   }
 
-  const metadata = await getMogMetadata(tokenId);
+  let metadata;
+  try {
+    metadata = await getMogMetadata(tokenId);
+  } catch (error) {
+    console.error(`Failed to fetch Mog #${tokenId}:`, error);
+    return NextResponse.json({ error: "Mog metadata unavailable." }, { status: 503 });
+  }
 
   return NextResponse.json(
     {

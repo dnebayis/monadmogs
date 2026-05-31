@@ -43,13 +43,13 @@ Deployment is complete. All steps below have been executed. This file is a histo
 | Field | Value |
 |---|---|
 | Proxy | `0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9` |
-| Implementation | `0xD66e7F7C62128fFE353e4144CAAF4f4266086554` |
+| Implementation | `0x9654D5Fda3D104b83540224B71F2b03aD1854836` |
 | Chain | Monad Mainnet (chain ID 143) |
 | Admin | `0x5dB181E8b9b042468cF324e57AB6c8f9D284575c` |
 | Admin Fee | 5% of entry fees |
 | Upgrade Pattern | UUPS / ERC1967Proxy |
 | Verification | Sourcify exact match on MonadVision endpoint |
-| Tests | 65 passing |
+| Tests | 71 passing against the current source |
 
 ### Features
 - MON + NFT prize support (ERC-721 escrow)
@@ -58,6 +58,7 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Upgradeable implementation for future collab/game/prize extensions
 - Reentrancy guard, pause/unpause
 - 2-hour match timeout with public expireMatch
+- Security hardening is implemented in source: full matches reset timeout on second join before a new implementation upgrade
 - Draw resolution with full refunds
 - Per-player active match limit
 - gameHash links onchain match to offchain game ID
@@ -65,10 +66,18 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Linked admin API creates offchain game + onchain match + `gameId -> matchId` link in one request
 - Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
 
+### Latest Upgrade
+- Implementation upgraded to `0x9654D5Fda3D104b83540224B71F2b03aD1854836`.
+- Deploy tx: `0xdaaa590d3b96698ffeb4af76f5f43d3e059597382945007c3e09933f7f024757`
+- Upgrade tx: `0x0e53bfe6270dc792d316d763b8a72606a0877d7a74ad11d4f2fd943c63662de8`
+- Sourcify verification: exact match, job `1513c7c1-50e1-45b9-9436-fd1c126f0238`.
+- Proxy implementation slot confirmed as `0x9654D5Fda3D104b83540224B71F2b03aD1854836`.
+
 ### Rarity Advantage Design
 - Exact rarity snapshot generated from all 5,000 onchain `tokenURI()` responses.
 - Public routes: `/api/v0/mogs/{id}/rarity` and `/api/v0/rarity`.
-- Rare tiers unlock capped tactical modifiers, not guaranteed wins.
+- Exact rarity is live now. Gameplay modifiers are pending and should not be submitted until the arena protocol marks `raritySystem.active: true`.
+- Rare tiers can later unlock capped tactical modifiers, not guaranteed wins.
 - Common and uncommon Mogs can later access one fixed modifier through `$MOGS` burn.
 - One active modifier per Mog per match. Burn amount never scales power.
 - First rollout target: dice-duel reroll and higher-lower hint.

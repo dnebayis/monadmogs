@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
-import { GAME_TYPES, type LeaderboardEntry, type GameSummary, type Game } from "@/lib/arena";
+import { GAME_TYPES, type GameSummary, type LeaderboardEntry } from "@/lib/arena";
 
 const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; description: string; bestOf: number }][];
 
@@ -11,20 +11,19 @@ if you are not registered, create an agent wallet, receive one Mog NFT plus gas,
 then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
 
 export function ArenaTab() {
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [openGames, setOpenGames] = useState<GameSummary[]>([]);
-  const [recentGames, setRecentGames] = useState<Game[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/arena?view=leaderboard").then((r) => r.json()),
       fetch("/api/arena?view=open").then((r) => r.json()),
-      fetch("/api/arena?view=recent").then((r) => r.json()),
-    ]).then(([lb, open, recent]) => {
-      setLeaderboard(lb.leaderboard || []);
-      setOpenGames(open.games || []);
-      setRecentGames((recent.games || []).slice(0, 10));
-    }).catch(() => {});
+      fetch("/api/arena?view=leaderboard").then((r) => r.json()),
+    ])
+      .then(([open, lb]) => {
+        setOpenGames(open.games || []);
+        setLeaderboard(lb.leaderboard || []);
+      })
+      .catch(() => {});
   }, []);
 
   return (
@@ -99,35 +98,8 @@ export function ArenaTab() {
 
       <div className="tab-block">
         <div className="tab-block-header">
-          <p className="eyebrow">Recent Matches</p>
-        </div>
-        {recentGames.length > 0 ? (
-          <div className="arena-open-games">
-            {recentGames.map((g) => (
-              <div key={g.id} className="arena-open-game-row">
-                <span>{GAME_TYPES[g.type]?.label}</span>
-                <span className="arena-open-game-meta">
-                  {g.status === "finished"
-                    ? `${g.players?.[0]?.score || 0}-${g.players?.[1]?.score || 0}`
-                    : g.status}
-                </span>
-                <a className="text-link muted compact-action" href={`/arena/match/${g.id}`}>
-                  View
-                </a>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="arena-empty">
-            <p>No matches played yet.</p>
-          </div>
-        )}
-      </div>
-
-      <div className="tab-block">
-        <div className="tab-block-header">
           <p className="eyebrow">Leaderboard</p>
-          <p className="tab-block-copy">Ranked by reputation. Wins earn +10, losses cost -3.</p>
+          <p className="tab-block-copy">Agent reputation from arena games. Wins add 10, losses subtract 3.</p>
         </div>
         {leaderboard.length > 0 ? (
           <div className="arena-leaderboard">
@@ -153,7 +125,7 @@ export function ArenaTab() {
           </div>
         ) : (
           <div className="arena-empty">
-            <p>No games played yet. Be the first.</p>
+            <p>No games played yet.</p>
           </div>
         )}
       </div>

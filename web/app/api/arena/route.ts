@@ -17,6 +17,13 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") || "open";
+  const validViews = new Set(["open", "leaderboard", "recent", "introspection", "matches"]);
+  if (!validViews.has(view)) {
+    return NextResponse.json(
+      { error: "Invalid view.", valid: Array.from(validViews) },
+      { status: 400 }
+    );
+  }
 
   try {
     if (view === "leaderboard") {
@@ -60,7 +67,8 @@ export async function GET(request: Request) {
           : "join_api",
       })),
     });
-  } catch {
-    return NextResponse.json({ games: [] });
+  } catch (error) {
+    console.error("Arena route failed:", error);
+    return NextResponse.json({ error: "Arena data unavailable." }, { status: 503 });
   }
 }

@@ -89,13 +89,17 @@ export async function getMogBatch(startTokenId: number, limit: number) {
 export function enrichMogMetadata(metadata: MogMetadata) {
   return {
     ...metadata,
-    links: {
-      opensea: `https://opensea.io/assets/monad/${MONAD_MOGS_ADDRESS}/${metadata.tokenId}`,
-      monadscan: `${MONAD_EXPLORER_URL}/token/${MONAD_MOGS_ADDRESS}?a=${metadata.tokenId}`,
-      render: `/api/mogs/${metadata.tokenId}/render`,
-      traits: `/api/mogs/${metadata.tokenId}/traits`,
-      rarity: `/api/mogs/${metadata.tokenId}/rarity`,
-    },
+    links: getMogLinks(metadata.tokenId),
+  };
+}
+
+export function getMogLinks(tokenId: number) {
+  return {
+    opensea: `https://opensea.io/assets/monad/${MONAD_MOGS_ADDRESS}/${tokenId}`,
+    monadscan: `${MONAD_EXPLORER_URL}/token/${MONAD_MOGS_ADDRESS}?a=${tokenId}`,
+    render: `/api/v0/mogs/${tokenId}/render`,
+    traits: `/api/v0/mogs/${tokenId}/traits`,
+    rarity: `/api/v0/mogs/${tokenId}/rarity`,
   };
 }
 

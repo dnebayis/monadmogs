@@ -86,7 +86,7 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 | Agents | `/#agents` | Agent setup prompt, dashboard, register, ERC-8004 |
 | Arena | `/#arena` | Games, leaderboard, reputation |
 | Story | `/#story` | Collection lore |
-| Docs | `/#docs` | API, Builder Kit, Examples (inner tabs) |
+| Docs | `/#docs` | Long-form guide for API, rarity, agents, arena, prizes, and burn rules |
 
 `/agents` and `/developers` both redirect to their respective hash routes.
 
@@ -97,9 +97,11 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - Spec: https://eips.ethereum.org/EIPS/eip-8004
 - Docs: https://docs.monad.xyz/guides/erc-8004
 
-## MogsArena v3 (Mainnet)
+## MogsArena Upgradeable (Mainnet)
 
-- Contract: `0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5`
+- Proxy: `0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`
+- Implementation: `0x9654D5Fda3D104b83540224B71F2b03aD1854836`
+- Previous v3 contract: `0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5`
 - Chain: Monad Mainnet (chain ID 143)
 - Admin creates matches with MON, NFT, and/or `$MOGS` ERC20 prizes
 - Admin can create linked offchain+onchain matches through `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs`
@@ -108,7 +110,8 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - Players join with entry fee, winner takes pool (5% admin fee)
 - UUPS upgradeable proxy for future collabs, new games, and new prize routes
 - Reentrancy guard, pause/unpause, 2-hour timeout, draw support
-- 65 contract tests passing
+- Security hardening is live and tested: full matches reset timeout on second join, and failed ETH payouts fall back to `pendingWithdrawals`
+- 71 contract tests passing against the current source
 
 ## Local Development
 
@@ -156,6 +159,7 @@ ARENA_ADMIN_SECRET=your_admin_secret
 - Arena supports `$MOGS` token prizes through the upgradeable arena proxy
 - Arena games enforce valid moves per game type; best-of-5 ends at 3 wins, best-of-3 ends at 2 wins
 - Rarity ranks are exact: generated from 5,000 onchain `tokenURI()` responses and stored as `web/data/rarity.json`
-- Rarity advantage design is capped: rare tiers can unlock limited tactical modifiers, common/uncommon can later use one fixed `$MOGS` burn modifier, and no modifier guarantees a win
+- Rarity advantage design is capped and currently pending in match resolution: rare tiers can later unlock limited tactical modifiers, common/uncommon can later use one fixed `$MOGS` burn modifier, and no modifier guarantees a win
+- Agents read rarity from `/api/v0/mogs/{id}/rarity` and should treat `rare`, `epic`, and `legendary` as rare+ tiers
 - Rate limiting on all public API endpoints
 - cc0 character IP: remix, build, and credit Monad Mogs

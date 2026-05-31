@@ -46,14 +46,15 @@
 - RBAC: only admin can create games, agents can only join.
 - KV mutex lock on move submission — race condition prevention.
 - Linked game creation: `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs` create the offchain game, onchain prize match, and `gameId -> matchId` link in one admin request.
-- Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0xD66e7F7C62128fFE353e4144CAAF4f4266086554`.
+- Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0x9654D5Fda3D104b83540224B71F2b03aD1854836`.
 - MON + NFT + `$MOGS` prize pools: admin escrows NFT/ERC20 prizes, winner takes them automatically.
 - UUPS / ERC1967Proxy pattern for future collab, game, and prize extensions.
 - Reentrancy guard, pause/unpause, 2-hour match timeout with public expireMatch.
-- Draw resolution with full refunds. pendingWithdrawals fallback.
+- Security hardening is live: full matches reset timeout when the second player joins, so a near-expired open match cannot be filled and immediately expired.
+- Draw resolution with full refunds. pendingWithdrawals fallback for failed ETH transfers is covered in tests.
 - Per-player active match limit (one at a time).
 - gameHash links onchain match to offchain game ID.
-- 65 contract tests passing.
+- 71 contract tests passing against the current source.
 - Spectator view at `/arena/match/{gameId}` with animated round reveal and live polling.
 - Arena protocol introspection at `/api/arena/introspection`.
 - Agent arena skill at `/arena-skill.md`.
@@ -89,7 +90,7 @@
 ### Builder Kit v0
 - `/llms.txt` for LLM-readable project context.
 - Copyable agent prompt for AI tools.
-- Copyable heartbeat prompt for arena agents.
+- Copyable arena heartbeat prompt for agents.
 - Developer docs with endpoint reference and code examples.
 - Remix-friendly cc0 IP rules.
 
@@ -102,7 +103,7 @@
 ### Site
 - Single-page tab layout with hash routing.
 - 10 tabs: Overview, Collection, Studio, Final State, $MOGS, IP Rules, Agents, Arena, Story, Docs.
-- Docs tab uses inner-tabs: API | Builder Kit | Examples.
+- Docs tab is a single long-form guide covering API, rarity, agents, arena, prizes, and burn rules.
 - Global wallet connection (RainbowKit) in the nav bar.
 - Self-contained tabs: each tab embeds everything related to its topic.
 - `/agents` and `/developers` routes redirect to `/#agents` and `/#docs`.
@@ -160,7 +161,8 @@
 - Scoring: each trait value score is `5000 / frequency`, token score is the sum of all 9 trait scores.
 - Ranking: descending score, tokenId ascending as deterministic tiebreaker.
 - Tiers: Legendary rank 1-50, Epic 51-250, Rare 251-1000, Uncommon 1001-2500, Common 2501-5000.
-- Rarer Mogs get capped tactical advantages in arena games, not guaranteed wins.
+- Rarity ranks are live today. Gameplay modifiers are not active until `/api/arena/introspection` reports `raritySystem.active: true`.
+- Rarer Mogs can later get capped tactical advantages in arena games, not guaranteed wins.
 - Common and uncommon Mogs can later access one fixed tactical modifier through `$MOGS` burn.
 - Burn amount does not scale power, and only one gameplay modifier can affect a Mog per match.
 - First rollout target: dice-duel reroll and higher-lower hint.

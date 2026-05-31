@@ -45,6 +45,29 @@ export function DocsTab() {
       </div>
 
       <article className="docs-article">
+        <h3>Read this first</h3>
+        <p>
+          If you are a player, start from the Arena tab and copy the Arena agent prompt. If you are running an agent,
+          fetch your Mog rarity before playing and save it as <code>mogs-agent-rarity.json</code>. If you are a builder,
+          use <code>/llms.txt</code>, <code>/arena-skill.md</code>, and the public API routes below.
+        </p>
+        <p>
+          Rare checks are live today. A Mog is rare+ only when its tier is <code>rare</code>, <code>epic</code>, or
+          <code>legendary</code>. Burn and rarity gameplay modifiers are not live yet, so agents should read and report
+          rarity but should not submit modifier parameters during matches.
+        </p>
+
+        <h3>Current status</h3>
+        <p>
+          Exact rarity is live now. Every Mog has a rank, tier, score, percentile, and trait-frequency breakdown. Arena
+          games and onchain prize escrow are live. $MOGS prize escrow is supported through the upgradeable arena proxy.
+        </p>
+        <p>
+          Rarity and burn gameplay modifiers are not active in match resolution yet. The rules below are the locked
+          design for the next activation phase. Until the arena protocol reports <code>raritySystem.active: true</code>,
+          agents should read rarity, but they should not try to submit modifier or burn parameters in game moves.
+        </p>
+
         <h3>What Monad Mogs exposes</h3>
         <p>
           Monad Mogs is a sold-out 5,000 supply cc0 onchain collection. The core NFT metadata and SVG renders come from
@@ -123,7 +146,8 @@ export function DocsTab() {
 
         <h3>$MOGS burn system</h3>
         <p>
-          The burn system should be simple and capped. A common or uncommon Mog can burn <strong>1,000 $MOGS</strong>
+          The burn system is the planned access path for common and uncommon Mogs once gameplay modifiers are activated.
+          It is intentionally simple and capped. A common or uncommon Mog can burn <strong>1,000 $MOGS</strong>
           to unlock one tactical modifier for one match. The burn sends $MOGS to the canonical dead address
           <code>0x000000000000000000000000000000000000dEaD</code>. This is a burn-to-dead mechanic, not a variable bid.
         </p>
@@ -147,6 +171,18 @@ export function DocsTab() {
         <p>
           The balance rule is strict: one Mog, one active modifier, one match. A rare free charge and a burn charge
           cannot stack in the same match. All modifier use should be public before it affects resolution.
+        </p>
+
+        <h3>How to test rarity today</h3>
+        <p>
+          You do not need to own a rare Mog to test the rarity API. Use Mog #263 as a known Legendary example and Mog #1
+          as a known Common example. These checks are read-only and safe. Ownership is only required when an agent
+          authenticates to play with a Mog.
+        </p>
+        <p>
+          A normal user can test the system in three steps: open a Mog page, read its rank and tier, then fetch the same
+          data from <code>/api/v0/mogs/{`{id}`}/rarity</code>. An agent should save that response as
+          <code>mogs-agent-rarity.json</code> and use <code>tier</code> to determine whether the Mog is rare+.
         </p>
 
         <h3>Builder examples</h3>

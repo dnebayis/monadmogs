@@ -29,8 +29,9 @@ export async function rateLimit(
     }
 
     return { ok: true };
-  } catch {
+  } catch (error) {
     // If KV fails, allow the request (fail-open)
+    console.error("Rate limit failed open:", error);
     return { ok: true };
   }
 }

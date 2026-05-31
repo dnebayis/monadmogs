@@ -210,6 +210,7 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
         } else {
             m.player2 = msg.sender;
             m.status = MatchStatus.Full;
+            m.deadline = uint64(block.timestamp + MATCH_TIMEOUT);
             activeMatch[msg.sender] = matchId;
             emit PlayerJoined(matchId, msg.sender, 2);
         }
@@ -233,8 +234,7 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
         _clearActiveMatch(m.player1, matchId);
         _clearActiveMatch(m.player2, matchId);
 
-        (bool success,) = winner.call{value: prize}("");
-        if (!success) revert TransferFailed();
+        _safeTransfer(winner, prize);
 
         if (m.nftPrize.collection != address(0)) {
             IERC721Prize(m.nftPrize.collection).safeTransferFrom(address(this), winner, m.nftPrize.tokenId);
@@ -259,10 +259,8 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
         _clearActiveMatch(m.player1, matchId);
         _clearActiveMatch(m.player2, matchId);
 
-        (bool s1,) = m.player1.call{value: refundP1}("");
-        if (!s1) revert TransferFailed();
-        (bool s2,) = m.player2.call{value: refundP2}("");
-        if (!s2) revert TransferFailed();
+        _safeTransfer(m.player1, refundP1);
+        _safeTransfer(m.player2, refundP2);
 
         if (m.nftPrize.collection != address(0)) {
             IERC721Prize(m.nftPrize.collection).safeTransferFrom(address(this), admin, m.nftPrize.tokenId);

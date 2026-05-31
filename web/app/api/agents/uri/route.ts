@@ -8,6 +8,7 @@ import {
 import { getMogMetadata, MAX_SUPPLY, parseTokenId } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { getMogRarity } from "@/lib/rarity";
 import { apiUrl, siteUrl } from "@/lib/urls";
 const client = createPublicClient({
   chain: MONAD_CHAIN,
@@ -80,6 +81,9 @@ export async function GET(request: NextRequest) {
   const metadata = apiUrl(`/api/v0/mogs/${tokenId}`);
   const render = apiUrl(`/api/v0/mogs/${tokenId}/render`);
   const traits = apiUrl(`/api/v0/mogs/${tokenId}/traits`);
+  const rarityUrl = apiUrl(`/api/v0/mogs/${tokenId}/rarity`);
+  const rarity = getMogRarity(tokenId);
+  const isRarePlus = rarity ? ["rare", "epic", "legendary"].includes(rarity.tier) : false;
   const agentRegistry = `eip155:${MONAD_CHAIN.id}:${ERC8004_IDENTITY_REGISTRY_ADDRESS}`;
   const agentWallet = `eip155:${MONAD_CHAIN.id}:${getAddress(owner)}`;
 
@@ -111,6 +115,12 @@ export async function GET(request: NextRequest) {
       endpoint: traits,
       version: "1.0.0",
       skills: ["trait-read"],
+    },
+    {
+      name: "rarity",
+      endpoint: rarityUrl,
+      version: "1.0.0",
+      skills: ["rarity-read", "tier-check"],
     },
     {
       name: "agentWallet",
@@ -155,6 +165,16 @@ export async function GET(request: NextRequest) {
     agentWallet,
     capabilities,
     strategy,
+    rarity: rarity
+      ? {
+          rank: rarity.rank,
+          tier: rarity.tier,
+          score: rarity.score,
+          percentile: rarity.percentile,
+          isRarePlus,
+          endpoint: rarityUrl,
+        }
+      : null,
     context: siteUrl("/llms.txt"),
     attributes: mog.attributes,
     tags: ["monad", "monad-mogs", "erc-8004", "onchain", "pixel", "hamster"],
@@ -176,6 +196,10 @@ export async function GET(request: NextRequest) {
       image,
       metadata,
       traits,
+      rarity: rarityUrl,
+      rarityTier: rarity?.tier || null,
+      rarityRank: rarity?.rank || null,
+      isRarePlus,
       verifiedOwner: verifiedMogOwner,
     },
   };

@@ -6,6 +6,7 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {MogsArenaUpgradeable} from "../src/MogsArenaUpgradeable.sol";
 import {MockERC20} from "./MockERC20.sol";
 import {MockERC721} from "./MockERC721.sol";
+import {RevertingReceiver} from "./RevertingReceiver.sol";
 
 contract MogsArenaUpgradeableTest is Test {
     MogsArenaUpgradeable public arena;
@@ -175,6 +176,64 @@ contract MogsArenaUpgradeableTest is Test {
         vm.prank(attacker);
         vm.expectRevert(MogsArenaUpgradeable.MatchNotExpired.selector);
         arena.expireMatch(id);
+    }
+
+    function test_fullMatchDeadlineResetsWhenSecondPlayerJoins() public {
+        mogs.approve(address(arena), TOKEN_PRIZE);
+        uint256 id = arena.createMatchWithToken{value: SPONSOR}(ENTRY, HASH, address(mogs), TOKEN_PRIZE);
+        vm.prank(p1);
+        arena.joinMatch{value: ENTRY}(id);
+
+        vm.warp(block.timestamp + 2 hours - 1);
+        vm.prank(p2);
+        arena.joinMatch{value: ENTRY}(id);
+
+        vm.prank(attacker);
+        vm.expectRevert(MogsArenaUpgradeable.MatchNotExpired.selector);
+        arena.expireMatch(id);
+
+        vm.warp(block.timestamp + 2 hours + 1);
+        vm.prank(attacker);
+        arena.expireMatch(id);
+        assertEq(uint8(arena.getMatch(id).status), 5);
+    }
+
+    function test_resolveMatch_usesPendingWithdrawalWhenWinnerRejectsEth() public {
+        RevertingReceiver receiver = new RevertingReceiver();
+        address rejectingWinner = address(receiver);
+        vm.deal(rejectingWinner, 50 ether);
+
+        mogs.approve(address(arena), TOKEN_PRIZE);
+        uint256 id = arena.createMatchWithToken{value: SPONSOR}(ENTRY, HASH, address(mogs), TOKEN_PRIZE);
+        vm.prank(rejectingWinner);
+        arena.joinMatch{value: ENTRY}(id);
+        vm.prank(p2);
+        arena.joinMatch{value: ENTRY}(id);
+
+        arena.resolveMatch(id, rejectingWinner);
+
+        uint256 expectedPrize = SPONSOR + (ENTRY * 2) - (ENTRY * 2 * 500 / 10000);
+        assertEq(arena.pendingWithdrawals(rejectingWinner), expectedPrize);
+        assertEq(mogs.balanceOf(rejectingWinner), TOKEN_PRIZE);
+    }
+
+    function test_resolveDraw_usesPendingWithdrawalWhenPlayerRejectsEth() public {
+        RevertingReceiver receiver = new RevertingReceiver();
+        address rejectingPlayer = address(receiver);
+        vm.deal(rejectingPlayer, 50 ether);
+
+        uint256 id = arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+        vm.prank(rejectingPlayer);
+        arena.joinMatch{value: ENTRY}(id);
+        vm.prank(p2);
+        arena.joinMatch{value: ENTRY}(id);
+
+        arena.resolveDraw(id);
+
+        uint256 halfSponsor = SPONSOR / 2;
+        uint256 expectedRefund = ENTRY + halfSponsor;
+        assertEq(arena.pendingWithdrawals(rejectingPlayer), expectedRefund);
+        assertEq(p2.balance, 50 ether + halfSponsor);
     }
 
     function test_createMatchWithNftAndToken_sendsBothToWinner() public {

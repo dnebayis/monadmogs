@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
       // If game finished, resolve pool + reputation
       if (game.status === "finished") {
-        if (game.winner) await tryResolveOnchain(gameId, game.winner);
+        await tryResolveOnchain(gameId, game.winner);
         tryReputationFeedback(game).catch(() => {});
       }
 
@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
 
       // If game finished, resolve pool + reputation
       if (game.status === "finished") {
-        if (game.winner) await tryResolveOnchain(gameId, game.winner);
+        await tryResolveOnchain(gameId, game.winner);
         tryReputationFeedback(game).catch(() => {});
       }
 

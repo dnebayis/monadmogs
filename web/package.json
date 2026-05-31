@@ -8,7 +8,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "generate:rarity": "node scripts/generate-rarity.mjs",
-    "lint": "next lint"
+    "test:api": "node scripts/test-api-e2e.mjs",
+    "lint": "next typegen && tsc --noEmit --incremental false"
   },
   "dependencies": {
     "@rainbow-me/rainbowkit": "^2.2.9",
