@@ -570,6 +570,40 @@ h2 {
   gap: 0;
 }
 
+.docs-quick-actions {
+  margin-top: 0;
+  margin-bottom: 28px;
+}
+
+.docs-start-block {
+  padding-top: 28px;
+}
+
+.docs-start-grid {
+  margin-top: 18px;
+}
+
+.docs-start-grid .endpoint-card {
+  min-height: 132px;
+}
+
+.arena-start-block {
+  padding-top: 28px;
+}
+
+.arena-start-actions {
+  margin-top: 18px;
+}
+
+.arena-secondary-prompt,
+.docs-secondary-prompt {
+  margin-top: 16px;
+}
+
+.arena-flow-grid .endpoint-card {
+  min-height: 132px;
+}
+
 .overview-grid,
 .api-summary {
   display: grid;
