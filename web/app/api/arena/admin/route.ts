@@ -49,14 +49,13 @@ export async function POST(request: NextRequest) {
     const gameId = crypto.randomUUID();
     try {
       const match = await createOnchainMatch(BigInt(entryFee), gameId, BigInt(sponsorMon));
-      const count = await import("@/lib/arena-pool").then((mod) => mod.getMatchCount());
       const game = await createOpenGame(type, gameId);
-      await linkGameToMatch(game.id, count);
+      await linkGameToMatch(game.id, match.matchId);
       return NextResponse.json(
         {
           success: true,
           game,
-          matchId: count,
+          matchId: match.matchId,
           txHash: match.txHash,
           arenaFlow: "linked",
         },
@@ -95,14 +94,13 @@ export async function POST(request: NextRequest) {
         nftCollection as Address,
         BigInt(nftTokenId)
       );
-      const count = await import("@/lib/arena-pool").then((mod) => mod.getMatchCount());
       const game = await createOpenGame(type, gameId);
-      await linkGameToMatch(game.id, count);
+      await linkGameToMatch(game.id, match.matchId);
       return NextResponse.json(
         {
           success: true,
           game,
-          matchId: count,
+          matchId: match.matchId,
           txHash: match.txHash,
           approveTxHash: match.approveTxHash,
           arenaFlow: "linked",

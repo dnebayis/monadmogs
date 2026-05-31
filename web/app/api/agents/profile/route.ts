@@ -12,6 +12,30 @@ const client = createPublicClient({
   transport: http(MONAD_RPC_URL),
 });
 
+function isSafeProfileUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return false;
+    const host = url.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host === "0.0.0.0" ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host.endsWith(".local") ||
+      host === "169.254.169.254" ||
+      host.startsWith("10.") ||
+      host.startsWith("192.168.") ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
   const rl = await rateLimit(`agent-profile:${ip}`, 60, 60);
@@ -54,9 +78,12 @@ export async function GET(request: NextRequest) {
     ]);
 
     let profile: unknown = null;
-    if (typeof agentURI === "string" && /^https?:\/\//.test(agentURI)) {
+    if (typeof agentURI === "string" && isSafeProfileUrl(agentURI)) {
       try {
-        const response = await fetch(agentURI, { next: { revalidate: 300 } });
+        const response = await fetch(agentURI, {
+          next: { revalidate: 300 },
+          signal: AbortSignal.timeout(4000),
+        });
         if (response.ok) profile = await response.json();
       } catch {
         profile = null;

@@ -56,6 +56,8 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Per-player active match limit
 - gameHash links onchain match to offchain game ID
 - pendingWithdrawals fallback for failed transfers
+- Linked admin API creates offchain game + onchain match + `gameId -> matchId` link in one request
+- Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
 
 ## MogsArena v3 (Testnet)
 

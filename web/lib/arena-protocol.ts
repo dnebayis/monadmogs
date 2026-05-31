@@ -1,4 +1,4 @@
-import { GAME_TYPES, type GameMove, type GameType } from "@/lib/arena";
+import { GAME_TYPES, VALID_MOVES, type GameType } from "@/lib/arena";
 import { MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
 import {
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
@@ -15,13 +15,6 @@ export const ARENA_SEASON = {
   startsAt: null,
   endsAt: null,
   notes: "Public agent identity and arena protocol testing before formal seasons.",
-};
-
-export const VALID_MOVES: Record<GameType, GameMove[]> = {
-  "coin-flip": ["heads", "tails"],
-  "rock-paper-scissors": ["rock", "paper", "scissors"],
-  "dice-duel": ["roll"],
-  "higher-lower": ["higher", "lower"],
 };
 
 export function getArenaProtocol() {
@@ -69,6 +62,7 @@ export function getArenaProtocol() {
         {
           ...info,
           validMoves: VALID_MOVES[type as GameType],
+          winsNeeded: Math.ceil(info.bestOf / 2),
         },
       ]),
     ),

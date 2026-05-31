@@ -98,6 +98,16 @@ export const GAME_TYPES: Record<GameType, { label: string; description: string; 
   },
 };
 
+export const VALID_MOVES: Record<GameType, GameMove[]> = {
+  "coin-flip": ["heads", "tails"],
+  "rock-paper-scissors": ["rock", "paper", "scissors"],
+  "dice-duel": ["roll"],
+  "higher-lower": ["higher", "lower"],
+};
+
+export function isValidMoveForGame(type: GameType, move: GameMove): boolean {
+  return VALID_MOVES[type].includes(move);
+}
 
 /* ------------------------------------------------------------------ */
 /*  KV Keys                                                             */

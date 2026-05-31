@@ -10,6 +10,7 @@ import {
   type GameMove,
   type GamePlayer,
   GAME_TYPES,
+  isValidMoveForGame,
 } from "@/lib/arena";
 import { validateAuthHeader } from "@/lib/arena-auth";
 import { resolveOnchainMatch, resolveOnchainDraw, getOnchainMatch, giveReputationFeedback } from "@/lib/arena-pool";
@@ -90,6 +91,17 @@ export async function POST(request: NextRequest) {
     };
 
     try {
+      const existingGame = await getGame(gameId);
+      if (!existingGame) {
+        return NextResponse.json({ error: "Game not found." }, { status: 404 });
+      }
+      if (move && !isValidMoveForGame(existingGame.type, move)) {
+        return NextResponse.json(
+          { error: `Invalid move '${move}' for ${existingGame.type}.` },
+          { status: 400 }
+        );
+      }
+
       const onchainCheck = await validateOnchainParticipant(gameId, session.address);
       if (!onchainCheck.ok) {
         return NextResponse.json({ error: onchainCheck.error }, { status: 403 });
@@ -123,6 +135,17 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      const existingGame = await getGame(gameId);
+      if (!existingGame) {
+        return NextResponse.json({ error: "Game not found." }, { status: 404 });
+      }
+      if (!isValidMoveForGame(existingGame.type, move)) {
+        return NextResponse.json(
+          { error: `Invalid move '${move}' for ${existingGame.type}.` },
+          { status: 400 }
+        );
+      }
+
       const game = await submitMove(gameId, session.address, move, commentary);
       if (!game) {
         return NextResponse.json({ error: "Cannot submit move." }, { status: 400 });

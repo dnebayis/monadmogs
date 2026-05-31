@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, keccak256, toHex, type Address } from "viem";
+import { createPublicClient, createWalletClient, decodeEventLog, http, keccak256, toHex, type Address, type TransactionReceipt } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { ERC8004_REPUTATION_REGISTRY_ABI, ERC8004_REPUTATION_REGISTRY_ADDRESS } from "@/lib/erc8004";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
@@ -11,6 +11,18 @@ export const MOGS_ARENA_ADDRESS = (process.env.MOGS_ARENA_ADDRESS ||
   "0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5") as Address;
 
 export const MOGS_ARENA_ABI = [
+  {
+    type: "event",
+    name: "MatchCreated",
+    inputs: [
+      { name: "matchId", type: "uint256", indexed: true },
+      { name: "sponsorPrize", type: "uint256", indexed: false },
+      { name: "entryFee", type: "uint256", indexed: false },
+      { name: "gameHash", type: "bytes32", indexed: false },
+      { name: "nftCollection", type: "address", indexed: false },
+      { name: "nftTokenId", type: "uint256", indexed: false },
+    ],
+  },
   {
     type: "function",
     name: "createMatch",
@@ -194,6 +206,26 @@ export function gameIdToHash(gameId: string): `0x${string}` {
   return keccak256(toHex(gameId));
 }
 
+function getMatchIdFromReceipt(receipt: TransactionReceipt): number | null {
+  for (const log of receipt.logs) {
+    if (log.address.toLowerCase() !== MOGS_ARENA_ADDRESS.toLowerCase()) continue;
+    if (!log.topics.length) continue;
+    try {
+      const decoded = decodeEventLog({
+        abi: MOGS_ARENA_ABI,
+        data: log.data,
+        topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+      });
+      if (decoded.eventName === "MatchCreated") {
+        return Number(decoded.args.matchId);
+      }
+    } catch {
+      // Ignore unrelated logs.
+    }
+  }
+  return null;
+}
+
 /* ------------------------------------------------------------------ */
 /*  ERC-721 approve ABI (minimal)                                       */
 /* ------------------------------------------------------------------ */
@@ -315,7 +347,9 @@ export async function createOnchainMatchWithNft(
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
-  return { txHash: hash, approveTxHash: approveHash, status: receipt.status };
+  const matchId = getMatchIdFromReceipt(receipt);
+  if (!matchId) throw new Error("Could not read matchId from MatchCreated event.");
+  return { txHash: hash, approveTxHash: approveHash, status: receipt.status, matchId };
 }
 
 export async function createOnchainMatch(entryFee: bigint, gameId: string, sponsorValue: bigint) {
@@ -331,7 +365,9 @@ export async function createOnchainMatch(entryFee: bigint, gameId: string, spons
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
-  return { txHash: hash, status: receipt.status };
+  const matchId = getMatchIdFromReceipt(receipt);
+  if (!matchId) throw new Error("Could not read matchId from MatchCreated event.");
+  return { txHash: hash, status: receipt.status, matchId };
 }
 
 export async function resolveOnchainMatch(matchId: number, winnerAddress: string) {
