@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createPublicClient, getAddress, http, isAddress } from "viem";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import {
+  ERC8004_IDENTITY_REGISTRY_ABI,
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_REPUTATION_REGISTRY_ADDRESS,
 } from "@/lib/erc8004";
@@ -14,6 +15,76 @@ const client = createPublicClient({
   chain: MONAD_CHAIN,
   transport: http(MONAD_RPC_URL),
 });
+
+/**
+ * Resolve the ERC-8004 agentId for an owner address.
+ *
+ * The identity registry is a plain ERC-721 (no Enumerable extension), so
+ * there is no `tokenOfOwnerByIndex`.  We first check `balanceOf(owner)`;
+ * if zero we bail immediately.  Otherwise we do a descending scan from the
+ * latest known agentId (found via binary search) and return the first match.
+ * A batch of 200 parallel `ownerOf` calls keeps latency low – the total
+ * supply is small and new registrations always get the highest IDs.
+ */
+async function resolveAgentId(ownerAddress: string): Promise<number | null> {
+  try {
+    const balance = await client.readContract({
+      address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+      abi: ERC8004_IDENTITY_REGISTRY_ABI,
+      functionName: "balanceOf",
+      args: [ownerAddress as `0x${string}`],
+    });
+    if (balance === 0n) return null;
+
+    // Binary-search for the highest minted agentId
+    let lo = 1n;
+    let hi = 100_000n;
+    while (lo < hi) {
+      const mid = (lo + hi + 1n) / 2n;
+      try {
+        await client.readContract({
+          address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+          abi: ERC8004_IDENTITY_REGISTRY_ABI,
+          functionName: "ownerOf",
+          args: [mid],
+        });
+        lo = mid;
+      } catch {
+        hi = mid - 1n;
+      }
+    }
+    const maxId = lo;
+
+    // Descending scan in batches of 200
+    const normalized = getAddress(ownerAddress);
+    const BATCH = 200n;
+    for (let start = maxId; start >= 1n; start -= BATCH) {
+      const end = start - BATCH + 1n < 1n ? 1n : start - BATCH + 1n;
+      const calls: bigint[] = [];
+      for (let id = start; id >= end; id--) calls.push(id);
+
+      const results = await Promise.allSettled(
+        calls.map((id) =>
+          client.readContract({
+            address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+            abi: ERC8004_IDENTITY_REGISTRY_ABI,
+            functionName: "ownerOf",
+            args: [id],
+          }).then((addr) => ({ id, addr }))
+        )
+      );
+
+      for (const r of results) {
+        if (r.status === "fulfilled" && getAddress(r.value.addr) === normalized) {
+          return Number(r.value.id);
+        }
+      }
+    }
+  } catch {
+    // Silently fall back to null – the URI still works without agentId
+  }
+  return null;
+}
 
 function cleanText(value: string | null, fallback: string) {
   return (value || fallback).trim().slice(0, 80);
@@ -84,6 +155,7 @@ export async function GET(request: NextRequest) {
   const rarityUrl = apiUrl(`/api/v0/mogs/${tokenId}/rarity`);
   const rarity = getMogRarity(tokenId);
   const isRarePlus = rarity ? ["rare", "epic", "legendary"].includes(rarity.tier) : false;
+  const agentId = await resolveAgentId(owner);
   const agentRegistry = `eip155:${MONAD_CHAIN.id}:${ERC8004_IDENTITY_REGISTRY_ADDRESS}`;
   const agentWallet = `eip155:${MONAD_CHAIN.id}:${getAddress(owner)}`;
 
@@ -152,7 +224,7 @@ export async function GET(request: NextRequest) {
     active: true,
     registrations: [
       {
-        agentId: null,
+        agentId,
         agentRegistry,
       },
     ],
