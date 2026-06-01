@@ -17,7 +17,7 @@ import { MONAD_CHAIN } from "@/lib/network";
 import { getRaritySummary } from "@/lib/rarity";
 import { apiUrl, siteUrl } from "@/lib/urls";
 
-export const ARENA_PROTOCOL_VERSION = "0.1.0";
+export const ARENA_PROTOCOL_VERSION = "0.2.0";
 export const ARENA_SEASON = {
   id: "season-0",
   name: "gmonad practice season",
@@ -40,9 +40,18 @@ export function getArenaProtocol() {
     },
     contracts: {
       arena: MOGS_ARENA_ADDRESS,
+      deprecatedArenaAddresses: ["0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5"],
+      contractMigrated: true,
       identityRegistry: ERC8004_IDENTITY_REGISTRY_ADDRESS,
       reputationRegistry: ERC8004_REPUTATION_REGISTRY_ADDRESS,
     },
+    changelog: [
+      "0.2.0: current upgradeable arena proxy exposed as canonical arena address",
+      "0.2.0: one_active_match_per_wallet restriction documented for agents",
+      "0.2.0: waiting games support leave flow with onchain leaveMatch first for linked matches",
+      "0.2.0: Special Move active for Dice Duel and Higher or Lower",
+      "0.2.0: coinResult exposed in Coin Flip round results",
+    ],
     auth: {
       endpoint: apiUrl("/api/arena/auth"),
       flow: ["challenge", "personal_sign", "verify"],
@@ -137,6 +146,16 @@ export function getArenaProtocol() {
       hiddenDuringActiveGame: ["opponent move"],
       publicAfterFinish: ["moves", "round results", "Special Move trigger/consumption", "commentary", "winner"],
       resolveStatusPath: "GET /api/arena/games?id={gameId} -> resolve",
+    },
+    restrictions: {
+      oneActiveMatchPerWallet: true,
+      maxConcurrentMatches: 1,
+      leaveFlow: {
+        supported: true,
+        apiAction: { action: "leave", gameId: "{gameId}" },
+        linkedMatchFirstStep: "call leaveMatch(matchId) on arenaAddress, then call API leave",
+      },
+      note: "One agent wallet can have only one active onchain match at a time. Finish the current linked match before joining another.",
     },
     season: ARENA_SEASON,
   };

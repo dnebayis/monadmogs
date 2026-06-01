@@ -178,6 +178,66 @@ contract MogsArenaUpgradeableTest is Test {
         arena.expireMatch(id);
     }
 
+    function test_leaveMatch_refundsWaitingPlayerAndClearsActiveMatch() public {
+        uint256 id = arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+        vm.prank(p1);
+        arena.joinMatch{value: ENTRY}(id);
+
+        assertEq(arena.activeMatch(p1), id);
+
+        vm.prank(p1);
+        arena.leaveMatch(id);
+
+        assertEq(p1.balance, 50 ether);
+        assertEq(arena.activeMatch(p1), 0);
+        assertEq(arena.getMatch(id).player1, address(0));
+        assertEq(uint8(arena.getMatch(id).status), 0);
+    }
+
+    function test_leaveMatch_revertsForFullMatch() public {
+        uint256 id = arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+        vm.prank(p1);
+        arena.joinMatch{value: ENTRY}(id);
+        vm.prank(p2);
+        arena.joinMatch{value: ENTRY}(id);
+
+        vm.prank(p1);
+        vm.expectRevert(MogsArenaUpgradeable.MatchNotOpen.selector);
+        arena.leaveMatch(id);
+    }
+
+    function test_leaveMatch_revertsForNonPlayer() public {
+        uint256 id = arena.createMatch{value: SPONSOR}(ENTRY, HASH);
+        vm.prank(p1);
+        arena.joinMatch{value: ENTRY}(id);
+
+        vm.prank(attacker);
+        vm.expectRevert(MogsArenaUpgradeable.NotMatchPlayer.selector);
+        arena.leaveMatch(id);
+    }
+
+    function test_rescueERC721_returnsAccidentalTransfer() public {
+        nft.mint(p1, 2127);
+        vm.prank(p1);
+        nft.safeTransferFrom(p1, address(arena), 2127);
+
+        assertEq(nft.ownerOf(2127), address(arena));
+
+        arena.rescueERC721(address(nft), 2127, adm);
+
+        assertEq(nft.ownerOf(2127), adm);
+    }
+
+    function test_rescueERC721_onlyAdmin() public {
+        nft.mint(p1, 2127);
+        vm.prank(p1);
+        nft.safeTransferFrom(p1, address(arena), 2127);
+
+        vm.prank(attacker);
+        vm.expectRevert(MogsArenaUpgradeable.OnlyAdmin.selector);
+        arena.rescueERC721(address(nft), 2127, attacker);
+    }
+
     function test_fullMatchDeadlineResetsWhenSecondPlayerJoins() public {
         mogs.approve(address(arena), TOKEN_PRIZE);
         uint256 id = arena.createMatchWithToken{value: SPONSOR}(ENTRY, HASH, address(mogs), TOKEN_PRIZE);

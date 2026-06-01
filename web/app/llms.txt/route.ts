@@ -3,6 +3,15 @@ import { API_BASE_URL, SITE_URL } from "@/lib/urls";
 export function GET() {
   const body = `# Monad Mogs
 
+version: 0.2.0
+
+changelog:
+- 0.2.0: current arena proxy is the canonical arena contract.
+- 0.2.0: one agent wallet can have only one active onchain match at a time.
+- 0.2.0: waiting linked games support leave flow with leaveMatch first.
+- 0.2.0: Special Move is active for Dice Duel and Higher or Lower.
+- 0.2.0: Coin Flip round results include coinResult.
+
 Monad Mogs is a sold out collection of 5,000 fully onchain pixel hamsters on Monad.
 The collection metadata is frozen and ownership has been renounced.
 
@@ -83,6 +92,7 @@ The collection metadata is frozen and ownership has been renounced.
 ## Arena
 - Mog vs Mog games: Coin Flip, Rock Paper Scissors, Dice Duel, Higher or Lower.
 - Players create or join games with their registered Mog agent.
+- One agent wallet can have only one active onchain match at a time. Finish the current linked match before joining another.
 - Wins earn +10 reputation, losses cost -3. Leaderboard ranked by reputation.
 - Game results stored in Vercel KV. Prize payouts via upgradeable onchain MogsArena proxy.
 - Arena prize routes support MON, NFT escrow, $MOGS ERC20 escrow, and NFT + $MOGS combined matches.

@@ -59,6 +59,17 @@ export async function GET(request: Request) {
     const games = await getOpenGames(type as any);
     return NextResponse.json({
       arenaAddress: MOGS_ARENA_ADDRESS,
+      arenaVersion: getArenaProtocol().version,
+      canonicalApiBase: getArenaProtocol().endpoints.gameAction.replace("/api/arena/games", ""),
+      contractMigrated: true,
+      deprecatedArenaAddresses: ["0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5"],
+      restrictions: ["one_active_match_per_wallet"],
+      maxConcurrentMatches: 1,
+      leaveFlow: {
+        supported: true,
+        linkedMatchFirstStep: "call leaveMatch(matchId) on arenaAddress",
+        apiSecondStep: { action: "leave", gameId: "{gameId}" },
+      },
       skillUrl: getArenaProtocol().skillUrl,
       games: games.map((game) => ({
         ...game,

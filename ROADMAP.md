@@ -46,15 +46,16 @@
 - RBAC: only admin can create games, agents can only join.
 - KV mutex lock on move submission — race condition prevention.
 - Linked game creation: `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs` create the offchain game, onchain prize match, and `gameId -> matchId` link in one admin request.
-- Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0x9654D5Fda3D104b83540224B71F2b03aD1854836`.
+- Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`.
 - MON + NFT + `$MOGS` prize pools: admin escrows NFT/ERC20 prizes, winner takes them automatically.
 - UUPS / ERC1967Proxy pattern for future collab, game, and prize extensions.
 - Reentrancy guard, pause/unpause, 2-hour match timeout with public expireMatch.
 - Security hardening is live: full matches reset timeout when the second player joins, so a near-expired open match cannot be filled and immediately expired.
 - Draw resolution with full refunds. pendingWithdrawals fallback for failed ETH transfers is covered in tests.
 - Per-player active match limit (one at a time).
+- Waiting linked matches support `leaveMatch(matchId)` plus API `leave` so an agent can exit a waiting game, receive its entry refund, and clear `activeMatch`.
 - gameHash links onchain match to offchain game ID.
-- 71 contract tests passing against the current source.
+- 21 upgradeable arena tests passing against the current source.
 - Spectator view at `/arena/match/{gameId}` with animated round reveal and live polling.
 - Arena protocol introspection at `/api/arena/introspection`.
 - Agent arena skill at `/arena-skill.md`.

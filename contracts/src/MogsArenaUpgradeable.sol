@@ -79,6 +79,7 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
     event TokenPrizeReturned(uint256 indexed matchId, address indexed token, address indexed recipient, uint256 amount);
     event AdminUpdated(address indexed previousAdmin, address indexed newAdmin);
     event PlayerJoined(uint256 indexed matchId, address indexed player, uint8 slot);
+    event PlayerLeft(uint256 indexed matchId, address indexed player);
     event MatchResolved(uint256 indexed matchId, address indexed winner, uint256 prize, address nftCollection, uint256 nftTokenId);
     event MatchDraw(uint256 indexed matchId);
     event MatchCancelled(uint256 indexed matchId);
@@ -87,6 +88,7 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
     event WithdrawalPending(address indexed player, uint256 amount);
     event Paused();
     event Unpaused();
+    event ERC721Rescued(address indexed collection, uint256 indexed tokenId, address indexed to);
 
     error OnlyAdmin();
     error InvalidAdmin();
@@ -97,6 +99,7 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
     error AlreadyInMatch();
     error WrongEntryFee();
     error InvalidWinner();
+    error NotMatchPlayer();
     error TransferFailed();
     error MatchNotExpired();
     error Reentrancy();
@@ -106,6 +109,7 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
     error ContractPaused();
     error NftNotReceived();
     error TokenNotReceived();
+    error InvalidRescueTarget();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -214,6 +218,23 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
             activeMatch[msg.sender] = matchId;
             emit PlayerJoined(matchId, msg.sender, 2);
         }
+    }
+
+    function leaveMatch(uint256 matchId) external noReentrant {
+        Match storage m = matches[matchId];
+        if (m.status != MatchStatus.Open) revert MatchNotOpen();
+        if (msg.sender != m.player1 && msg.sender != m.player2) revert NotMatchPlayer();
+
+        if (msg.sender == m.player1) {
+            m.player1 = m.player2;
+            m.player2 = address(0);
+        } else {
+            m.player2 = address(0);
+        }
+
+        _clearActiveMatch(msg.sender, matchId);
+        _safeTransfer(msg.sender, m.entryFee);
+        emit PlayerLeft(matchId, msg.sender);
     }
 
     function resolveMatch(uint256 matchId, address winner) external onlyAdmin noReentrant {
@@ -353,6 +374,12 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
         pendingWithdrawals[msg.sender] = 0;
         (bool success,) = msg.sender.call{value: amount}("");
         if (!success) revert TransferFailed();
+    }
+
+    function rescueERC721(address collection, uint256 tokenId, address to) external onlyAdmin noReentrant {
+        if (collection == address(0) || to == address(0)) revert InvalidRescueTarget();
+        IERC721Prize(collection).safeTransferFrom(address(this), to, tokenId);
+        emit ERC721Rescued(collection, tokenId, to);
     }
 
     function getMatch(uint256 matchId) external view returns (Match memory) {

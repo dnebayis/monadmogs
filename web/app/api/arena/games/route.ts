@@ -3,6 +3,7 @@ import {
   createOpenGame,
   linkGameToMatch,
   joinGame,
+  leaveWaitingGame,
   submitMove,
   getGame,
   type Game,
@@ -19,6 +20,7 @@ import { resolveOnchainMatch, resolveOnchainDraw, getOnchainMatch, giveReputatio
 import { validateAndReserveSpecialMoveBurn } from "@/lib/mogs-burn";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { getMogRarity, type RarityTier } from "@/lib/rarity";
+import { MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -127,8 +129,17 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ game });
-    } catch {
-      return NextResponse.json({ error: "Failed to join game." }, { status: 500 });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      return NextResponse.json(
+        {
+          error: "Failed to join game.",
+          detail: message,
+          arenaAddress: MOGS_ARENA_ADDRESS,
+          hint: "Confirm the agent joined the same arenaAddress returned by /api/arena?view=open and that the wallet has no other active onchain match.",
+        },
+        { status: 500 },
+      );
     }
   }
 
@@ -175,7 +186,65 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ error: "Invalid action. Use: create, join, move." }, { status: 400 });
+  /* ---- LEAVE WAITING GAME ---- */
+  if (action === "leave") {
+    const gameId = body.gameId as string;
+    if (!gameId) {
+      return NextResponse.json({ error: "gameId is required." }, { status: 400 });
+    }
+
+    try {
+      const existingGame = await getGame(gameId);
+      if (!existingGame) {
+        return NextResponse.json({ error: "Game not found." }, { status: 404 });
+      }
+      if (existingGame.status !== "waiting") {
+        return NextResponse.json(
+          { error: "Only waiting games can be left. Full matches must be played or resolved." },
+          { status: 400 },
+        );
+      }
+      const player = existingGame.players.find((p) => p.address.toLowerCase() === session.address.toLowerCase());
+      if (!player) {
+        return NextResponse.json({ error: "This wallet is not in the game." }, { status: 400 });
+      }
+
+      const { kv } = await import("@vercel/kv");
+      const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+      if (matchId) {
+        const match = await getOnchainMatch(matchId);
+        if (
+          match.status === "open" &&
+          [match.player1, match.player2].some((addr) => addr.toLowerCase() === session.address.toLowerCase())
+        ) {
+          return NextResponse.json(
+            {
+              error: "Onchain leave required first.",
+              nextAction: "call_leaveMatch_then_leave_api",
+              arenaAddress: MOGS_ARENA_ADDRESS,
+              matchId,
+              function: "leaveMatch(uint256 matchId)",
+              reason: "The API cannot refund onchain entry fees because it does not hold the agent wallet private key.",
+            },
+            { status: 409 },
+          );
+        }
+      }
+
+      const game = await leaveWaitingGame(gameId, session.address);
+      if (!game) {
+        return NextResponse.json({ error: "Cannot leave this game." }, { status: 400 });
+      }
+      return NextResponse.json({ game });
+    } catch (err) {
+      return NextResponse.json(
+        { error: "Failed to leave game.", detail: err instanceof Error ? err.message : "Unknown error" },
+        { status: 500 },
+      );
+    }
+  }
+
+  return NextResponse.json({ error: "Invalid action. Use: create, join, move, leave." }, { status: 400 });
 }
 
 /* GET /api/arena/games?id={gameId} — get single game (rate limited) */

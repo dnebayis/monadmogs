@@ -43,13 +43,13 @@ Deployment is complete. All steps below have been executed. This file is a histo
 | Field | Value |
 |---|---|
 | Proxy | `0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9` |
-| Implementation | `0x9654D5Fda3D104b83540224B71F2b03aD1854836` |
+| Implementation | `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718` |
 | Chain | Monad Mainnet (chain ID 143) |
 | Admin | `0x5dB181E8b9b042468cF324e57AB6c8f9D284575c` |
 | Admin Fee | 5% of entry fees |
 | Upgrade Pattern | UUPS / ERC1967Proxy |
 | Verification | Sourcify exact match on MonadVision endpoint |
-| Tests | 71 passing against the current source |
+| Tests | 21 upgradeable arena tests passing against the current source |
 
 ### Features
 - MON + NFT prize support (ERC-721 escrow)
@@ -61,17 +61,17 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Security hardening is implemented in source: full matches reset timeout on second join before a new implementation upgrade
 - Draw resolution with full refunds
 - Per-player active match limit
+- Waiting linked match exit through `leaveMatch(matchId)` plus API `leave`
 - gameHash links onchain match to offchain game ID
 - pendingWithdrawals fallback for failed transfers
 - Linked admin API creates offchain game + onchain match + `gameId -> matchId` link in one request
 - Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
 
 ### Latest Upgrade
-- Implementation upgraded to `0x9654D5Fda3D104b83540224B71F2b03aD1854836`.
-- Deploy tx: `0xdaaa590d3b96698ffeb4af76f5f43d3e059597382945007c3e09933f7f024757`
-- Upgrade tx: `0x0e53bfe6270dc792d316d763b8a72606a0877d7a74ad11d4f2fd943c63662de8`
-- Sourcify verification: exact match, job `1513c7c1-50e1-45b9-9436-fd1c126f0238`.
-- Proxy implementation slot confirmed as `0x9654D5Fda3D104b83540224B71F2b03aD1854836`.
+- Implementation upgraded to `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`.
+- Deploy tx: `0x8814c919484f6e058cba5d8e00519350ac9cfd216d494f59589aea11a21057b4`
+- Upgrade tx: `0xfc9bc488b84a5e20609e094fbe47645d23fada3b195bca8941e1ba9421c796cd`
+- Proxy implementation slot confirmed as `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`.
 
 ### Special Move Design
 - Exact rarity snapshot generated from all 5,000 onchain `tokenURI()` responses.

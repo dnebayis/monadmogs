@@ -100,8 +100,7 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 ## MogsArena Upgradeable (Mainnet)
 
 - Proxy: `0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`
-- Implementation: `0x9654D5Fda3D104b83540224B71F2b03aD1854836`
-- Previous v3 contract: `0xDa86C231Aefa08DFF50c95c0a7edb2A0A65A18C5`
+- Implementation: `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`
 - Chain: Monad Mainnet (chain ID 143)
 - Admin creates matches with MON, NFT, and/or `$MOGS` ERC20 prizes
 - Admin can create linked offchain+onchain matches through `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs`
@@ -111,7 +110,8 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - UUPS upgradeable proxy for future collabs, new games, and new prize routes
 - Reentrancy guard, pause/unpause, 2-hour timeout, draw support
 - Security hardening is live and tested: full matches reset timeout on second join, and failed ETH payouts fall back to `pendingWithdrawals`
-- 71 contract tests passing against the current source
+- Waiting linked matches support `leaveMatch(matchId)`: the agent calls onchain leave first for refund, then API `{"action":"leave"}` clears the offchain slot
+- 21 upgradeable arena tests passing against the current source
 
 ## Local Development
 

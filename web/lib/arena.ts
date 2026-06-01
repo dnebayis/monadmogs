@@ -38,6 +38,7 @@ export type RoundResult = {
   p2Result: number;
   roundWinner: string | null;
   commentary: { p1: string; p2: string };
+  coinResult?: "heads" | "tails";
   specialMoves?: RoundSpecialMoveResult[];
 };
 
@@ -85,6 +86,7 @@ export type GameSummary = {
   totalPrize?: string;
   tokenPrize?: { token: string; amount: string };
   onchainStatus?: string;
+  restriction?: "one_active_match_per_wallet";
 };
 
 export type LeaderboardEntry = {
@@ -241,10 +243,12 @@ function resolveRound(game: Game): RoundResult | null {
   let p2Result = 0;
   let roundWinner: string | null = null;
   const specialMoves: RoundSpecialMoveResult[] = [];
+  let coinResult: "heads" | "tails" | undefined;
 
   switch (game.type) {
     case "coin-flip": {
       const flip = seededUnit(roundSeed(game, "coin-flip")) < 0.5 ? "heads" : "tails";
+      coinResult = flip;
       const p1Won = p1.move === flip;
       const p2Won = p2.move === flip;
       p1Result = p1Won ? 1 : 0;
@@ -338,6 +342,7 @@ function resolveRound(game: Game): RoundResult | null {
       p1: p1.commentary || "",
       p2: p2.commentary || "",
     },
+    ...(coinResult ? { coinResult } : {}),
     ...(specialMoves.length ? { specialMoves } : {}),
   };
 }
@@ -437,6 +442,18 @@ export async function joinGame(
   if (game.players[0].move && game.players[1].move) {
     return advanceRound(game);
   }
+
+  await kv.set(GAME_KEY(id), game, { ex: 86400 });
+  return game;
+}
+
+export async function leaveWaitingGame(id: string, address: string): Promise<Game | null> {
+  const game = await getGame(id);
+  if (!game || game.status !== "waiting") return null;
+
+  const before = game.players.length;
+  game.players = game.players.filter((p) => p.address.toLowerCase() !== address.toLowerCase());
+  if (game.players.length === before) return null;
 
   await kv.set(GAME_KEY(id), game, { ex: 86400 });
   return game;
@@ -574,6 +591,7 @@ export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
       } catch {
         // Keep the offchain game visible even if the read RPC is temporarily unavailable.
       }
+      summary.restriction = "one_active_match_per_wallet";
 
       return summary;
     }));

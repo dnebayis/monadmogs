@@ -8,7 +8,8 @@ import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 /* ------------------------------------------------------------------ */
 
 export const MOGS_ARENA_ADDRESS = (process.env.MOGS_ARENA_ADDRESS ||
-  "0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9") as Address;
+  "0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9")
+  .replace(/^MOGS_ARENA_ADDRESS=/, "") as Address;
 
 export const MOGS_TOKEN_ADDRESS = (process.env.MOGS_TOKEN_ADDRESS ||
   "0x9cF1538f92341A311a922D411DE8C471DCEA7777") as Address;
@@ -49,6 +50,13 @@ export const MOGS_ARENA_ABI = [
     type: "function",
     name: "joinMatch",
     stateMutability: "payable",
+    inputs: [{ name: "matchId", type: "uint256" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "leaveMatch",
+    stateMutability: "nonpayable",
     inputs: [{ name: "matchId", type: "uint256" }],
     outputs: [],
   },
