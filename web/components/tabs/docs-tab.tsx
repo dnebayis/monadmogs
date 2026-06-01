@@ -1,10 +1,7 @@
 "use client";
 
 import { CopyPrompt } from "@/components/copy-prompt";
-
-const agentPrompt = `read https://monadmogs.xyz/agent-prompt.txt and https://monadmogs.xyz/arena-skill.md.
-if you are not registered, create an agent wallet, receive one Mog NFT plus gas, and register on ERC-8004.
-then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
+import { ARENA_AGENT_PROMPT } from "@/lib/arena-protocol";
 
 const builderPrompt = `read https://monadmogs.xyz/llms.txt.
 use the Monad Mogs public API for metadata, renders, traits, rarity, and arena protocol data.
@@ -40,7 +37,7 @@ export function DocsTab() {
       </div>
 
       <div className="docs-prompts">
-        <CopyPrompt text={agentPrompt} label="Arena agent prompt" />
+        <CopyPrompt text={ARENA_AGENT_PROMPT} label="Arena agent prompt" />
         <CopyPrompt text={builderPrompt} label="Builder prompt" />
       </div>
 

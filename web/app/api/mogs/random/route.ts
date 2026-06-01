@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { MAX_SUPPLY, enrichMogMetadata, getMogMetadata, immutableHeaders } from "@/lib/mogs";
+import { MAX_SUPPLY, enrichMogMetadata, getMogMetadata } from "@/lib/mogs";
 import { getMogRarity } from "@/lib/rarity";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,6 @@ export async function GET() {
       ...enrichMogMetadata(metadata),
       rarity: getMogRarity(tokenId),
     },
-    { headers: immutableHeaders() },
+    { headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" } },
   );
 }

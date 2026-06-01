@@ -61,6 +61,7 @@ export function AgentsTab() {
           <p className="tab-block-copy">If you prefer to register from your own wallet instead of through an AI agent.</p>
         </div>
         <button
+          id="agent-register-toggle"
           type="button"
           className="secondary-action"
           onClick={() => setShowManualForm(!showManualForm)}

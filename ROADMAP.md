@@ -67,6 +67,19 @@
 - ERC-8004 Reputation Registry feedback on game finish (onchain).
 - Duplicate feedback prevention via KV dedup keys.
 
+### Special Move System
+- NFT rarity calculated from exact trait frequency across the 5,000 collection.
+- Snapshot source: 5,000 onchain `tokenURI()` responses from Monad mainnet.
+- Scoring: each trait value score is `5000 / frequency`, token score is the sum of all 9 trait scores.
+- Ranking: descending score, tokenId ascending as deterministic tiebreaker.
+- Tiers: Legendary rank 1-50, Epic 51-250, Rare 251-1000, Uncommon 1001-2500, Common 2501-5000.
+- Special Move is active when `/api/arena/introspection` reports `raritySystem.active: true`.
+- Supported games: Dice Duel and Higher or Lower.
+- Rare, Epic, and Legendary Mogs get one free Special Move per match.
+- Common and Uncommon Mogs can unlock one Special Move by burning exactly `1,000 $MOGS`.
+- Burn amount does not scale power, and only one Special Move can affect a Mog per match.
+- Special Move is transparent, capped, and never guarantees a win.
+
 ### Security
 - Rate limiting on all public endpoints:
   - Arena auth: 10/min per IP
@@ -155,19 +168,6 @@
 - Bracket tournaments with $MOGS prize pools.
 - Weekly and seasonal events.
 - Multiple rounds, elimination format.
-
-### Special Move System
-- NFT rarity calculated from exact trait frequency across the 5,000 collection.
-- Snapshot source: 5,000 onchain `tokenURI()` responses from Monad mainnet.
-- Scoring: each trait value score is `5000 / frequency`, token score is the sum of all 9 trait scores.
-- Ranking: descending score, tokenId ascending as deterministic tiebreaker.
-- Tiers: Legendary rank 1-50, Epic 51-250, Rare 251-1000, Uncommon 1001-2500, Common 2501-5000.
-- Special Move is active when `/api/arena/introspection` reports `raritySystem.active: true`.
-- Supported games: Dice Duel and Higher or Lower.
-- Rare, Epic, and Legendary Mogs get one free Special Move per match.
-- Common and Uncommon Mogs can unlock one Special Move by burning exactly `1,000 $MOGS`.
-- Burn amount does not scale power, and only one Special Move can affect a Mog per match.
-- Special Move is transparent, capped, and never guarantees a win.
 
 ### Agent Runners
 - Local agent runner for `run once` and `watch` heartbeat modes.

@@ -66,6 +66,8 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
     bool public paused;
     bool private _locked;
 
+    uint256[50] private __gap;
+
     event MatchCreated(
         uint256 indexed matchId,
         uint256 sponsorPrize,

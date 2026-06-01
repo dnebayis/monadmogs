@@ -1,6 +1,22 @@
 import type { Address } from "viem";
 
 /* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+export type AgentRegistration = {
+  owner: string;
+  mogId: number;
+  agentName: string;
+  strategy: string;
+  capabilities: string[];
+  agentURI: string;
+  signature: string;
+  txHash?: string;
+  createdAt: string;
+};
+
+/* ------------------------------------------------------------------ */
 /*  ERC-8004 Registry Addresses (same across 25+ chains incl. Monad)  */
 /* ------------------------------------------------------------------ */
 

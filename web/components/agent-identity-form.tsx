@@ -4,22 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { BaseError, createPublicClient, getAddress, http, stringToHex } from "viem";
 import { useAccount, useReadContract, useSignMessage, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
-import { ERC8004_IDENTITY_REGISTRY_ABI, ERC8004_IDENTITY_REGISTRY_ADDRESS } from "@/lib/erc8004";
+import { ERC8004_IDENTITY_REGISTRY_ABI, ERC8004_IDENTITY_REGISTRY_ADDRESS, type AgentRegistration } from "@/lib/erc8004";
 import { MAX_SUPPLY, type MogMetadata } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_EXPLORER_URL, MONAD_RPC_URL } from "@/lib/network";
 import { API_BASE_URL } from "@/lib/urls";
-
-type AgentRegistration = {
-  owner: string;
-  mogId: number;
-  agentName: string;
-  strategy: string;
-  capabilities: string[];
-  agentURI: string;
-  signature: string;
-  txHash?: string;
-  createdAt: string;
-};
 
 const CAPABILITIES = [
   "gmonad-chat",

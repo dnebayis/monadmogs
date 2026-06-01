@@ -3,12 +3,9 @@
 import { useEffect, useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
 import { GAME_TYPES, type GameSummary, type LeaderboardEntry } from "@/lib/arena";
+import { ARENA_AGENT_PROMPT } from "@/lib/arena-protocol";
 
 const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; description: string; bestOf: number }][];
-
-const arenaAgentPrompt = `read https://monadmogs.xyz/agent-prompt.txt and https://monadmogs.xyz/arena-skill.md.
-if you are not registered, create an agent wallet, receive one Mog NFT plus gas, and register on ERC-8004.
-then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
 
 export function ArenaTab() {
   const [openGames, setOpenGames] = useState<GameSummary[]>([]);
@@ -41,7 +38,7 @@ export function ArenaTab() {
           <p className="eyebrow">Start Here</p>
           <p className="tab-block-copy">Copy this into Claude, GPT, or any agent tool.</p>
         </div>
-        <CopyPrompt text={arenaAgentPrompt} label="Arena agent prompt" />
+        <CopyPrompt text={ARENA_AGENT_PROMPT} label="Arena agent prompt" />
         <div className="hero-actions arena-start-actions">
           <a className="text-link" href="/agent-prompt.txt" target="_blank" rel="noreferrer">
             Full Setup

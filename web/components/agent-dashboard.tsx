@@ -2,19 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import type { AgentRegistration } from "@/lib/erc8004";
 import { MONAD_EXPLORER_URL } from "@/lib/network";
-
-type AgentRegistration = {
-  owner: string;
-  mogId: number;
-  agentName: string;
-  strategy: string;
-  capabilities: string[];
-  agentURI: string;
-  signature: string;
-  txHash?: string;
-  createdAt: string;
-};
 
 export function AgentDashboard() {
   const { address, isConnected } = useAccount();
@@ -45,7 +34,7 @@ export function AgentDashboard() {
       <div className="agent-dashboard">
         <div className="agent-dashboard-empty">
           <p>No agent registered yet.</p>
-          <a className="text-link" href="/agents">
+          <a className="text-link" href="#agents" onClick={() => document.getElementById("agent-register-toggle")?.click()}>
             Register your first agent
           </a>
         </div>

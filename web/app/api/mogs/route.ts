@@ -1,21 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { MAX_SUPPLY, getMogBatch, immutableHeaders } from "@/lib/mogs";
+import { MAX_SUPPLY, getMogBatch } from "@/lib/mogs";
 import { getMogRarity } from "@/lib/rarity";
 
 export const dynamic = "force-dynamic";
 
-function parsePositiveInt(value: string | null, fallback: number) {
+function parsePositiveInt(value: string | null, fallback: number): number | null {
   if (!value) return fallback;
   const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 1) return fallback;
+  if (!Number.isInteger(parsed) || parsed < 1) return null;
   return parsed;
 }
 
 export async function GET(request: NextRequest) {
   const cursor = parsePositiveInt(request.nextUrl.searchParams.get("cursor"), 1);
-  const limit = Math.min(parsePositiveInt(request.nextUrl.searchParams.get("limit"), 24), 100);
+  const limit = Math.min(parsePositiveInt(request.nextUrl.searchParams.get("limit"), 24) ?? 24, 100);
 
-  if (cursor > MAX_SUPPLY) {
+  if (cursor === null || cursor > MAX_SUPPLY) {
     return NextResponse.json({ error: "Cursor must be between 1 and 5000." }, { status: 400 });
   }
 
@@ -36,6 +36,6 @@ export async function GET(request: NextRequest) {
       nextCursor: batch.nextCursor,
       items,
     },
-    { headers: immutableHeaders() },
+    { headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" } },
   );
 }

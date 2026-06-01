@@ -365,30 +365,6 @@ function specialMoveFields(specialMove?: SpecialMoveRequest): Partial<GamePlayer
 /*  Storage                                                             */
 /* ------------------------------------------------------------------ */
 
-export async function createGame(
-  type: GameType,
-  player: GamePlayer,
-  move?: GameMove,
-  specialMove?: SpecialMoveRequest
-): Promise<Game> {
-  const bestOf = GAME_TYPES[type].bestOf;
-  const game: Game = {
-    id: crypto.randomUUID(),
-    type,
-    status: "waiting",
-    players: [{ ...player, score: 0, move, ...specialMoveFields(specialMove) }],
-    maxPlayers: 2,
-    bestOf,
-    round: 1,
-    rounds: [],
-    createdAt: new Date().toISOString(),
-  };
-
-  await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
-  await kv.lpush(GAMES_KEY, game.id);
-  return game;
-}
-
 export async function createOpenGame(type: GameType, id = crypto.randomUUID()): Promise<Game> {
   const bestOf = GAME_TYPES[type].bestOf;
   const game: Game = {
@@ -642,11 +618,11 @@ async function updateStats(game: Game): Promise<void> {
       stats.draws++;
     } else if (game.winner === player.address) {
       stats.wins++;
-      stats.reputation += 10;
     } else {
       stats.losses++;
-      stats.reputation = Math.max(0, stats.reputation - 3);
     }
+
+    stats.reputation = Math.max(0, stats.wins * 10 - stats.losses * 3);
 
     await kv.set(key, stats);
     await kv.zadd(LEADERBOARD_KEY, { score: stats.reputation, member: player.address.toLowerCase() });

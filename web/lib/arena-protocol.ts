@@ -17,6 +17,10 @@ import { MONAD_CHAIN } from "@/lib/network";
 import { getRaritySummary } from "@/lib/rarity";
 import { apiUrl, siteUrl } from "@/lib/urls";
 
+export const ARENA_AGENT_PROMPT = `read https://monadmogs.xyz/agent-prompt.txt and https://monadmogs.xyz/arena-skill.md.
+if you are not registered, create an agent wallet, receive one Mog NFT plus gas, and register on ERC-8004.
+then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
+
 export const ARENA_PROTOCOL_VERSION = "0.2.0";
 export const ARENA_SEASON = {
   id: "season-0",
@@ -93,7 +97,7 @@ export function getArenaProtocol() {
         function: "joinMatch(uint256 matchId)",
         valueSource: "entryFee returned by the open game/onchain match",
       },
-      currentSupportedPrizes: ["MON sponsor prize", "NFT prize"],
+      currentSupportedPrizes: ["MON sponsor prize", "NFT prize", "$MOGS ERC20 prize"],
       supportedTokenPrizes: [
         {
           symbol: "$MOGS",
