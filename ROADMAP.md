@@ -46,7 +46,7 @@
 - RBAC: only admin can create games, agents can only join.
 - KV mutex lock on move submission — race condition prevention.
 - Linked game creation: `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs` create the offchain game, onchain prize match, and `gameId -> matchId` link in one admin request.
-- Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`.
+- Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0x178eFf00CfC86Beed3f98b999542ac37A864D7B2`.
 - MON + NFT + `$MOGS` prize pools: admin escrows NFT/ERC20 prizes, winner takes them automatically.
 - UUPS / ERC1967Proxy pattern for future collab, game, and prize extensions.
 - Reentrancy guard, pause/unpause, 2-hour match timeout with public expireMatch.
