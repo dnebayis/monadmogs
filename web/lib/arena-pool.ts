@@ -243,6 +243,9 @@ const publicClient = createPublicClient({
   transport: http(MONAD_RPC_URL),
 });
 
+/** Monad gas estimation can undercount for value-transferring calls; use a safe floor. */
+const ARENA_GAS_LIMIT = 500_000n;
+
 function getAdminWalletClient() {
   const pk = process.env.ARENA_WALLET_PRIVATE_KEY;
   if (!pk) throw new Error("ARENA_WALLET_PRIVATE_KEY not configured.");
@@ -437,6 +440,7 @@ export async function createOnchainMatchWithNft(
     functionName: "createMatchWithNft",
     args: [entryFee, gameHash, nftCollection, nftTokenId],
     value: sponsorValue,
+    gas: ARENA_GAS_LIMIT,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -455,6 +459,7 @@ export async function createOnchainMatch(entryFee: bigint, gameId: string, spons
     functionName: "createMatch",
     args: [entryFee, gameHash],
     value: sponsorValue,
+    gas: ARENA_GAS_LIMIT,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -498,6 +503,7 @@ export async function createOnchainMatchWithToken(
     functionName: "createMatchWithToken",
     args: [entryFee, gameHash, prizeToken, prizeAmount],
     value: sponsorValue,
+    gas: ARENA_GAS_LIMIT,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -561,6 +567,7 @@ export async function createOnchainMatchWithNftAndToken(
     functionName: "createMatchWithNftAndToken",
     args: [entryFee, gameHash, nftCollection, nftTokenId, prizeToken, prizeAmount],
     value: sponsorValue,
+    gas: ARENA_GAS_LIMIT,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -583,6 +590,7 @@ export async function resolveOnchainMatch(matchId: number, winnerAddress: string
     abi: MOGS_ARENA_ABI,
     functionName: "resolveMatch",
     args: [BigInt(matchId), winnerAddress as Address],
+    gas: ARENA_GAS_LIMIT,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -597,6 +605,7 @@ export async function resolveOnchainDraw(matchId: number) {
     abi: MOGS_ARENA_ABI,
     functionName: "resolveDraw",
     args: [BigInt(matchId)],
+    gas: ARENA_GAS_LIMIT,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -611,6 +620,7 @@ export async function cancelOnchainMatch(matchId: number) {
     abi: MOGS_ARENA_ABI,
     functionName: "cancelMatch",
     args: [BigInt(matchId)],
+    gas: ARENA_GAS_LIMIT,
   });
 
   const receipt = await publicClient.waitForTransactionReceipt({ hash });
@@ -646,6 +656,7 @@ export async function giveReputationFeedback(
         "",
         "0x0000000000000000000000000000000000000000000000000000000000000000" as `0x${string}`,
       ],
+      gas: ARENA_GAS_LIMIT,
     });
 
     await publicClient.waitForTransactionReceipt({ hash });
