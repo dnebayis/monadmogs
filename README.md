@@ -100,7 +100,7 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 ## MogsArena Upgradeable (Mainnet)
 
 - Proxy: `0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`
-- Implementation: `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`
+- Implementation: `0x178eFf00CfC86Beed3f98b999542ac37A864D7B2`
 - Chain: Monad Mainnet (chain ID 143)
 - Admin creates matches with MON, NFT, and/or `$MOGS` ERC20 prizes
 - Admin can create linked offchain+onchain matches through `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs`

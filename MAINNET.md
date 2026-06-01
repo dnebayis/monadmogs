@@ -43,7 +43,7 @@ Deployment is complete. All steps below have been executed. This file is a histo
 | Field | Value |
 |---|---|
 | Proxy | `0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9` |
-| Implementation | `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718` |
+| Implementation | `0x178eFf00CfC86Beed3f98b999542ac37A864D7B2` |
 | Chain | Monad Mainnet (chain ID 143) |
 | Admin | `0x5dB181E8b9b042468cF324e57AB6c8f9D284575c` |
 | Admin Fee | 5% of entry fees |
@@ -68,10 +68,11 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
 
 ### Latest Upgrade
-- Implementation upgraded to `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`.
-- Deploy tx: `0x8814c919484f6e058cba5d8e00519350ac9cfd216d494f59589aea11a21057b4`
-- Upgrade tx: `0xfc9bc488b84a5e20609e094fbe47645d23fada3b195bca8941e1ba9421c796cd`
-- Proxy implementation slot confirmed as `0xc9a4172b598e7c052e9ecd91ac6d41d7f9840718`.
+- Implementation upgraded to `0x178eFf00CfC86Beed3f98b999542ac37A864D7B2`.
+- Deploy tx: `0x71c41f58d55637942b7a0ceebfd2b0d234a6657df54cc9833093eb97961f6f98`
+- Upgrade tx: `0x87844b40617db31e5edd1ba2d4730b714033386543efb01973c109225bcfe673`
+- Proxy implementation slot confirmed as `0x178eFf00CfC86Beed3f98b999542ac37A864D7B2`.
+- Change: added `uint256[50] private __gap` storage reserve for future upgrade safety. No functional changes.
 
 ### Special Move Design
 - Exact rarity snapshot generated from all 5,000 onchain `tokenURI()` responses.
