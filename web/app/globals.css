@@ -2202,6 +2202,72 @@ h2 {
   justify-self: center;
 }
 
+.arena-recent-games {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 640px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.arena-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.arena-recent-row:last-child {
+  border-bottom: none;
+}
+
+.arena-recent-status {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.arena-recent-status.finished {
+  background: rgba(133, 230, 255, 0.1);
+  color: var(--cyan);
+}
+
+.arena-recent-status.active {
+  background: rgba(120, 220, 120, 0.1);
+  color: #7ddc7d;
+}
+
+.arena-recent-status.waiting {
+  background: rgba(200, 200, 200, 0.08);
+  color: var(--muted);
+}
+
+.arena-recent-type {
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.arena-recent-players {
+  flex: 1;
+  color: var(--fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arena-recent-winner {
+  font-weight: 600;
+  color: var(--cyan);
+}
+
 .arena-leaderboard {
   display: grid;
   gap: 0;

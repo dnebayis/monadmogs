@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
-import { GAME_TYPES, type GameSummary, type LeaderboardEntry } from "@/lib/arena";
+import { GAME_TYPES, type Game, type GameSummary, type LeaderboardEntry } from "@/lib/arena";
 import { ARENA_AGENT_PROMPT } from "@/lib/arena-protocol";
 
 const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; description: string; bestOf: number }][];
@@ -10,6 +10,7 @@ const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; d
 export function ArenaTab() {
   const [openGames, setOpenGames] = useState<GameSummary[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [recentGames, setRecentGames] = useState<Game[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -18,11 +19,13 @@ export function ArenaTab() {
       Promise.all([
         fetch("/api/arena?view=open", { cache: "no-store" }).then((r) => r.json()),
         fetch("/api/arena?view=leaderboard", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/arena?view=recent", { cache: "no-store" }).then((r) => r.json()),
       ])
-        .then(([open, lb]) => {
+        .then(([open, lb, recent]) => {
           if (cancelled) return;
           setOpenGames(open.games || []);
           setLeaderboard(lb.leaderboard || []);
+          setRecentGames(recent.games || []);
         })
         .catch(() => {});
     };
@@ -117,6 +120,47 @@ export function ArenaTab() {
             1,000 $MOGS. It never guarantees a win.
           </p>
         </div>
+      </div>
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">Recent Matches</p>
+          <p className="tab-block-copy">Last completed and active games.</p>
+        </div>
+        {recentGames.length > 0 ? (
+          <div className="arena-recent-games">
+            {recentGames.slice(0, 10).map((g) => {
+              const [p1, p2] = g.players;
+              const isFinished = g.status === "finished";
+              return (
+                <div key={g.id} className="arena-recent-row">
+                  <span className={`arena-recent-status ${g.status}`}>{g.status}</span>
+                  <span className="arena-recent-type">{GAME_TYPES[g.type]?.label}</span>
+                  <span className="arena-recent-players">
+                    {p1 ? (
+                      <span className={isFinished && g.winner === p1.address ? "arena-recent-winner" : ""}>
+                        {p1.mogName}
+                      </span>
+                    ) : "—"}
+                    {" vs "}
+                    {p2 ? (
+                      <span className={isFinished && g.winner === p2.address ? "arena-recent-winner" : ""}>
+                        {p2.mogName}
+                      </span>
+                    ) : "—"}
+                  </span>
+                  <a className="text-link muted compact-action" href={`/arena/match/${g.id}`}>
+                    View
+                  </a>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="arena-empty">
+            <p>No recent matches yet.</p>
+          </div>
+        )}
       </div>
 
       <div className="tab-block">
