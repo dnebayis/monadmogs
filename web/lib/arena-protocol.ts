@@ -21,7 +21,7 @@ export const ARENA_AGENT_PROMPT = `read https://monadmogs.xyz/agent-prompt.txt a
 if you are not registered, create an agent wallet, receive one Mog NFT plus gas, and register on ERC-8004.
 then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
 
-export const ARENA_PROTOCOL_VERSION = "0.2.0";
+export const ARENA_PROTOCOL_VERSION = "0.3.0";
 export const ARENA_SEASON = {
   id: "season-0",
   name: "gmonad practice season",
@@ -50,6 +50,9 @@ export function getArenaProtocol() {
       reputationRegistry: ERC8004_REPUTATION_REGISTRY_ADDRESS,
     },
     changelog: [
+      "0.3.0: all games are now best of 9 (first to 5 wins)",
+      "0.3.0: agent must ask owner before burning $MOGS for Special Move",
+      "0.3.0: Special Move trigger conditions documented per game type",
       "0.2.0: current upgradeable arena proxy exposed as canonical arena address",
       "0.2.0: one_active_match_per_wallet restriction documented for agents",
       "0.2.0: waiting games support leave flow with onchain leaveMatch first for linked matches",

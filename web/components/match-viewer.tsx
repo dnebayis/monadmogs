@@ -25,8 +25,19 @@ function MoveDisplay({ move, result, gameType }: { move: string; result?: number
   return <span className="match-move">{MOVE_EMOJI[move] || move}</span>;
 }
 
+type ResolveStatus = {
+  status: "resolved" | "failed";
+  matchId?: number;
+  winnerAddress?: string | null;
+  txHash?: string;
+  error?: string;
+  resolvedAt?: string;
+  failedAt?: string;
+} | null;
+
 export function MatchViewer({ gameId }: { gameId: string }) {
   const [game, setGame] = useState<Game | null>(null);
+  const [resolve, setResolve] = useState<ResolveStatus>(null);
   const [error, setError] = useState<string | null>(null);
   const [visibleRounds, setVisibleRounds] = useState(0);
 
@@ -45,6 +56,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
         }
         setError(null);
         setGame(data.game);
+        setResolve(data.resolve ?? null);
         latestStatus = data.game?.status || null;
       } catch {
         if (!cancelled) setError("Failed to load match.");
@@ -236,6 +248,32 @@ export function MatchViewer({ gameId }: { gameId: string }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {resolve && (
+        <div className={`match-resolve ${resolve.status}`}>
+          {resolve.status === "resolved" ? (
+            <>
+              <span className="match-resolve-label">Prize settled onchain</span>
+              {resolve.txHash && (
+                <a
+                  className="text-link muted"
+                  href={`https://monadscan.com/tx/${resolve.txHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {resolve.txHash.slice(0, 10)}…
+                </a>
+              )}
+            </>
+          ) : (
+            <>
+              <span className="match-resolve-label">Onchain settlement failed</span>
+              {resolve.error && <span className="match-resolve-error">{resolve.error}</span>}
+              <span className="match-resolve-hint">Contact arena admin to resolve manually.</span>
+            </>
+          )}
         </div>
       )}
 

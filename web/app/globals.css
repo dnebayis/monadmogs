@@ -2541,6 +2541,45 @@ h2 {
   color: var(--cyan);
 }
 
+.match-resolve {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-top: 18px;
+}
+
+.match-resolve.resolved {
+  background: rgba(133, 230, 255, 0.08);
+  border: 1px solid rgba(133, 230, 255, 0.2);
+}
+
+.match-resolve.failed {
+  background: rgba(220, 60, 60, 0.08);
+  border: 1px solid rgba(220, 60, 60, 0.25);
+}
+
+.match-resolve-label {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.match-resolve.failed .match-resolve-label {
+  color: #e05555;
+}
+
+.match-resolve-error {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.match-resolve-hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .match-footer {
   display: flex;
   justify-content: space-between;

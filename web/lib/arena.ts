@@ -107,23 +107,23 @@ export type LeaderboardEntry = {
 export const GAME_TYPES: Record<GameType, { label: string; description: string; bestOf: number }> = {
   "coin-flip": {
     label: "Coin Flip",
-    description: "Call heads or tails. Best of 3. Pure luck.",
-    bestOf: 3,
+    description: "Call heads or tails. Best of 9. Pure luck.",
+    bestOf: 9,
   },
   "rock-paper-scissors": {
     label: "Rock Paper Scissors",
-    description: "Classic RPS. Best of 5. Strategy meets reads.",
-    bestOf: 5,
+    description: "Classic RPS. Best of 9. Strategy meets reads.",
+    bestOf: 9,
   },
   "dice-duel": {
     label: "Dice Duel",
-    description: "Both players roll. Best of 3. Highest number wins each round.",
-    bestOf: 3,
+    description: "Both players roll. Best of 9. Highest number wins each round.",
+    bestOf: 9,
   },
   "higher-lower": {
     label: "Higher or Lower",
-    description: "Guess if the next number is higher or lower. Best of 3.",
-    bestOf: 3,
+    description: "Guess if the next number is higher or lower. Best of 9.",
+    bestOf: 9,
   },
 };
 
@@ -379,13 +379,13 @@ export async function createOpenGame(type: GameType, id = crypto.randomUUID()): 
     createdAt: new Date().toISOString(),
   };
 
-  await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
+  await kv.set(GAME_KEY(game.id), game, { ex: 86400 * 7 });
   await kv.lpush(GAMES_KEY, game.id);
   return game;
 }
 
 export async function linkGameToMatch(gameId: string, matchId: number): Promise<void> {
-  await kv.set(`arena:game-match:${gameId}`, matchId, { ex: 86400 });
+  await kv.set(`arena:game-match:${gameId}`, matchId, { ex: 86400 * 7 });
 }
 
 export async function getGame(id: string): Promise<Game | null> {
@@ -408,7 +408,7 @@ export async function joinGame(
 
   // Two players = game is active
   if (game.players.length < 2) {
-    await kv.set(GAME_KEY(id), game, { ex: 86400 });
+    await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
     return game;
   }
 
@@ -419,7 +419,7 @@ export async function joinGame(
     return advanceRound(game);
   }
 
-  await kv.set(GAME_KEY(id), game, { ex: 86400 });
+  await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
   return game;
 }
 
@@ -431,7 +431,7 @@ export async function leaveWaitingGame(id: string, address: string): Promise<Gam
   game.players = game.players.filter((p) => p.address.toLowerCase() !== address.toLowerCase());
   if (game.players.length === before) return null;
 
-  await kv.set(GAME_KEY(id), game, { ex: 86400 });
+  await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
   return game;
 }
 
@@ -467,7 +467,7 @@ export async function submitMove(
       return advanceRound(game);
     }
 
-    await kv.set(GAME_KEY(id), game, { ex: 86400 });
+    await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
     return game;
   } finally {
     await kv.del(lockKey);
@@ -477,7 +477,7 @@ export async function submitMove(
 async function advanceRound(game: Game): Promise<Game> {
   const roundResult = resolveRound(game);
   if (!roundResult) {
-    await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
+    await kv.set(GAME_KEY(game.id), game, { ex: 86400 * 7 });
     return game;
   }
 
@@ -518,7 +518,7 @@ async function advanceRound(game: Game): Promise<Game> {
   game.players[0].result = roundResult.p1Result;
   game.players[1].result = roundResult.p2Result;
 
-  await kv.set(GAME_KEY(game.id), game, { ex: 86400 });
+  await kv.set(GAME_KEY(game.id), game, { ex: 86400 * 7 });
 
   if (game.status === "finished") {
     await updateStats(game);
