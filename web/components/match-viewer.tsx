@@ -31,16 +31,39 @@ export function MatchViewer({ gameId }: { gameId: string }) {
   const [visibleRounds, setVisibleRounds] = useState(0);
 
   useEffect(() => {
-    fetch(`/api/arena/games?id=${gameId}`)
-      .then((r) => r.json())
-      .then((data) => {
+    let cancelled = false;
+    let latestStatus: Game["status"] | null = null;
+
+    const loadMatch = async () => {
+      try {
+        const res = await fetch(`/api/arena/games?id=${gameId}`, { cache: "no-store" });
+        const data = await res.json();
+        if (cancelled) return;
         if (data.error) {
           setError(data.error);
-        } else {
-          setGame(data.game);
+          return;
         }
-      })
-      .catch(() => setError("Failed to load match."));
+        setError(null);
+        setGame(data.game);
+        latestStatus = data.game?.status || null;
+      } catch {
+        if (!cancelled) setError("Failed to load match.");
+      }
+    };
+
+    loadMatch();
+    const interval = window.setInterval(() => {
+      if (latestStatus !== "finished") {
+        loadMatch();
+      }
+    }, 3000);
+    window.addEventListener("focus", loadMatch);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", loadMatch);
+    };
   }, [gameId]);
 
   // Animate rounds appearing one by one
@@ -54,23 +77,6 @@ export function MatchViewer({ gameId }: { gameId: string }) {
 
     return () => clearTimeout(timer);
   }, [game, visibleRounds]);
-
-  // Poll for active games
-  useEffect(() => {
-    if (!game || game.status === "finished") return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/arena/games?id=${gameId}`);
-        const data = await res.json();
-        if (data.game) {
-          setGame(data.game);
-        }
-      } catch { /* ignore */ }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [game, gameId]);
 
   if (error) {
     return (

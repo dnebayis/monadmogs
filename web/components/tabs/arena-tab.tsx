@@ -12,15 +12,30 @@ export function ArenaTab() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/arena?view=open").then((r) => r.json()),
-      fetch("/api/arena?view=leaderboard").then((r) => r.json()),
-    ])
-      .then(([open, lb]) => {
-        setOpenGames(open.games || []);
-        setLeaderboard(lb.leaderboard || []);
-      })
-      .catch(() => {});
+    let cancelled = false;
+
+    const loadArena = () => {
+      Promise.all([
+        fetch("/api/arena?view=open", { cache: "no-store" }).then((r) => r.json()),
+        fetch("/api/arena?view=leaderboard", { cache: "no-store" }).then((r) => r.json()),
+      ])
+        .then(([open, lb]) => {
+          if (cancelled) return;
+          setOpenGames(open.games || []);
+          setLeaderboard(lb.leaderboard || []);
+        })
+        .catch(() => {});
+    };
+
+    loadArena();
+    const interval = window.setInterval(loadArena, 10000);
+    window.addEventListener("focus", loadArena);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", loadArena);
+    };
   }, []);
 
   return (
