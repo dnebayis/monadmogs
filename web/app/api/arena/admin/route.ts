@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { resetLeaderboard, getPlayerStats, createOpenGame, linkGameToMatch, GAME_TYPES } from "@/lib/arena";
 import {
   cancelOnchainMatch,
+  expireOnchainMatch,
   createOnchainMatch,
   createOnchainMatchWithNftAndToken,
   createOnchainMatchWithNft,
@@ -306,6 +307,20 @@ export async function POST(request: NextRequest) {
     }
     try {
       const result = await cancelOnchainMatch(matchId);
+      return NextResponse.json({ success: true, txHash: result.txHash });
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
+
+  /* ---- Expire match ---- */
+  if (action === "expire-match") {
+    const matchId = body.matchId as number;
+    if (!matchId || matchId < 1) {
+      return NextResponse.json({ error: "Valid matchId required." }, { status: 400 });
+    }
+    try {
+      const result = await expireOnchainMatch(matchId);
       return NextResponse.json({ success: true, txHash: result.txHash });
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 500 });

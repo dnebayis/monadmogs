@@ -627,6 +627,21 @@ export async function cancelOnchainMatch(matchId: number) {
   return { txHash: hash, status: receipt.status };
 }
 
+export async function expireOnchainMatch(matchId: number) {
+  const walletClient = getAdminWalletClient();
+
+  const hash = await walletClient.writeContract({
+    address: MOGS_ARENA_ADDRESS,
+    abi: MOGS_ARENA_ABI,
+    functionName: "expireMatch",
+    args: [BigInt(matchId)],
+    gas: ARENA_GAS_LIMIT,
+  });
+
+  const receipt = await publicClient.waitForTransactionReceipt({ hash });
+  return { txHash: hash, status: receipt.status };
+}
+
 /* ------------------------------------------------------------------ */
 /*  Reputation                                                          */
 /* ------------------------------------------------------------------ */
