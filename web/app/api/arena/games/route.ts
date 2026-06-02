@@ -164,6 +164,16 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      // Check for duplicate move before acquiring the KV lock
+      const existingPlayer = existingGame.players.find(
+        (p) => p.address.toLowerCase() === session.address.toLowerCase()
+      );
+      if (existingPlayer?.move) {
+        return NextResponse.json(
+          { error: "Move already submitted for this round.", round: existingGame.round },
+          { status: 409 }
+        );
+      }
       const specialMove = await validateSpecialMove(body.specialMove, existingGame, session, move);
       if (!specialMove.ok) {
         return NextResponse.json({ error: specialMove.error }, { status: specialMove.status });

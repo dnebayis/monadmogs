@@ -1,4 +1,5 @@
 import { kv } from "@vercel/kv";
+import { markBurnTxConsumed } from "@/lib/mogs-burn";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -211,6 +212,10 @@ function consumeSpecialMove(
 ): RoundSpecialMoveResult {
   player.specialMoveUsed = true;
   player.pendingSpecialMove = false;
+  // Mark burn TX as permanently consumed so it cannot be reused in any future game
+  if (player.burnTxHash) {
+    markBurnTxConsumed(player.burnTxHash).catch(() => {});
+  }
   return {
     player: player.address,
     source: player.specialMoveSource,
@@ -457,7 +462,7 @@ export async function submitMove(
       (p) => p.address.toLowerCase() === address.toLowerCase()
     );
     if (playerIndex === -1) return null;
-    if (game.players[playerIndex].move) return game; // already moved this round
+    if (game.players[playerIndex].move) return null; // already moved this round → caller returns 409
 
     game.players[playerIndex].move = move;
     if (commentary) game.players[playerIndex].commentary = commentary;

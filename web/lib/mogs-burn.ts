@@ -49,8 +49,12 @@ export async function validateAndReserveSpecialMoveBurn(params: {
   }
 
   const usedKey = USED_BURN_TX_KEY(txHash);
-  const existing = await kv.get(usedKey);
+  const existing = await kv.get<{ gameId: string; consumed: boolean }>(usedKey);
   if (existing) {
+    // Allow re-declaration within the same game if not yet consumed
+    if (existing.gameId === params.gameId && !existing.consumed) {
+      return { ok: true };
+    }
     return { ok: false, error: "This burn transaction has already been used." };
   }
 
@@ -117,6 +121,7 @@ export async function validateAndReserveSpecialMoveBurn(params: {
       gameId: params.gameId,
       mogId: params.mogId,
       agentAddress: expectedFrom,
+      consumed: false,
       reservedAt: new Date().toISOString(),
     },
     { ex: 60 * 60 * 24 * 90, nx: true },
@@ -126,4 +131,11 @@ export async function validateAndReserveSpecialMoveBurn(params: {
   }
 
   return { ok: true };
+}
+
+export async function markBurnTxConsumed(txHash: string): Promise<void> {
+  const key = USED_BURN_TX_KEY(txHash.toLowerCase());
+  const existing = await kv.get<{ gameId: string; mogId: number; agentAddress: string; consumed: boolean; reservedAt: string }>(key);
+  if (!existing) return;
+  await kv.set(key, { ...existing, consumed: true }, { ex: 60 * 60 * 24 * 90 });
 }
