@@ -3125,3 +3125,46 @@ textarea:focus-visible {
 
 .admin-rep { color: var(--cyan); font-weight: 600; }
 .admin-empty { color: var(--muted); font-size: 13px; padding: 16px 12px; }
+
+.admin-form-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 8px 0;
+}
+
+.admin-prize-options {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-prize-btn {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.1s;
+}
+
+.admin-prize-btn.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(133, 230, 255, 0.08);
+}
+
+.admin-input-wide {
+  width: 360px !important;
+}
+
+.admin-prize-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--cyan);
+}

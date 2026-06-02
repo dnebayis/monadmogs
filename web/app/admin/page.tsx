@@ -130,8 +130,23 @@ export default function AdminPage() {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Helpers                                                             */
+/* ------------------------------------------------------------------ */
+
+function toWei(mon: string): string {
+  const n = parseFloat(mon) || 0;
+  return BigInt(Math.round(n * 1e18)).toString();
+}
+
+function fromWei(wei: string): string {
+  return (Number(wei) / 1e18).toFixed(4);
+}
+
+/* ------------------------------------------------------------------ */
 /*  Games Panel                                                         */
 /* ------------------------------------------------------------------ */
+
+type PrizeType = "mon" | "mon+nft" | "mon+mogs" | "mon+nft+mogs";
 
 function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => void }) {
   const [games, setGames] = useState<Game[]>([]);
@@ -139,11 +154,19 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // Create game form state
+  // Create game form — MON values (human-readable)
   const [gameType, setGameType] = useState<typeof GAME_TYPES[number]>("dice-duel");
   const [linked, setLinked] = useState(true);
-  const [entryFee, setEntryFee] = useState("10000000000000000"); // 0.01 MON in wei
+  const [entryFeeMon, setEntryFeeMon] = useState("0.01");
   const [sponsorMon, setSponsorMon] = useState("0");
+  const [prizeType, setPrizeType] = useState<PrizeType>("mon");
+
+  // NFT prize
+  const [nftCollection, setNftCollection] = useState("");
+  const [nftTokenId, setNftTokenId] = useState("");
+
+  // $MOGS prize
+  const [mogsAmount, setMogsAmount] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -155,13 +178,11 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
       const recent = await recentRes.json();
       const open = await openRes.json();
       const all: Game[] = [...(recent.games || []), ...(open.games || [])];
-      // Deduplicate
       const seen = new Set<string>();
       const deduped = all.filter((g) => { if (seen.has(g.id)) return false; seen.add(g.id); return true; });
       deduped.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setGames(deduped.slice(0, 30));
 
-      // Fetch resolve status for finished games
       const finishedIds = deduped.filter((g) => g.status === "finished").map((g) => g.id);
       const resolveResults = await Promise.all(
         finishedIds.map(async (id) => {
@@ -185,53 +206,181 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
 
   async function createGame() {
     setMsg("");
-    const action = linked ? "create-linked-game" : "create";
-    const body = linked
-      ? { action, type: gameType, entryFee, sponsorMon }
-      : { action, type: gameType };
 
-    const endpoint = linked ? "/api/arena/admin" : "/api/arena/games";
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (linked) headers["x-admin-secret"] = secret;
-    else headers["x-admin-secret"] = secret;
+    if (!linked) {
+      // Offchain-only game — just create in KV
+      const res = await fetch("/api/arena/games", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({ action: "create", type: gameType }),
+      });
+      if (res.status === 401) { onAuthFail(); return; }
+      const data = await res.json();
+      if (data.error) { setMsg(`Error: ${data.error}`); return; }
+      setMsg(`✓ Game created (offchain): ${data.game?.id}`);
+      load();
+      return;
+    }
 
-    const res = await fetch(endpoint, { method: "POST", headers, body: JSON.stringify(body) });
+    // Linked onchain game — pick action by prize type
+    const entryFeeWei = toWei(entryFeeMon);
+    const sponsorMonWei = toWei(sponsorMon);
+    const hasNft = prizeType === "mon+nft" || prizeType === "mon+nft+mogs";
+    const hasMogs = prizeType === "mon+mogs" || prizeType === "mon+nft+mogs";
+
+    if (hasNft && (!nftCollection || !nftTokenId)) {
+      setMsg("NFT collection address and token ID are required."); return;
+    }
+    if (hasMogs && !mogsAmount) {
+      setMsg("$MOGS amount is required."); return;
+    }
+
+    let action: string;
+    const body: Record<string, unknown> = {
+      type: gameType,
+      entryFee: entryFeeWei,
+      sponsorMon: sponsorMonWei,
+    };
+
+    if (hasNft && hasMogs) {
+      action = "create-linked-game-nft-mogs";
+      body.nftCollection = nftCollection;
+      body.nftTokenId = nftTokenId;
+      body.mogsAmount = toWei(mogsAmount);
+    } else if (hasNft) {
+      action = "create-linked-game-nft";
+      body.nftCollection = nftCollection;
+      body.nftTokenId = nftTokenId;
+    } else if (hasMogs) {
+      action = "create-linked-game-mogs";
+      body.mogsAmount = toWei(mogsAmount);
+    } else {
+      action = "create-linked-game";
+    }
+
+    body.action = action;
+
+    const res = await fetch("/api/arena/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+      body: JSON.stringify(body),
+    });
     if (res.status === 401) { onAuthFail(); return; }
     const data = await res.json();
     if (data.error) { setMsg(`Error: ${data.error}`); return; }
-    setMsg(`✓ Game created: ${data.game?.id || "ok"}${data.matchId ? ` (Match #${data.matchId})` : ""}`);
+    setMsg(`✓ Game created: ${data.game?.id} | Match #${data.matchId} | tx: ${data.txHash?.slice(0, 12)}…`);
     load();
   }
+
+  const hasNft = prizeType === "mon+nft" || prizeType === "mon+nft+mogs";
+  const hasMogs = prizeType === "mon+mogs" || prizeType === "mon+nft+mogs";
 
   return (
     <div className="admin-panel">
       <div className="admin-section">
         <p className="admin-section-title">Create Game</p>
+
         <div className="admin-form-row">
-          <label>Type</label>
+          <label>Game Type</label>
           <select value={gameType} onChange={(e) => setGameType(e.target.value as typeof GAME_TYPES[number])} className="admin-select">
             {GAME_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
+
         <div className="admin-form-row">
           <label>Linked (onchain)</label>
           <input type="checkbox" checked={linked} onChange={(e) => setLinked(e.target.checked)} />
+          <span className="admin-hint">Offchain-only if unchecked — no prize contract</span>
         </div>
+
         {linked && (
           <>
+            <div className="admin-form-divider" />
+
             <div className="admin-form-row">
-              <label>Entry Fee (wei)</label>
-              <input className="admin-input-sm" value={entryFee} onChange={(e) => setEntryFee(e.target.value)} />
-              <span className="admin-hint">{(Number(entryFee) / 1e18).toFixed(4)} MON</span>
+              <label>Entry Fee</label>
+              <input
+                className="admin-input-sm"
+                value={entryFeeMon}
+                onChange={(e) => setEntryFeeMon(e.target.value)}
+                placeholder="0.01"
+              />
+              <span className="admin-hint">MON &nbsp;→ {toWei(entryFeeMon)} wei</span>
             </div>
+
             <div className="admin-form-row">
-              <label>Sponsor MON (wei)</label>
-              <input className="admin-input-sm" value={sponsorMon} onChange={(e) => setSponsorMon(e.target.value)} />
-              <span className="admin-hint">{(Number(sponsorMon) / 1e18).toFixed(4)} MON</span>
+              <label>Sponsor Prize</label>
+              <input
+                className="admin-input-sm"
+                value={sponsorMon}
+                onChange={(e) => setSponsorMon(e.target.value)}
+                placeholder="0"
+              />
+              <span className="admin-hint">MON &nbsp;→ {toWei(sponsorMon)} wei</span>
             </div>
+
+            <div className="admin-form-divider" />
+
+            <div className="admin-form-row">
+              <label>Prize Type</label>
+              <div className="admin-prize-options">
+                {(["mon", "mon+nft", "mon+mogs", "mon+nft+mogs"] as PrizeType[]).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    className={`admin-prize-btn ${prizeType === p ? "active" : ""}`}
+                    onClick={() => setPrizeType(p)}
+                  >
+                    {p === "mon" ? "MON only" : p === "mon+nft" ? "MON + NFT" : p === "mon+mogs" ? "MON + $MOGS" : "MON + NFT + $MOGS"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {hasNft && (
+              <>
+                <div className="admin-form-row">
+                  <label>NFT Collection</label>
+                  <input
+                    className="admin-input-sm admin-input-wide"
+                    value={nftCollection}
+                    onChange={(e) => setNftCollection(e.target.value)}
+                    placeholder="0x1414f3BAF22404C42fD656af4aFAab4934045137"
+                  />
+                </div>
+                <div className="admin-form-row">
+                  <label>NFT Token ID</label>
+                  <input
+                    className="admin-input-sm"
+                    value={nftTokenId}
+                    onChange={(e) => setNftTokenId(e.target.value)}
+                    placeholder="42"
+                  />
+                  <span className="admin-hint">Arena wallet must own this NFT</span>
+                </div>
+              </>
+            )}
+
+            {hasMogs && (
+              <div className="admin-form-row">
+                <label>$MOGS Amount</label>
+                <input
+                  className="admin-input-sm"
+                  value={mogsAmount}
+                  onChange={(e) => setMogsAmount(e.target.value)}
+                  placeholder="1000"
+                />
+                <span className="admin-hint">$MOGS &nbsp;→ {mogsAmount ? toWei(mogsAmount) : "0"} wei &nbsp;(Arena wallet must hold this)</span>
+              </div>
+            )}
           </>
         )}
-        <button className="primary-action" onClick={createGame}>Create</button>
+
+        <div className="admin-form-row" style={{ marginTop: 8 }}>
+          <button className="primary-action" onClick={createGame} style={{ minHeight: 40 }}>
+            Create Game
+          </button>
+        </div>
         {msg && <p className="admin-msg">{msg}</p>}
       </div>
 
@@ -348,11 +497,11 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
                 <span className={`admin-status ${m.status}`}>{m.status}{expired ? " ⚠️" : ""}</span>
                 <span className="admin-mono admin-addr">{m.player1 === ZERO ? "—" : m.player1.slice(0, 8)}</span>
                 <span className="admin-mono admin-addr">{m.player2 === ZERO ? "—" : m.player2.slice(0, 8)}</span>
-                <span>{(Number(m.entryFee) / 1e18).toFixed(4)}</span>
+                <span>{fromWei(m.entryFee)} MON</span>
                 <span>
-                  {(Number(m.sponsorPrize) / 1e18).toFixed(4)} MON
-                  {hasNft && " + NFT"}
-                  {hasToken && ` + ${(Number(m.tokenPrize.amount) / 1e18).toFixed(0)} $MOGS`}
+                  {fromWei(m.sponsorPrize)} MON
+                  {hasNft && <span className="admin-prize-tag">NFT #{m.nftPrize.tokenId}</span>}
+                  {hasToken && <span className="admin-prize-tag">{(Number(m.tokenPrize.amount) / 1e18).toFixed(0)} $MOGS</span>}
                 </span>
                 <span>{new Date(m.deadline * 1000).toLocaleTimeString()}</span>
                 <span className="admin-actions">
