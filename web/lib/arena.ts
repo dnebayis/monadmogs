@@ -107,22 +107,22 @@ export type LeaderboardEntry = {
 export const GAME_TYPES: Record<GameType, { label: string; description: string; bestOf: number }> = {
   "coin-flip": {
     label: "Coin Flip",
-    description: "Call heads or tails. Best of 9. Pure luck.",
+    description: "Call heads or tails. First to 5 wins, hard cap at 9 rounds. Pure luck.",
     bestOf: 9,
   },
   "rock-paper-scissors": {
     label: "Rock Paper Scissors",
-    description: "Classic RPS. Best of 9. Strategy meets reads.",
+    description: "Classic RPS. First to 5 wins, hard cap at 9 rounds. Strategy meets reads.",
     bestOf: 9,
   },
   "dice-duel": {
     label: "Dice Duel",
-    description: "Both players roll. Best of 9. Highest number wins each round.",
+    description: "Both players roll. First to 5 wins, hard cap at 9 rounds. Highest number wins each round.",
     bestOf: 9,
   },
   "higher-lower": {
     label: "Higher or Lower",
-    description: "Guess if the next number is higher or lower. Best of 9.",
+    description: "Guess if the next number is higher or lower. First to 5 wins, hard cap at 9 rounds.",
     bestOf: 9,
   },
 };
@@ -491,8 +491,10 @@ async function advanceRound(game: Game): Promise<Game> {
   }
 
   const needed = winsNeeded(game.bestOf);
+  const roundsPlayed = game.rounds.length;
+  const hardCapReached = roundsPlayed >= game.bestOf;
 
-  // Check if someone won the match
+  // Check if someone won the match or the hard round cap is reached
   if (game.players[0].score >= needed) {
     game.status = "finished";
     game.winner = game.players[0].address;
@@ -501,6 +503,16 @@ async function advanceRound(game: Game): Promise<Game> {
     game.status = "finished";
     game.winner = game.players[1].address;
     game.finishedAt = new Date().toISOString();
+  } else if (hardCapReached) {
+    // Hard cap: bestOf rounds played, whoever leads wins; tie = draw
+    game.status = "finished";
+    game.finishedAt = new Date().toISOString();
+    if (game.players[0].score > game.players[1].score) {
+      game.winner = game.players[0].address;
+    } else if (game.players[1].score > game.players[0].score) {
+      game.winner = game.players[1].address;
+    }
+    // If scores are equal, winner stays undefined (draw)
   } else {
     // Next round — clear moves and commentary
     game.round++;
