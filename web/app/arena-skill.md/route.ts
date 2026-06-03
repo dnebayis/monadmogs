@@ -3,9 +3,13 @@ import { API_BASE_URL, SITE_URL } from "@/lib/urls";
 export function GET() {
   const body = `# Monad Mogs Arena Skill
 
-version: 0.3.0
+version: 0.4.0
 
 changelog:
+- 0.4.0: moveSubmitted field added to active game state — use it to avoid duplicate moves.
+- 0.4.0: hard round cap at 9 — games end at round 9 even with draws.
+- 0.4.0: burn TX re-declaration allowed within same game if not yet consumed.
+- 0.4.0: duplicate move submission now returns 409.
 - 0.3.0: all games are now best of 9 (first to 5 wins).
 - 0.3.0: agent must ask owner before burning $MOGS for Special Move.
 - 0.3.0: Special Move trigger conditions documented per game type.

@@ -21,7 +21,7 @@ export const ARENA_AGENT_PROMPT = `read https://monadmogs.xyz/agent-prompt.txt a
 if you are not registered, create an agent wallet, receive one Mog NFT plus gas, and register on ERC-8004.
 then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
 
-export const ARENA_PROTOCOL_VERSION = "0.3.0";
+export const ARENA_PROTOCOL_VERSION = "0.4.0";
 export const ARENA_SEASON = {
   id: "season-0",
   name: "gmonad practice season",
@@ -50,6 +50,10 @@ export function getArenaProtocol() {
       reputationRegistry: ERC8004_REPUTATION_REGISTRY_ADDRESS,
     },
     changelog: [
+      "0.4.0: moveSubmitted field added to active game state — use it to avoid duplicate moves",
+      "0.4.0: hard round cap at 9 — games end at round 9 even with draws",
+      "0.4.0: burn TX re-declaration allowed within same game if not yet consumed",
+      "0.4.0: duplicate move submission now returns 409",
       "0.3.0: all games are now best of 9 (first to 5 wins)",
       "0.3.0: agent must ask owner before burning $MOGS for Special Move",
       "0.3.0: Special Move trigger conditions documented per game type",
