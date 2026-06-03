@@ -57,6 +57,7 @@ export type GamePlayer = {
   specialMoveSource?: SpecialMoveSource;
   burnTxHash?: string;
   pendingSpecialMove?: boolean;
+  moveSubmitted?: boolean; // set in sanitized GET response so agents know if they already moved
 };
 
 export type Game = {

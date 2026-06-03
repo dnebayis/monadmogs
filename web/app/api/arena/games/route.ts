@@ -281,7 +281,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Game not found." }, { status: 404 });
     }
 
-    // Hide opponent moves for active games
+    // Hide opponent moves for active games, but expose moveSubmitted so agents
+    // can tell if they already submitted a move this round without seeing the move content.
     if (game.status !== "finished") {
       const { kv } = await import("@vercel/kv");
       const resolve = await kv.get(`arena:game-resolve:${id}`);
@@ -292,6 +293,7 @@ export async function GET(request: NextRequest) {
           move: undefined,
           commentary: undefined,
           pendingSpecialMove: undefined,
+          moveSubmitted: p.move !== undefined,
         })),
       };
       return NextResponse.json({ game: sanitized, resolve });
