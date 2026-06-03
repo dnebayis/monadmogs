@@ -65,16 +65,45 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
   const [tab, setTab] = useState<"games" | "matches" | "leaderboard">("games");
 
-  // Load secret from sessionStorage
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  // Restore session — re-validate against server on load
   useEffect(() => {
     const s = sessionStorage.getItem("admin_secret");
-    if (s) { setSecret(s); setAuthed(true); }
+    if (!s) return;
+    fetch("/api/arena/admin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-secret": s },
+      body: JSON.stringify({ action: "game-hash", gameId: "ping" }),
+    }).then((r) => {
+      if (r.ok) { setSecret(s); setAuthed(true); }
+      else sessionStorage.removeItem("admin_secret");
+    }).catch(() => sessionStorage.removeItem("admin_secret"));
   }, []);
 
-  function login() {
-    sessionStorage.setItem("admin_secret", input);
-    setSecret(input);
-    setAuthed(true);
+  async function login() {
+    if (!input) return;
+    setLoginError("");
+    setLoginLoading(true);
+    try {
+      const res = await fetch("/api/arena/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": input },
+        body: JSON.stringify({ action: "game-hash", gameId: "ping" }),
+      });
+      if (res.status === 401) {
+        setLoginError("Wrong secret.");
+        setLoginLoading(false);
+        return;
+      }
+      sessionStorage.setItem("admin_secret", input);
+      setSecret(input);
+      setAuthed(true);
+    } catch {
+      setLoginError("Connection error.");
+    }
+    setLoginLoading(false);
   }
 
   function logout() {
@@ -93,11 +122,14 @@ export default function AdminPage() {
             type="password"
             placeholder="Admin secret"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e) => { setInput(e.target.value); setLoginError(""); }}
             onKeyDown={(e) => e.key === "Enter" && login()}
             className="admin-input"
           />
-          <button className="primary-action" onClick={login}>Enter</button>
+          {loginError && <p className="admin-login-error">{loginError}</p>}
+          <button className="primary-action" onClick={login} disabled={loginLoading}>
+            {loginLoading ? "Checking…" : "Enter"}
+          </button>
         </div>
       </div>
     );

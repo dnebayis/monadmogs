@@ -3168,3 +3168,9 @@ textarea:focus-visible {
   font-size: 10px;
   color: var(--cyan);
 }
+
+.admin-login-error {
+  color: #e05555;
+  font-size: 13px;
+  margin: 0;
+}
