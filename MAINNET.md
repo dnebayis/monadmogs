@@ -58,14 +58,15 @@ Deployment is complete. All steps below have been executed. This file is a histo
 - Upgradeable implementation for future collab/game/prize extensions
 - Reentrancy guard, pause/unpause
 - 2-hour match timeout with public expireMatch
-- Security hardening is implemented in source: full matches reset timeout on second join before a new implementation upgrade
+- Security hardening is implemented in source: full matches reset timeout on second join
 - Draw resolution with full refunds
-- Per-player active match limit
+- Per-player active match limit (one active onchain match per wallet)
 - Waiting linked match exit through `leaveMatch(matchId)` plus API `leave`
 - gameHash links onchain match to offchain game ID
 - pendingWithdrawals fallback for failed transfers
 - Linked admin API creates offchain game + onchain match + `gameId -> matchId` link in one request
 - Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
+- `uint256[50] private __gap` storage reserve for future upgrade safety
 
 ### Latest Upgrade
 - Implementation upgraded to `0x178eFf00CfC86Beed3f98b999542ac37A864D7B2`.
