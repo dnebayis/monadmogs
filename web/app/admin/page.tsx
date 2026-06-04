@@ -239,69 +239,71 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
   async function createGame() {
     setMsg("");
 
-    if (!linked) {
-      // Offchain-only game — just create in KV
-      const res = await fetch("/api/arena/games", {
+    try {
+      if (!linked) {
+        const res = await fetch("/api/arena/games", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+          body: JSON.stringify({ action: "create", type: gameType }),
+        });
+        if (res.status === 401) { onAuthFail(); return; }
+        const data = await res.json();
+        if (data.error) { setMsg(`Error: ${data.error}`); return; }
+        setMsg(`✓ Game created (offchain): ${data.game?.id}`);
+        load();
+        return;
+      }
+
+      const entryFeeWei = toWei(entryFeeMon);
+      const sponsorMonWei = toWei(sponsorMon);
+      const hasNft = prizeType === "mon+nft" || prizeType === "mon+nft+mogs";
+      const hasMogs = prizeType === "mon+mogs" || prizeType === "mon+nft+mogs";
+
+      if (hasNft && (!nftCollection || !nftTokenId)) {
+        setMsg("NFT collection address and token ID are required."); return;
+      }
+      if (hasMogs && !mogsAmount) {
+        setMsg("$MOGS amount is required."); return;
+      }
+
+      let action: string;
+      const body: Record<string, unknown> = {
+        type: gameType,
+        entryFee: entryFeeWei,
+        sponsorMon: sponsorMonWei,
+      };
+
+      if (hasNft && hasMogs) {
+        action = "create-linked-game-nft-mogs";
+        body.nftCollection = nftCollection;
+        body.nftTokenId = nftTokenId;
+        body.mogsAmount = toWei(mogsAmount);
+      } else if (hasNft) {
+        action = "create-linked-game-nft";
+        body.nftCollection = nftCollection;
+        body.nftTokenId = nftTokenId;
+      } else if (hasMogs) {
+        action = "create-linked-game-mogs";
+        body.mogsAmount = toWei(mogsAmount);
+      } else {
+        action = "create-linked-game";
+      }
+
+      body.action = action;
+
+      const res = await fetch("/api/arena/admin", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-        body: JSON.stringify({ action: "create", type: gameType }),
+        body: JSON.stringify(body),
       });
       if (res.status === 401) { onAuthFail(); return; }
       const data = await res.json();
       if (data.error) { setMsg(`Error: ${data.error}`); return; }
-      setMsg(`✓ Game created (offchain): ${data.game?.id}`);
+      setMsg(`✓ Game created: ${data.game?.id} | Match #${data.matchId} | tx: ${data.txHash?.slice(0, 12)}…`);
       load();
-      return;
+    } catch {
+      setMsg("Connection error — check network and retry.");
     }
-
-    // Linked onchain game — pick action by prize type
-    const entryFeeWei = toWei(entryFeeMon);
-    const sponsorMonWei = toWei(sponsorMon);
-    const hasNft = prizeType === "mon+nft" || prizeType === "mon+nft+mogs";
-    const hasMogs = prizeType === "mon+mogs" || prizeType === "mon+nft+mogs";
-
-    if (hasNft && (!nftCollection || !nftTokenId)) {
-      setMsg("NFT collection address and token ID are required."); return;
-    }
-    if (hasMogs && !mogsAmount) {
-      setMsg("$MOGS amount is required."); return;
-    }
-
-    let action: string;
-    const body: Record<string, unknown> = {
-      type: gameType,
-      entryFee: entryFeeWei,
-      sponsorMon: sponsorMonWei,
-    };
-
-    if (hasNft && hasMogs) {
-      action = "create-linked-game-nft-mogs";
-      body.nftCollection = nftCollection;
-      body.nftTokenId = nftTokenId;
-      body.mogsAmount = toWei(mogsAmount);
-    } else if (hasNft) {
-      action = "create-linked-game-nft";
-      body.nftCollection = nftCollection;
-      body.nftTokenId = nftTokenId;
-    } else if (hasMogs) {
-      action = "create-linked-game-mogs";
-      body.mogsAmount = toWei(mogsAmount);
-    } else {
-      action = "create-linked-game";
-    }
-
-    body.action = action;
-
-    const res = await fetch("/api/arena/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) { onAuthFail(); return; }
-    const data = await res.json();
-    if (data.error) { setMsg(`Error: ${data.error}`); return; }
-    setMsg(`✓ Game created: ${data.game?.id} | Match #${data.matchId} | tx: ${data.txHash?.slice(0, 12)}…`);
-    load();
   }
 
   const hasNft = prizeType === "mon+nft" || prizeType === "mon+nft+mogs";
@@ -487,18 +489,22 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
 
   async function adminAction(action: string, matchId: number, extra?: Record<string, unknown>) {
     setMsg((m) => ({ ...m, [matchId]: "…" }));
-    const res = await fetch("/api/arena/admin", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-admin-secret": secret },
-      body: JSON.stringify({ action, matchId, ...extra }),
-    });
-    if (res.status === 401) { onAuthFail(); return; }
-    const data = await res.json();
-    if (data.error) {
-      setMsg((m) => ({ ...m, [matchId]: `✗ ${data.error}` }));
-    } else {
-      setMsg((m) => ({ ...m, [matchId]: `✓ ${data.txHash?.slice(0, 10) || "ok"}` }));
-      load();
+    try {
+      const res = await fetch("/api/arena/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({ action, matchId, ...extra }),
+      });
+      if (res.status === 401) { onAuthFail(); return; }
+      const data = await res.json();
+      if (data.error) {
+        setMsg((m) => ({ ...m, [matchId]: `✗ ${data.error}` }));
+      } else {
+        setMsg((m) => ({ ...m, [matchId]: `✓ ${data.txHash?.slice(0, 10) || "ok"}` }));
+        load();
+      }
+    } catch {
+      setMsg((m) => ({ ...m, [matchId]: "✗ Connection error" }));
     }
   }
 
@@ -572,9 +578,13 @@ function LeaderboardPanel({ secret, onAuthFail }: { secret: string; onAuthFail: 
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/arena?view=leaderboard");
-    const data = await res.json();
-    setEntries(data.leaderboard || []);
+    try {
+      const res = await fetch("/api/arena?view=leaderboard");
+      const data = await res.json();
+      setEntries(data.leaderboard || []);
+    } catch {
+      setMsg("Failed to load leaderboard.");
+    }
     setLoading(false);
   }, []);
 

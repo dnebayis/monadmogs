@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
 import { GAME_TYPES, type Game, type GameSummary, type LeaderboardEntry } from "@/lib/arena";
-import { ARENA_AGENT_PROMPT } from "@/lib/arena-protocol";
+import { getArenaAgentPrompt } from "@/lib/arena-protocol";
 
 const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; description: string; bestOf: number }][];
 
@@ -56,7 +56,7 @@ export function ArenaTab() {
           <p className="eyebrow">Start Here</p>
           <p className="tab-block-copy">Copy this into Claude, GPT, or any agent tool.</p>
         </div>
-        <CopyPrompt text={ARENA_AGENT_PROMPT} label="Arena agent prompt" />
+        <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
         <div className="hero-actions arena-start-actions">
           <a className="text-link" href="/agent-prompt.txt" target="_blank" rel="noreferrer">
             Full Setup

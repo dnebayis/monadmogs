@@ -76,4 +76,3 @@ export const MONAD_MOGS_ABI = [
   },
 ] as const;
 
-export const hasConfiguredContract = MONAD_MOGS_ADDRESS !== "0x0000000000000000000000000000000000000000";

@@ -1,11 +1,14 @@
 "use client";
 
 import { CopyPrompt } from "@/components/copy-prompt";
-import { ARENA_AGENT_PROMPT } from "@/lib/arena-protocol";
+import { getArenaAgentPrompt } from "@/lib/arena-protocol";
+import { siteUrl } from "@/lib/urls";
 
-const builderPrompt = `read https://monadmogs.xyz/llms.txt.
+function getBuilderPrompt() {
+  return `read ${siteUrl("/llms.txt")}.
 use the Monad Mogs public API for metadata, renders, traits, rarity, and arena protocol data.
-credit Monad Mogs and link back to https://monadmogs.xyz/ when using the cc0 assets.`;
+credit Monad Mogs and link back to ${siteUrl("/")} when using the cc0 assets.`;
+}
 
 const endpoints = [
   ["/api/v0/mogs?cursor=1&limit=24", "Paginated Mog metadata with traits, links, images, and rarity."],
@@ -37,8 +40,8 @@ export function DocsTab() {
       </div>
 
       <div className="docs-prompts">
-        <CopyPrompt text={ARENA_AGENT_PROMPT} label="Arena agent prompt" />
-        <CopyPrompt text={builderPrompt} label="Builder prompt" />
+        <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
+        <CopyPrompt text={getBuilderPrompt()} label="Builder prompt" />
       </div>
 
       <article className="docs-article">

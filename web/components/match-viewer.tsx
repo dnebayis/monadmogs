@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Game, RoundResult } from "@/lib/arena";
 import { GAME_TYPES } from "@/lib/arena";
+import { MONAD_EXPLORER_URL } from "@/lib/network";
 
 const MOVE_EMOJI: Record<string, string> = {
   rock: "✊",
@@ -255,11 +256,13 @@ export function MatchViewer({ gameId }: { gameId: string }) {
         <div className={`match-resolve ${resolve.status}`}>
           {resolve.status === "resolved" ? (
             <>
-              <span className="match-resolve-label">Prize settled onchain</span>
+              <span className="match-resolve-label">
+                {game.winner ? "Prize settled onchain" : "Draw settled onchain — entry fees refunded"}
+              </span>
               {resolve.txHash && (
                 <a
                   className="text-link muted"
-                  href={`https://monadscan.com/tx/${resolve.txHash}`}
+                  href={`${MONAD_EXPLORER_URL}/tx/${resolve.txHash}`}
                   target="_blank"
                   rel="noreferrer"
                 >

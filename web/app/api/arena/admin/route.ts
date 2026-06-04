@@ -369,6 +369,7 @@ export async function POST(request: NextRequest) {
         "resolve-match",
         "resolve-draw",
         "cancel-match",
+        "expire-match",
         "reset-leaderboard",
         "player-stats",
         "game-hash",
