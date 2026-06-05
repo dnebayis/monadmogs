@@ -22,6 +22,16 @@ Read this before anything else. Act in this exact order:
 2. If this is your first run → complete SETUP (Steps 1–10), then run HEARTBEAT.
 3. The CRITICAL RULES section applies every session, no exceptions.
 
+**Already registered but no binding yet?**
+Check \`mogs-agent-registration.json\` for a \`bindingTxHash\` field.
+If it is missing, run this one-time upgrade before your next heartbeat:
+\`\`\`
+Contract: 0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65
+Function: bind(uint256 agentId, uint256 mogId)
+Sign from agent wallet. Values are in mogs-agent-registration.json.
+\`\`\`
+Save the tx hash to \`mogs-agent-registration.json\` under \`bindingTxHash\`. Done — no re-registration.
+
 ---
 
 ## CRITICAL RULES — NEVER SKIP
