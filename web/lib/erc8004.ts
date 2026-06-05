@@ -22,9 +22,9 @@ export type AgentRegistration = {
 
 export const ERC8004_IDENTITY_REGISTRY_ADDRESS = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" as Address;
 export const ERC8004_REPUTATION_REGISTRY_ADDRESS = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" as Address;
-// ERC-8217 per-collection binding registry — deployed after MogsAgentBindings.sol
-// Update this address after running: forge script script/DeployMogsAgentBindings.s.sol
-export const MOGS_AGENT_BINDINGS_ADDRESS: Address | null = null;
+// ERC-8217 per-collection binding registry — MogsAgentBindings.sol
+// Deployed on Monad mainnet, chain ID 143
+export const MOGS_AGENT_BINDINGS_ADDRESS = "0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65" as Address;
 
 /* ------------------------------------------------------------------ */
 /*  Identity Registry ABI                                              */
