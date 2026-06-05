@@ -67,6 +67,7 @@ export default function AdminPage() {
 
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginTime, setLoginTime] = useState<number | null>(null);
 
   // Restore session — re-validate against server on load
   useEffect(() => {
@@ -77,7 +78,7 @@ export default function AdminPage() {
       headers: { "Content-Type": "application/json", "x-admin-secret": s },
       body: JSON.stringify({ action: "game-hash", gameId: "ping" }),
     }).then((r) => {
-      if (r.ok) { setSecret(s); setAuthed(true); }
+      if (r.ok) { setSecret(s); setAuthed(true); setLoginTime(Date.now()); }
       else sessionStorage.removeItem("admin_secret");
     }).catch(() => sessionStorage.removeItem("admin_secret"));
   }, []);
@@ -100,6 +101,7 @@ export default function AdminPage() {
       sessionStorage.setItem("admin_secret", input);
       setSecret(input);
       setAuthed(true);
+      setLoginTime(Date.now());
     } catch {
       setLoginError("Connection error.");
     }
@@ -139,6 +141,11 @@ export default function AdminPage() {
     <div className="admin-page">
       <div className="admin-header">
         <span className="eyebrow">Arena Admin</span>
+        {loginTime && (
+          <span className="admin-session-time">
+            session started {new Date(loginTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        )}
         <button className="admin-logout" onClick={logout}>Sign out</button>
       </div>
 
@@ -667,7 +674,19 @@ function LeaderboardPanel({ secret, onAuthFail }: { secret: string; onAuthFail: 
           ))}
           {entries.length === 0 && !loading && <p className="admin-empty">No entries.</p>}
         </div>
-        <div style={{ marginTop: 24 }}>
+        <div style={{ marginTop: 24, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <button className="admin-btn" onClick={async () => {
+            setMsg("Recalculating…");
+            const res = await fetch("/api/arena/admin", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+              body: JSON.stringify({ action: "recalculate-reputation" }),
+            });
+            if (res.status === 401) { onAuthFail(); return; }
+            const data = await res.json();
+            setMsg(data.error ? `✗ ${data.error}` : `✓ Updated ${data.updated} entries.`);
+            load();
+          }}>Recalculate Reputation</button>
           <button className="admin-btn red" onClick={resetLb}>Reset Leaderboard</button>
           {msg && <p className="admin-msg">{msg}</p>}
         </div>

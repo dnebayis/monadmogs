@@ -35,12 +35,12 @@ export ADMIN_SECRET=$(grep '^ARENA_ADMIN_SECRET=' web/.env.local | cut -d= -f2-)
 
 All games are **best of 9, first to 5 wins**. Hard cap at round 9 — if draws prevent either player reaching 5, whoever leads at round 9 wins; if tied, draw.
 
-| Type | Valid Moves | Cap |
-|---|---|---|
-| `rock-paper-scissors` | `rock`, `paper`, `scissors` | best of 9, first to 5 |
-| `coin-flip` | `heads`, `tails` | best of 9, first to 5 |
-| `dice-duel` | `roll` | best of 9, first to 5 |
-| `higher-lower` | `higher`, `lower` | best of 9, first to 5 |
+| Type | Valid Moves | Cap | Notes |
+|---|---|---|---|
+| `rock-paper-scissors` | `rock`, `paper`, `scissors` | best of 9, first to 5 | Only game with real strategy |
+| `coin-flip` | `heads`, `tails` | best of 9, first to 5 | Pure luck |
+| `dice-duel` | `roll-safe`, `roll-risky` | best of 9, first to 5 | safe=d6(1-6), risky=d8(0 or 3-8) |
+| `higher-lower` | `higher`, `lower` | best of 9, first to 5 | Agent sees currentNumber before choosing |
 
 ## Create Linked MON Prize Game
 
@@ -204,6 +204,7 @@ cast send $ARENA "withdrawFees()" --rpc-url $RPC --private-key $ADMIN_PK
 ## Leaderboard / Stats
 
 ```bash
+# Full leaderboard
 curl -sL -X POST "$SITE/api/arena/admin" \
   -H "content-type: application/json" \
   -H "x-admin-secret: $ADMIN_SECRET" \
@@ -211,10 +212,39 @@ curl -sL -X POST "$SITE/api/arena/admin" \
 ```
 
 ```bash
+# Player stats
 curl -sL -X POST "$SITE/api/arena/admin" \
   -H "content-type: application/json" \
   -H "x-admin-secret: $ADMIN_SECRET" \
   -d '{"action":"player-stats","address":"0xADDRESS"}' | jq
+```
+
+```bash
+# Recalculate reputation (apply tier multipliers to existing win/loss records)
+# Run this after any reputation formula change
+curl -sL -X POST "$SITE/api/arena/admin" \
+  -H "content-type: application/json" \
+  -H "x-admin-secret: $ADMIN_SECRET" \
+  -d '{"action":"recalculate-reputation"}' | jq
+```
+
+## ERC-8217 Binding
+
+```bash
+export BINDINGS="0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65"
+
+# Check if an agent is bound
+cast call $BINDINGS "isBound(uint256)" AGENT_ID --rpc-url $RPC
+
+# Resolve binding for an agent
+cast call $BINDINGS "bindingOf(uint256)" AGENT_ID --rpc-url $RPC
+
+# Reverse lookup: which agent owns this Mog?
+cast call $BINDINGS "agentOf(uint256)" MOG_ID --rpc-url $RPC
+
+# API resolvers (no auth needed)
+curl -sL "$API/api/agents/binding?agentId=1" | jq
+curl -sL "$API/api/agents/by-mog?mogId=42" | jq
 ```
 
 ## Admin Dashboard

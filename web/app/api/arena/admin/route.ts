@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { resetLeaderboard, getPlayerStats, createOpenGame, linkGameToMatch, GAME_TYPES } from "@/lib/arena";
+import { resetLeaderboard, getPlayerStats, createOpenGame, linkGameToMatch, GAME_TYPES, TIER_PERKS } from "@/lib/arena";
+import { getMogRarity } from "@/lib/rarity";
+import { kv } from "@vercel/kv";
 import {
   cancelOnchainMatch,
   expireOnchainMatch,
@@ -356,6 +358,40 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ gameId, hash: gameIdToHash(gameId) });
   }
 
+  /* ---- Recalculate reputation with tier multipliers ---- */
+  if (action === "recalculate-reputation") {
+    try {
+      const addresses = await kv.zrange<string[]>("arena:leaderboard", 0, -1);
+      let updated = 0;
+      for (const addr of addresses) {
+        const stats = await kv.get<{
+          address: string;
+          mogId: number;
+          mogName: string;
+          wins: number;
+          losses: number;
+          draws: number;
+          games: number;
+          reputation: number;
+        }>(`arena:stats:${addr}`);
+        if (!stats) continue;
+
+        const rarity = getMogRarity(stats.mogId);
+        const perks = TIER_PERKS[rarity?.tier || "common"];
+        const multiplier = perks.reputationMultiplier;
+        const reputation = Math.floor(Math.max(0, stats.wins * 10 - stats.losses * 3) * multiplier);
+
+        const updatedStats = { ...stats, reputation };
+        await kv.set(`arena:stats:${addr}`, updatedStats);
+        await kv.zadd("arena:leaderboard", { score: reputation, member: addr });
+        updated++;
+      }
+      return NextResponse.json({ success: true, updated });
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
+
   return NextResponse.json(
     {
       error: "Invalid action.",
@@ -371,6 +407,7 @@ export async function POST(request: NextRequest) {
         "cancel-match",
         "expire-match",
         "reset-leaderboard",
+        "recalculate-reputation",
         "player-stats",
         "game-hash",
       ],

@@ -38,6 +38,33 @@ Deployment is complete. All steps below have been executed. This file is a histo
 | Identity Registry | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
 | Reputation Registry | `0x8004BAa17C55a88189AE136b182e5fdA19dE9b63` |
 
+## MogsAgentBindings — ERC-8217 (Monad mainnet)
+
+| Field | Value |
+|---|---|
+| Contract | `0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65` |
+| Spec | ERC-8217 Agent NFT Identity Binding |
+| Chain | Monad mainnet (chain ID 143) |
+| NFT_CONTRACT | `0x1414f3BAF22404C42fD656af4aFAab4934045137` |
+| IDENTITY_REGISTRY | `0x8004A169FB4a3325136EB29fA0ceB6D2e539a432` |
+| Deploy tx | see broadcast/DeployMogsAgentBindings.s.sol/143/run-latest.json |
+
+### How to bind
+
+Call `bind(uint256 agentId, uint256 mogId)` from the agent wallet.
+Caller must own both the ERC-8004 agent NFT (agentId) and the Mog NFT (mogId).
+Binding is immutable once written. One Mog, one agent.
+
+Already registered on ERC-8004? No re-registration needed — just call `bind()` once.
+`agentId` and `mogId` are in `mogs-agent-registration.json`.
+
+### Resolver endpoints
+
+```
+GET /api/agents/binding?agentId={id}   — which Mog is this agent bound to?
+GET /api/agents/by-mog?mogId={id}      — which agent is bound to this Mog?
+```
+
 ## MogsArena Upgradeable (Mainnet)
 
 | Field | Value |

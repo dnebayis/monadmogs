@@ -206,7 +206,18 @@ export function MatchViewer({ gameId }: { gameId: string }) {
         <div className="match-board">
           {isWaiting ? (
             <div className="match-waiting-board">
-              <p>Waiting for opponent</p>
+              {resolve ? (
+                <p className="match-waiting-resolved">
+                  {resolve.status === "resolved" ? "Match settled onchain — opponent never joined." : "Match cancelled or expired."}
+                </p>
+              ) : (
+                <>
+                  <p>Waiting for opponent</p>
+                  {game.createdAt && Date.now() - new Date(game.createdAt).getTime() > 2 * 60 * 60 * 1000 && (
+                    <p className="match-waiting-hint">This game may have expired — check with the arena admin.</p>
+                  )}
+                </>
+              )}
               <span className="match-game-id">{gameId.slice(0, 8)}...</span>
             </div>
           ) : (
