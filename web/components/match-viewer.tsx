@@ -43,42 +43,95 @@ export function MatchViewer({ gameId }: { gameId: string }) {
   const [resolve, setResolve] = useState<ResolveStatus>(null);
   const [error, setError] = useState<string | null>(null);
   const [visibleRounds, setVisibleRounds] = useState(0);
+  const [usingSse, setUsingSse] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    let latestStatus: Game["status"] | null = null;
+    let es: EventSource | null = null;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    const loadMatch = async () => {
+    function applyState(data: { game?: Game; resolve?: ResolveStatus; error?: string }) {
+      if (cancelled) return;
+      if (data.error) { setError(data.error); return; }
+      if (data.game) { setError(null); setGame(data.game); setResolve(data.resolve ?? null); }
+    }
+
+    // Polling fallback — used when SSE is not available or after SSE closes
+    function startPolling(currentGame: Game | null) {
+      if (currentGame?.status === "finished") return;
+      pollInterval = setInterval(async () => {
+        if (cancelled) return;
+        try {
+          const res = await fetch(`/api/arena/games?id=${gameId}`, { cache: "no-store" });
+          const data = await res.json();
+          applyState(data);
+          if (data.game?.status === "finished" && pollInterval) {
+            window.clearInterval(pollInterval);
+            pollInterval = null;
+          }
+        } catch { /* ignore transient errors */ }
+      }, 4000);
+    }
+
+    // Initial load always via REST so we have state immediately
+    async function initialLoad() {
       try {
         const res = await fetch(`/api/arena/games?id=${gameId}`, { cache: "no-store" });
         const data = await res.json();
-        if (cancelled) return;
-        if (data.error) {
-          setError(data.error);
-          return;
-        }
-        setError(null);
-        setGame(data.game);
-        setResolve(data.resolve ?? null);
-        latestStatus = data.game?.status || null;
+        applyState(data);
+        return data.game as Game | null;
       } catch {
         if (!cancelled) setError("Failed to load match.");
+        return null;
       }
-    };
+    }
 
-    loadMatch();
-    const interval = window.setInterval(() => {
-      if (latestStatus !== "finished") {
-        loadMatch();
+    initialLoad().then((initialGame) => {
+      if (cancelled || initialGame?.status === "finished") return;
+
+      // Try SSE — EventSource is available in all modern browsers
+      if (typeof EventSource !== "undefined") {
+        setUsingSse(true);
+        es = new EventSource(`/api/arena/games/stream?id=${gameId}`);
+
+        es.addEventListener("state", (e: MessageEvent) => {
+          try { applyState(JSON.parse(e.data)); } catch { /* ignore */ }
+        });
+
+        es.addEventListener("done", () => {
+          es?.close();
+          es = null;
+          setUsingSse(false);
+        });
+
+        es.addEventListener("error", () => {
+          es?.close();
+          es = null;
+          setUsingSse(false);
+          // SSE failed or closed — fall back to polling
+          startPolling(game);
+        });
+      } else {
+        // No EventSource support — go straight to polling
+        startPolling(initialGame);
       }
-    }, 3000);
-    window.addEventListener("focus", loadMatch);
+    });
+
+    // Reload on window focus (catches stale state after tab switch)
+    const onFocus = async () => {
+      if (cancelled) return;
+      const res = await fetch(`/api/arena/games?id=${gameId}`, { cache: "no-store" }).catch(() => null);
+      if (res?.ok) applyState(await res.json());
+    };
+    window.addEventListener("focus", onFocus);
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", loadMatch);
+      es?.close();
+      if (pollInterval) window.clearInterval(pollInterval);
+      window.removeEventListener("focus", onFocus);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameId]);
 
   // Animate rounds appearing one by one
@@ -123,6 +176,11 @@ export function MatchViewer({ gameId }: { gameId: string }) {
         <a className="text-link muted" href="/#arena">Arena</a>
         <span className="match-type">{gameInfo?.label}</span>
         <span className="match-best-of">Best of {game.bestOf}</span>
+        {!isFinished && (
+          <span className="match-live-indicator" title={usingSse ? "Live via SSE" : "Polling"}>
+            {usingSse ? "● live" : "● polling"}
+          </span>
+        )}
       </div>
 
       <div className="match-arena">

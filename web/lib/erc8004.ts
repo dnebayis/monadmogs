@@ -22,6 +22,9 @@ export type AgentRegistration = {
 
 export const ERC8004_IDENTITY_REGISTRY_ADDRESS = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" as Address;
 export const ERC8004_REPUTATION_REGISTRY_ADDRESS = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" as Address;
+// ERC-8217 per-collection binding registry — deployed after MogsAgentBindings.sol
+// Update this address after running: forge script script/DeployMogsAgentBindings.s.sol
+export const MOGS_AGENT_BINDINGS_ADDRESS: Address | null = null;
 
 /* ------------------------------------------------------------------ */
 /*  Identity Registry ABI                                              */
@@ -326,6 +329,79 @@ export const ERC8004_REPUTATION_REGISTRY_ABI = [
       { name: "agentId", type: "uint256", indexed: true },
       { name: "clientAddress", type: "address", indexed: true },
       { name: "feedbackIndex", type: "uint64", indexed: true },
+    ],
+  },
+] as const;
+
+/* ------------------------------------------------------------------ */
+/*  MogsAgentBindings ABI (ERC-8217)                                   */
+/* ------------------------------------------------------------------ */
+
+export const MOGS_AGENT_BINDINGS_ABI = [
+  {
+    type: "function",
+    name: "bind",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "mogId", type: "uint256" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "bindingOf",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "standard", type: "uint8" },
+          { name: "tokenContract", type: "address" },
+          { name: "tokenId", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "agentOf",
+    stateMutability: "view",
+    inputs: [{ name: "mogId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "isBound",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "NFT_CONTRACT",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "IDENTITY_REGISTRY",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "event",
+    name: "AgentBound",
+    inputs: [
+      { name: "agentId", type: "uint256", indexed: true },
+      { name: "standard", type: "uint8", indexed: true },
+      { name: "tokenContract", type: "address", indexed: true },
+      { name: "tokenId", type: "uint256", indexed: false },
+      { name: "registeredBy", type: "address", indexed: false },
     ],
   },
 ] as const;

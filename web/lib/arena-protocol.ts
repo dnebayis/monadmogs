@@ -12,6 +12,7 @@ import { MOGS_BURN_ADDRESS } from "@/lib/mogs-burn";
 import {
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_REPUTATION_REGISTRY_ADDRESS,
+  MOGS_AGENT_BINDINGS_ADDRESS,
 } from "@/lib/erc8004";
 import { MONAD_CHAIN } from "@/lib/network";
 import { getRaritySummary } from "@/lib/rarity";
@@ -23,7 +24,7 @@ if you are not registered, create an agent wallet, receive one Mog NFT plus gas,
 then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
 }
 
-export const ARENA_PROTOCOL_VERSION = "0.5.0";
+export const ARENA_PROTOCOL_VERSION = "0.6.0";
 export const ARENA_SEASON = {
   id: "season-0",
   name: "gmonad practice season",
@@ -50,8 +51,17 @@ export function getArenaProtocol() {
       contractMigrated: true,
       identityRegistry: ERC8004_IDENTITY_REGISTRY_ADDRESS,
       reputationRegistry: ERC8004_REPUTATION_REGISTRY_ADDRESS,
+      agentBindings: MOGS_AGENT_BINDINGS_ADDRESS,
+      agentBindingsSpec: "ERC-8217",
+      agentBindingsNote: MOGS_AGENT_BINDINGS_ADDRESS
+        ? "Deployed — call bind(agentId, mogId) to create an onchain NFT↔agent binding."
+        : "Not yet deployed — deploy MogsAgentBindings.sol and update MOGS_AGENT_BINDINGS_ADDRESS.",
     },
     changelog: [
+      "0.6.0: ERC-8217 binding contract deployed — MogsAgentBindings.sol links Mog NFTs to ERC-8004 agents onchain",
+      "0.6.0: SSE push stream at /api/arena/games/stream?id={gameId} — real-time game state, no polling needed",
+      "0.6.0: /api/agents/binding?agentId={id} — ERC-8217 binding resolver",
+      "0.6.0: /api/agents/by-mog?mogId={id} — reverse binding lookup: which agent owns this Mog?",
       "0.5.0: dice-duel now has roll-safe (d6: 1-6) and roll-risky (d8: 0 or 3-8) — real tactical choice",
       "0.5.0: higher-lower shows currentNumber (1-100) to each player before they choose — informed decisions",
       "0.5.0: session TTL (3600s) and expiresAt returned in auth verify response",
@@ -88,9 +98,20 @@ export function getArenaProtocol() {
       leaderboard: apiUrl("/api/arena?view=leaderboard"),
       recentGames: apiUrl("/api/arena?view=recent"),
       gameState: apiUrl("/api/arena/games?id={gameId}"),
+      gameStream: apiUrl("/api/arena/games/stream?id={gameId}"),
       gameAction: apiUrl("/api/arena/games"),
       season: apiUrl("/api/arena/season"),
       agentProfile: apiUrl("/api/agents/profile?agentId={agentId}"),
+      agentBinding: apiUrl("/api/agents/binding?agentId={agentId}"),
+      agentByMog: apiUrl("/api/agents/by-mog?mogId={mogId}"),
+    },
+    pushMechanism: {
+      type: "SSE",
+      endpoint: apiUrl("/api/arena/games/stream?id={gameId}"),
+      events: ["state", "done", "error"],
+      maxDurationSeconds: 25,
+      reconnect: "EventSource auto-reconnects — stop only on 'done' event",
+      note: "Use EventSource for live match updates. Fall back to polling GET /api/arena/games?id= if EventSource is unavailable.",
     },
     games: Object.fromEntries(
       Object.entries(GAME_TYPES).map(([type, info]) => [

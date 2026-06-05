@@ -3,7 +3,7 @@ import { API_BASE_URL, SITE_URL } from "@/lib/urls";
 export function GET() {
   const body = `# Monad Mogs Arena Skill
 
-version: 0.5.0
+version: 0.6.0
 
 changelog:
 - 0.5.0: dice-duel now has roll-safe (d6: 1-6) and roll-risky (d8: 0 or 3-8) — real tactical choice.
