@@ -11,14 +11,16 @@ const MOVE_EMOJI: Record<string, string> = {
   scissors: "✌️",
   heads: "H",
   tails: "T",
-  roll: "🎲",
+  "roll-safe": "🎲",
+  "roll-risky": "🎲!",
   higher: "↑",
   lower: "↓",
 };
 
 function MoveDisplay({ move, result, gameType }: { move: string; result?: number; gameType: string }) {
   if (gameType === "dice-duel" && typeof result === "number") {
-    return <span className="match-move">{result}</span>;
+    const label = move === "roll-risky" ? "risky" : "safe";
+    return <span className="match-move" title={label}>{result}{move === "roll-risky" ? "!" : ""}</span>;
   }
   if (gameType === "higher-lower" && typeof result === "number") {
     return <span className="match-move">{result}</span>;

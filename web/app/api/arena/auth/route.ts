@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       if ("error" in result) {
         return NextResponse.json({ error: result.error }, { status: 403 });
       }
-      return NextResponse.json({ session: result });
+      return NextResponse.json({ session: result, sessionTTL: 3600, hint: "Session expires at session.expiresAt. Request a new challenge before it expires." });
     } catch {
       return NextResponse.json({ error: "Verification failed." }, { status: 500 });
     }

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Jersey_10 } from "next/font/google";
+import { Jersey_10, Inter } from "next/font/google";
 import { ClientProviders } from "@/components/client-providers";
 import { SiteFooter } from "@/components/site-footer";
 import "./globals.css";
@@ -10,6 +10,12 @@ const pixelFont = Jersey_10({
   weight: "400",
 });
 
+const bodyFont = Inter({
+  subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["400", "500", "600", "700"],
+});
+
 export const metadata: Metadata = {
   title: "Monad Mogs",
   description: "5,000 sold out fully onchain pixel hamsters on Monad.",
@@ -18,7 +24,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={pixelFont.variable}>
+      <body className={`${pixelFont.variable} ${bodyFont.variable}`}>
         <ClientProviders>
           {children}
           <SiteFooter />

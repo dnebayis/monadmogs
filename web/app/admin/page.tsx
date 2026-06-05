@@ -234,7 +234,11 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const interval = window.setInterval(load, 10_000);
+    return () => window.clearInterval(interval);
+  }, [load]);
 
   async function createGame() {
     setMsg("");
@@ -470,22 +474,47 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
 
 function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => void }) {
   const [matches, setMatches] = useState<OnchainMatch[]>([]);
+  const [failedResolves, setFailedResolves] = useState<{ gameId: string; error: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<Record<number, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/arena?view=matches");
-      const data = await res.json();
-      setMatches(data.matches || []);
+      const [matchRes, recentRes] = await Promise.all([
+        fetch("/api/arena?view=matches"),
+        fetch("/api/arena?view=recent"),
+      ]);
+      const matchData = await matchRes.json();
+      setMatches(matchData.matches || []);
+
+      // Check recent finished games for failed resolve records
+      const recentData = await recentRes.json();
+      const finished: { id: string }[] = (recentData.games || []).filter((g: { status: string }) => g.status === "finished");
+      const failed: { gameId: string; error: string }[] = [];
+      await Promise.all(
+        finished.slice(0, 20).map(async (g: { id: string }) => {
+          try {
+            const r = await fetch(`/api/arena/games?id=${g.id}`);
+            const d = await r.json();
+            if (d.resolve?.status === "failed") {
+              failed.push({ gameId: g.id, error: d.resolve.error || "Unknown error" });
+            }
+          } catch { /* ignore */ }
+        })
+      );
+      setFailedResolves(failed);
     } catch {
       /* ignore */
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const interval = window.setInterval(load, 15_000);
+    return () => window.clearInterval(interval);
+  }, [load]);
 
   async function adminAction(action: string, matchId: number, extra?: Record<string, unknown>) {
     setMsg((m) => ({ ...m, [matchId]: "…" }));
@@ -519,8 +548,20 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
       <div className="admin-section">
         <div className="admin-section-header">
           <p className="admin-section-title">Onchain Matches</p>
+          <span className="admin-hint" style={{ marginLeft: 8, opacity: 0.5 }}>auto-refreshes every 15s</span>
           <button className="admin-refresh" onClick={load}>{loading ? "…" : "↻"}</button>
         </div>
+        {failedResolves.length > 0 && (
+          <div className="admin-alert" style={{ background: "#3a1515", border: "1px solid #ff4444", borderRadius: 8, padding: "12px 16px", marginBottom: 16 }}>
+            <strong style={{ color: "#ff6666" }}>⚠ Failed Onchain Settlements ({failedResolves.length})</strong>
+            {failedResolves.map((f) => (
+              <div key={f.gameId} style={{ marginTop: 8, fontSize: 13, color: "#ffaaaa" }}>
+                Game {f.gameId.slice(0, 8)}… — {f.error}
+                <a href={`/arena/match/${f.gameId}`} target="_blank" rel="noreferrer" className="admin-btn" style={{ marginLeft: 8 }}>View</a>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="admin-table">
           <div className="admin-table-head">
             <span>#</span><span>Status</span><span>P1</span><span>P2</span><span>Entry</span><span>Prize</span><span>Deadline</span><span>Actions</span>

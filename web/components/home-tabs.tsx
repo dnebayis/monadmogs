@@ -47,11 +47,15 @@ const TAB_COMPONENTS: Record<TabId, React.ComponentType> = {
 
 export function HomeTabs() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
     function syncHash() {
       const hash = window.location.hash.replace("#", "");
-      if (isTabId(hash)) setActiveTab(hash);
+      if (isTabId(hash)) {
+        setActiveTab(hash);
+        setMobileOpen(false);
+      }
     }
 
     syncHash();
@@ -63,6 +67,7 @@ export function HomeTabs() {
 
   function selectTab(tab: TabId) {
     setActiveTab(tab);
+    setMobileOpen(false);
     window.history.replaceState(null, "", `#${tab}`);
   }
 
@@ -70,11 +75,24 @@ export function HomeTabs() {
 
   return (
     <section className="tabs-shell" aria-label="Monad Mogs sections">
-      <div className="tabs-nav">
+      <nav className="tabs-nav">
         <a className="site-logo" href="#overview" onClick={() => selectTab("overview")} aria-label="Monad Mogs home">
-          Monad Mogs
+          <img src="/logo.svg" alt="Monad Mogs" width={36} height={36} />
         </a>
-        <div className="tabs-bar" role="tablist" aria-label="Sections">
+
+        <button
+          className="nav-mobile-toggle"
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle navigation"
+          aria-expanded={mobileOpen}
+        >
+          <span>{activeLabel}</span>
+          <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
+            <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        <div className={`tabs-bar ${mobileOpen ? "open" : ""}`} role="tablist" aria-label="Sections">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -88,8 +106,9 @@ export function HomeTabs() {
             </button>
           ))}
         </div>
+
         <ConnectWalletButton />
-      </div>
+      </nav>
 
       <div className="tab-panel" role="tabpanel" aria-label={activeLabel}>
         <ActiveComponent />

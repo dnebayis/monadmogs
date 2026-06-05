@@ -9,7 +9,7 @@ export type GameType = "coin-flip" | "rock-paper-scissors" | "dice-duel" | "high
 
 export type GameStatus = "waiting" | "active" | "finished";
 
-export type GameMove = "rock" | "paper" | "scissors" | "heads" | "tails" | "roll" | "higher" | "lower";
+export type GameMove = "rock" | "paper" | "scissors" | "heads" | "tails" | "roll" | "roll-safe" | "roll-risky" | "higher" | "lower";
 
 export type SpecialMoveSource = "rarity" | "burn";
 
@@ -41,6 +41,9 @@ export type RoundResult = {
   commentary: { p1: string; p2: string };
   coinResult?: "heads" | "tails";
   specialMoves?: RoundSpecialMoveResult[];
+  /** Higher-Lower: the current numbers each player saw before choosing */
+  p1CurrentNumber?: number;
+  p2CurrentNumber?: number;
 };
 
 export type GamePlayer = {
@@ -54,10 +57,13 @@ export type GamePlayer = {
   result?: number;
   specialMoveAvailable?: boolean;
   specialMoveUsed?: boolean;
+  specialMoveUsedCount?: number;
   specialMoveSource?: SpecialMoveSource;
   burnTxHash?: string;
   pendingSpecialMove?: boolean;
   moveSubmitted?: boolean; // set in sanitized GET response so agents know if they already moved
+  /** Higher-Lower: the current number the player sees before choosing higher or lower */
+  currentNumber?: number;
 };
 
 export type Game = {
@@ -119,12 +125,12 @@ export const GAME_TYPES: Record<GameType, { label: string; description: string; 
   },
   "dice-duel": {
     label: "Dice Duel",
-    description: "Both players roll. First to 5 wins, hard cap at 9 rounds. Highest number wins each round.",
+    description: "Choose safe (d6: 1-6) or risky (d8: 1-8, but 1-2 = 0). Highest number wins. First to 5, hard cap 9 rounds.",
     bestOf: 9,
   },
   "higher-lower": {
     label: "Higher or Lower",
-    description: "Guess if the next number is higher or lower. First to 5 wins, hard cap at 9 rounds.",
+    description: "See your current number (1-100), guess if the next is higher or lower. First to 5, hard cap 9 rounds.",
     bestOf: 9,
   },
 };
@@ -132,7 +138,7 @@ export const GAME_TYPES: Record<GameType, { label: string; description: string; 
 export const VALID_MOVES: Record<GameType, GameMove[]> = {
   "coin-flip": ["heads", "tails"],
   "rock-paper-scissors": ["rock", "paper", "scissors"],
-  "dice-duel": ["roll"],
+  "dice-duel": ["roll-safe", "roll-risky"],
   "higher-lower": ["higher", "lower"],
 };
 
@@ -140,6 +146,46 @@ export const SPECIAL_MOVE_TERM = "Special Move";
 export const SPECIAL_MOVE_SUPPORTED_GAMES: GameType[] = ["dice-duel", "higher-lower"];
 export const SPECIAL_MOVE_BURN_AMOUNT = "1000";
 export const SPECIAL_MOVE_MAX_PER_MATCH = 1;
+
+export type TierPerks = {
+  freeSpecialMove: boolean;
+  specialMovesPerMatch: number;
+  reputationMultiplier: number;
+  description: string;
+};
+
+export const TIER_PERKS: Record<string, TierPerks> = {
+  legendary: {
+    freeSpecialMove: true,
+    specialMovesPerMatch: 2,
+    reputationMultiplier: 1.5,
+    description: "2 free Special Moves per match, 1.5x reputation gains",
+  },
+  epic: {
+    freeSpecialMove: true,
+    specialMovesPerMatch: 1,
+    reputationMultiplier: 1.25,
+    description: "1 free Special Move per match, 1.25x reputation gains",
+  },
+  rare: {
+    freeSpecialMove: true,
+    specialMovesPerMatch: 1,
+    reputationMultiplier: 1.0,
+    description: "1 free Special Move per match",
+  },
+  uncommon: {
+    freeSpecialMove: false,
+    specialMovesPerMatch: 1,
+    reputationMultiplier: 1.0,
+    description: "Special Move available via 1,000 $MOGS burn",
+  },
+  common: {
+    freeSpecialMove: false,
+    specialMovesPerMatch: 1,
+    reputationMultiplier: 1.0,
+    description: "Special Move available via 1,000 $MOGS burn",
+  },
+};
 
 export function isValidMoveForGame(type: GameType, move: GameMove): boolean {
   return VALID_MOVES[type].includes(move);
@@ -197,12 +243,26 @@ function roundSeed(game: Game, label: string) {
   ].join(":");
 }
 
+/** Seed that does NOT include moves — used for values that must be visible before moves are submitted */
+function preMoveSeed(game: Game, label: string) {
+  const [p1, p2] = game.players;
+  return [
+    game.id,
+    game.createdAt,
+    game.type,
+    game.round,
+    label,
+    p1?.address || "",
+    p2?.address || "",
+  ].join(":");
+}
+
 function deterministicInt(seed: string, max: number): number {
   return Math.floor(seededUnit(seed) * max) + 1;
 }
 
 function declaredSpecialMove(player: GamePlayer): boolean {
-  return Boolean(player.pendingSpecialMove && player.specialMoveAvailable && !player.specialMoveUsed);
+  return Boolean(player.pendingSpecialMove && player.specialMoveAvailable);
 }
 
 function consumeSpecialMove(
@@ -211,6 +271,7 @@ function consumeSpecialMove(
   before: number,
   after: number
 ): RoundSpecialMoveResult {
+  player.specialMoveUsedCount = (player.specialMoveUsedCount || 0) + 1;
   player.specialMoveUsed = true;
   player.pendingSpecialMove = false;
   // Mark burn TX as permanently consumed so it cannot be reused in any future game
@@ -272,16 +333,38 @@ function resolveRound(game: Game): RoundResult | null {
       break;
     }
     case "dice-duel": {
-      p1Result = deterministicInt(roundSeed(game, "p1-dice"), 6);
-      p2Result = deterministicInt(roundSeed(game, "p2-dice"), 6);
+      // Safe roll: d6 (1-6). Risky roll: d8 (1-8) but 1-2 become 0.
+      if (p1.move === "roll-risky") {
+        const raw = deterministicInt(roundSeed(game, "p1-dice"), 8);
+        p1Result = raw <= 2 ? 0 : raw;
+      } else {
+        p1Result = deterministicInt(roundSeed(game, "p1-dice"), 6);
+      }
+      if (p2.move === "roll-risky") {
+        const raw = deterministicInt(roundSeed(game, "p2-dice"), 8);
+        p2Result = raw <= 2 ? 0 : raw;
+      } else {
+        p2Result = deterministicInt(roundSeed(game, "p2-dice"), 6);
+      }
 
+      // Special move: reroll if losing (uses same dice type the player chose)
       if (p1Result < p2Result && declaredSpecialMove(p1)) {
         const before = p1Result;
-        p1Result = deterministicInt(roundSeed(game, "p1-dice-special"), 6);
+        if (p1.move === "roll-risky") {
+          const raw = deterministicInt(roundSeed(game, "p1-dice-special"), 8);
+          p1Result = raw <= 2 ? 0 : raw;
+        } else {
+          p1Result = deterministicInt(roundSeed(game, "p1-dice-special"), 6);
+        }
         specialMoves.push(consumeSpecialMove(p1, "dice-reroll", before, p1Result));
       } else if (p2Result < p1Result && declaredSpecialMove(p2)) {
         const before = p2Result;
-        p2Result = deterministicInt(roundSeed(game, "p2-dice-special"), 6);
+        if (p2.move === "roll-risky") {
+          const raw = deterministicInt(roundSeed(game, "p2-dice-special"), 8);
+          p2Result = raw <= 2 ? 0 : raw;
+        } else {
+          p2Result = deterministicInt(roundSeed(game, "p2-dice-special"), 6);
+        }
         specialMoves.push(consumeSpecialMove(p2, "dice-reroll", before, p2Result));
       }
 
@@ -293,9 +376,11 @@ function resolveRound(game: Game): RoundResult | null {
       break;
     }
     case "higher-lower": {
-      const p1Current = deterministicInt(roundSeed(game, "p1-current"), 100);
+      // currentNumber is generated with pre-move seed so agents can see it before choosing
+      const p1Current = p1.currentNumber ?? deterministicInt(preMoveSeed(game, "p1-current"), 100);
+      const p2Current = p2.currentNumber ?? deterministicInt(preMoveSeed(game, "p2-current"), 100);
+      // nextNumber uses post-move seed (includes both moves) — unpredictable until resolution
       const p1Next = deterministicInt(roundSeed(game, "p1-next"), 100);
-      const p2Current = deterministicInt(roundSeed(game, "p2-current"), 100);
       const p2Next = deterministicInt(roundSeed(game, "p2-next"), 100);
 
       let p1Correct = p1Next !== p1Current && (
@@ -350,11 +435,24 @@ function resolveRound(game: Game): RoundResult | null {
     },
     ...(coinResult ? { coinResult } : {}),
     ...(specialMoves.length ? { specialMoves } : {}),
+    ...(game.type === "higher-lower" ? {
+      p1CurrentNumber: p1.currentNumber,
+      p2CurrentNumber: p2.currentNumber,
+    } : {}),
   };
 }
 
 function winsNeeded(bestOf: number): number {
   return Math.ceil(bestOf / 2);
+}
+
+/** Assign deterministic currentNumbers to both players for higher-lower games.
+ *  Called when the game becomes active and at the start of each new round.
+ *  Uses pre-move seed so the number is visible before the agent chooses. */
+function assignCurrentNumbers(game: Game): void {
+  if (game.type !== "higher-lower" || game.players.length < 2) return;
+  game.players[0].currentNumber = deterministicInt(preMoveSeed(game, "p1-current"), 100);
+  game.players[1].currentNumber = deterministicInt(preMoveSeed(game, "p2-current"), 100);
 }
 
 function specialMoveFields(specialMove?: SpecialMoveRequest): Partial<GamePlayer> {
@@ -419,6 +517,7 @@ export async function joinGame(
   }
 
   game.status = "active";
+  assignCurrentNumbers(game);
 
   // If both have moves, resolve the first round
   if (game.players[0].move && game.players[1].move) {
@@ -526,10 +625,13 @@ async function advanceRound(game: Game): Promise<Game> {
     game.players[0].result = undefined;
     game.players[0].commentary = undefined;
     game.players[0].pendingSpecialMove = undefined;
+    game.players[0].currentNumber = undefined;
     game.players[1].move = undefined;
     game.players[1].result = undefined;
     game.players[1].commentary = undefined;
     game.players[1].pendingSpecialMove = undefined;
+    game.players[1].currentNumber = undefined;
+    assignCurrentNumbers(game);
   }
 
   // Store round results on players for the current/last round
@@ -614,6 +716,7 @@ export async function getRecentGames(limit = 20): Promise<Game[]> {
 
 async function updateStats(game: Game): Promise<void> {
   if (game.status !== "finished") return;
+  const { getMogRarity } = await import("@/lib/rarity");
 
   for (const player of game.players) {
     const key = PLAYER_STATS_KEY(player.address);
@@ -632,6 +735,10 @@ async function updateStats(game: Game): Promise<void> {
     stats.mogId = player.mogId;
     stats.mogName = player.mogName;
 
+    const rarity = getMogRarity(player.mogId);
+    const perks = TIER_PERKS[rarity?.tier || "common"];
+    const multiplier = perks.reputationMultiplier;
+
     if (!game.winner) {
       stats.draws++;
     } else if (game.winner === player.address) {
@@ -640,7 +747,8 @@ async function updateStats(game: Game): Promise<void> {
       stats.losses++;
     }
 
-    stats.reputation = Math.max(0, stats.wins * 10 - stats.losses * 3);
+    const rawRep = stats.wins * 10 - stats.losses * 3;
+    stats.reputation = Math.max(0, Math.floor(rawRep * multiplier));
 
     await kv.set(key, stats);
     await kv.zadd(LEADERBOARD_KEY, { score: stats.reputation, member: player.address.toLowerCase() });

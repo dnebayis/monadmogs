@@ -11,6 +11,7 @@ import {
   type GameMove,
   type GamePlayer,
   GAME_TYPES,
+  TIER_PERKS,
   isValidMoveForGame,
   supportsSpecialMove,
   type SpecialMoveRequest,
@@ -294,6 +295,8 @@ export async function GET(request: NextRequest) {
           commentary: undefined,
           pendingSpecialMove: undefined,
           moveSubmitted: p.move !== undefined,
+          // currentNumber is visible for higher-lower so agents can make informed decisions
+          currentNumber: p.currentNumber,
         })),
       };
       return NextResponse.json({ game: sanitized, resolve });
@@ -362,14 +365,16 @@ async function validateSpecialMove(
     return { ok: false, status: 400, error: "specialMove.source must be rarity or burn." };
   }
 
-  const existingPlayer = game.players.find((p) => p.address.toLowerCase() === session.address.toLowerCase());
-  if (existingPlayer?.specialMoveUsed) {
-    return { ok: false, status: 400, error: "This Mog already used its Special Move in this match." };
-  }
-
   const rarity = getMogRarity(session.mogId);
   if (!rarity) {
     return { ok: false, status: 400, error: "Mog rarity could not be verified." };
+  }
+
+  const perks = TIER_PERKS[rarity.tier];
+  const existingPlayer = game.players.find((p) => p.address.toLowerCase() === session.address.toLowerCase());
+  const usedCount = existingPlayer?.specialMoveUsedCount || 0;
+  if (usedCount >= perks.specialMovesPerMatch) {
+    return { ok: false, status: 400, error: `This Mog has used all ${perks.specialMovesPerMatch} Special Move(s) for this match.` };
   }
 
   if (source === "rarity") {

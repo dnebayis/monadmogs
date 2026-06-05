@@ -134,6 +134,24 @@
 
 ## In Progress
 
+### ERC-8217-Style Agent NFT Binding
+- First priority for the next agent layer: make the relationship between a Mog NFT and its ERC-8004 agent identity explicit.
+- Direction is onchain-first. Monad Mogs should not rely on a purely offchain binding table as the source of truth.
+- Existing ERC-8004 agent registrations already include Mog metadata (`mogId`, `mogName`, `mogImage`, `mogMetadata`, `agentURI`), so current agents should be recognized without asking users to register again.
+- New registrations should write a clearer binding metadata key that points to:
+  - Monad Mogs NFT contract
+  - tokenId
+  - chainId
+  - ERC-8004 agentId
+  - agent wallet
+- Build read endpoints that resolve and verify the binding from onchain ERC-8004 data plus current NFT ownership:
+  - `/api/agents/binding?agentId={id}`
+  - `/api/agents/by-mog/{mogId}`
+  - `/api/mogs/{mogId}/agent`
+- These endpoints are resolvers, not the authority. Authority should remain onchain: ERC-8004 registry data, AgentURI, and Monad Mogs ownership.
+- If a future exact ERC-8217 implementation requires a new metadata key for older agents, make it optional through a one-click metadata upgrade, never a mandatory re-registration.
+- Goal: every system layer can answer one question clearly: which Mog NFT does this agent represent?
+
 ### Arena Operations
 - Keep `ARENA_WALLET_PRIVATE_KEY`, `MOGS_ARENA_ADDRESS`, and `ARENA_ADMIN_SECRET` configured in Vercel.
 - Use linked admin actions for normal prize games.
@@ -153,6 +171,71 @@
 ---
 
 ## Planned
+
+### Agent Standards Research
+- Track emerging Ethereum agent/NFT standards as design inputs, not as mandatory migrations.
+- Current priority remains onchain-first architecture: no critical identity, ownership, or permission state should depend only on an offchain database.
+- Ideas to evaluate:
+  - ERC-8217-style Agent NFT Identity Binding: bind an ERC-8004 agent identity to a specific Monad Mogs NFT.
+  - ERC-8239-style Skill Registry: describe what an agent can do through skill manifests and hashes.
+  - ERC-8257-style Tool Registry: publish official agent tool manifests, endpoint schemas, access rules, and manifest hashes.
+  - ERC-8118-style Agent Authorization: owner-defined permissions such as max entry fee, allowed games, burn permission, and daily limits.
+  - Agent receipt/proof standards: produce verifiable records of moves, tool calls, match results, Special Move usage, and onchain resolve txs.
+  - Agent NFT / AI-native NFT ideas: explore whether future agents should hold memory, lifecycle state, wallet links, or execution history as NFT metadata.
+  - Token-bound account ideas: evaluate whether a Mog should eventually control or reference its own account, without forcing migration from the current agent-wallet model.
+- These standards should be added gradually only where they improve agent safety, interoperability, or onchain verifiability.
+- Existing ERC-8004 registrations should remain valid. Any future standard alignment should avoid asking users to register the same agent again.
+
+### Agent Capability Manifest Layer
+- After Agent NFT Binding is stable, add a capability layer inspired by ERC-8239 skill registry and ERC-8257 tool registry discussions.
+- Keep the architecture onchain-first where authority matters:
+  - agent identity from ERC-8004
+  - NFT binding from onchain metadata/ownership
+  - reputation from arena results and ERC-8004 feedback
+  - future tool/skill attestations anchored by manifest hashes
+- Public manifests can describe tools and skills, but they should not become the source of truth for ownership or identity.
+- Candidate manifests:
+  - `/.well-known/mog-tools.json`
+  - `/api/tools/arena`
+  - `/api/tools/rarity`
+  - `/api/tools/render`
+  - `/api/tools/special-move`
+- AgentURI should expose stable `tools`, `skills`, and `agentBinding` fields so agents can read machine-friendly instructions without relying only on long prompts.
+- Future onchain registry can anchor:
+  - toolId
+  - manifestURI
+  - manifestHash
+  - creator
+  - access rule / predicate address
+  - active status
+- Goal: agents discover what they can do, which tools are official, and what permissions are required without moving identity offchain.
+
+### Agent Permission Profiles
+- Add clear owner-defined limits before agents become more autonomous.
+- Candidate permissions:
+  - allowed game types
+  - max entry fee
+  - max games per day
+  - can use Special Move
+  - can burn `$MOGS`
+  - can join prize games
+- Short term: expose these as signed or registry-backed profiles.
+- Long term: move critical permissions onchain so agent authority is not controlled by an offchain database.
+
+### Arena Receipts
+- Add machine-readable match receipts for every completed game.
+- Receipt fields:
+  - gameId
+  - matchId
+  - agentIds
+  - mogIds
+  - moves
+  - winner / draw
+  - Special Move usage
+  - prize type
+  - onchain resolve tx
+  - result hash
+- Receipts should feed reputation, agent history, and future proof/verification layers.
 
 ### Trait Personas
 - Every Mog has a unique persona derived from its 9 onchain trait categories.

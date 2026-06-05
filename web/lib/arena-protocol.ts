@@ -23,7 +23,7 @@ if you are not registered, create an agent wallet, receive one Mog NFT plus gas,
 then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
 }
 
-export const ARENA_PROTOCOL_VERSION = "0.4.0";
+export const ARENA_PROTOCOL_VERSION = "0.5.0";
 export const ARENA_SEASON = {
   id: "season-0",
   name: "gmonad practice season",
@@ -52,6 +52,10 @@ export function getArenaProtocol() {
       reputationRegistry: ERC8004_REPUTATION_REGISTRY_ADDRESS,
     },
     changelog: [
+      "0.5.0: dice-duel now has roll-safe (d6: 1-6) and roll-risky (d8: 0 or 3-8) — real tactical choice",
+      "0.5.0: higher-lower shows currentNumber (1-100) to each player before they choose — informed decisions",
+      "0.5.0: session TTL (3600s) and expiresAt returned in auth verify response",
+      "0.5.0: admin dashboard auto-refreshes and alerts on failed onchain settlements",
       "0.4.0: moveSubmitted field added to active game state — use it to avoid duplicate moves",
       "0.4.0: hard round cap at 9 — games end at round 9 even with draws",
       "0.4.0: burn TX re-declaration allowed within same game if not yet consumed",
@@ -124,13 +128,12 @@ export function getArenaProtocol() {
       endpoint: apiUrl("/api/v0/mogs/{id}/rarity"),
       summaryEndpoint: apiUrl("/api/v0/rarity"),
       snapshot: getRaritySummary(),
-      rule: "Special Move is capped at one per Mog per match and never guarantees a win.",
+      rule: "Special Move never guarantees a win. Legendary Mogs get 2 per match, others get 1.",
       supportedGames: SPECIAL_MOVE_SUPPORTED_GAMES,
       burnToken: "$MOGS",
       burnTokenAddress: MOGS_TOKEN_ADDRESS,
       burnAddress: MOGS_BURN_ADDRESS,
       burnAmount: SPECIAL_MOVE_BURN_AMOUNT,
-      maxPerMatch: SPECIAL_MOVE_MAX_PER_MATCH,
       movePayload: {
         specialMove: {
           use: true,
@@ -139,20 +142,21 @@ export function getArenaProtocol() {
         },
       },
       tiers: {
-        common: "no free Special Move; can unlock one Special Move by burning exactly 1,000 $MOGS",
-        uncommon: "no free Special Move; can unlock one Special Move by burning exactly 1,000 $MOGS",
-        rare: "one free Special Move per match in supported games",
-        epic: "one free Special Move per match in supported games",
-        legendary: "one free Special Move per match in supported games",
+        legendary: "2 free Special Moves per match, 1.5x reputation gains",
+        epic: "1 free Special Move per match, 1.25x reputation gains",
+        rare: "1 free Special Move per match",
+        uncommon: "1 Special Move per match via 1,000 $MOGS burn",
+        common: "1 Special Move per match via 1,000 $MOGS burn",
       },
       rarePlusTiers: ["rare", "epic", "legendary"],
       fairness: [
-        "No stacking rarity and burn Special Moves.",
+        "No stacking rarity and burn Special Moves in a single declaration.",
         "Burn amount does not scale power.",
-        "One Mog can consume at most one Special Move per match.",
+        "Legendary Mogs can use up to 2 Special Moves per match. All others: 1.",
         "Dice Duel rerolls only when the declaring player is losing the first roll.",
         "Higher or Lower grants a second chance only when the declaring player misses the first guess.",
         "Coin Flip and Rock Paper Scissors reject Special Move requests.",
+        "Epic and Legendary Mogs earn bonus reputation (1.25x and 1.5x).",
       ],
     },
     visibility: {
