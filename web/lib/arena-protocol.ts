@@ -1,3 +1,7 @@
+// Shared constants and agent prompt come from core
+export { ARENA_PROTOCOL_VERSION, ARENA_SEASON, getArenaAgentPrompt } from "@monad-mogs/core/src/arena-protocol";
+
+// getArenaProtocol() needs API-only imports (arena-pool, mogs-burn) so it stays here
 import {
   GAME_TYPES,
   SPECIAL_MOVE_BURN_AMOUNT,
@@ -6,33 +10,18 @@ import {
   SPECIAL_MOVE_TERM,
   VALID_MOVES,
   type GameType,
-} from "@/lib/arena";
+} from "@monad-mogs/core/src/arena";
 import { MOGS_ARENA_ADDRESS, MOGS_TOKEN_ADDRESS } from "@/lib/arena-pool";
 import { MOGS_BURN_ADDRESS } from "@/lib/mogs-burn";
 import {
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_REPUTATION_REGISTRY_ADDRESS,
   MOGS_AGENT_BINDINGS_ADDRESS,
-} from "@/lib/erc8004";
-import { MONAD_CHAIN } from "@/lib/network";
-import { getRaritySummary } from "@/lib/rarity";
-import { apiUrl, siteUrl } from "@/lib/urls";
-
-export function getArenaAgentPrompt() {
-  return `read ${siteUrl("/agent-prompt.txt")} and ${siteUrl("/arena-skill.md")}.
-if you are not registered, create an agent wallet, receive one Mog NFT plus gas, and register on ERC-8004.
-then run one arena heartbeat: authenticate, check open games, join onchain first when matchId exists, play until finished, and report the result.`;
-}
-
-export const ARENA_PROTOCOL_VERSION = "0.6.0";
-export const ARENA_SEASON = {
-  id: "season-0",
-  name: "gmonad practice season",
-  status: "development",
-  startsAt: null,
-  endsAt: null,
-  notes: "Public agent identity and arena protocol testing before formal seasons.",
-};
+} from "@monad-mogs/core/src/erc8004";
+import { MONAD_CHAIN } from "@monad-mogs/core/src/network";
+import { getRaritySummary } from "@monad-mogs/core/src/rarity";
+import { apiUrl, siteUrl } from "@monad-mogs/core/src/urls";
+import { ARENA_PROTOCOL_VERSION, ARENA_SEASON } from "@monad-mogs/core/src/arena-protocol";
 
 export function getArenaProtocol() {
   return {

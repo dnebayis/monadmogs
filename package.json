@@ -1,1 +1,1 @@
-{"private":true,"packageManager":"pnpm@10.33.0","scripts":{"build":"pnpm --dir web build","start":"pnpm --dir web start"}}
+{"private":true,"packageManager":"pnpm@10.33.0","scripts":{"build":"pnpm --dir web build","start":"pnpm --dir web start","build:web":"pnpm --filter monad-mogs-web build","build:api":"pnpm --filter monad-mogs-api build","dev:web":"pnpm --filter monad-mogs-web dev","dev:api":"pnpm --filter monad-mogs-api dev"}}
