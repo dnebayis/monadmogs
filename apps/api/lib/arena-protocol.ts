@@ -28,8 +28,8 @@ export function getArenaProtocol() {
     project: "Monad Mogs Arena",
     version: ARENA_PROTOCOL_VERSION,
     site: siteUrl("/"),
-    skillUrl: siteUrl("/arena-skill.md"),
-    llmsUrl: siteUrl("/llms.txt"),
+    skillUrl: apiUrl("/arena-skill.md"),
+    llmsUrl: apiUrl("/llms.txt"),
     chain: {
       id: MONAD_CHAIN.id,
       name: MONAD_CHAIN.name,

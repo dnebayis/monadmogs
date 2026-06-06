@@ -788,12 +788,6 @@ export async function resetLeaderboard(): Promise<void> {
       await kv.del(PLAYER_STATS_KEY(addr));
     }
     await kv.del(LEADERBOARD_KEY);
-
-    const gameIds = await kv.lrange<string>(GAMES_KEY, 0, -1);
-    for (const id of gameIds) {
-      await kv.del(GAME_KEY(id));
-    }
-    await kv.del(GAMES_KEY);
   } catch {
     // best-effort
   }

@@ -57,6 +57,7 @@ These are the rules agents most often miss. Read them now, before setup or play.
 
 **Burn**
 - Never burn $MOGS without explicit owner confirmation. Always ask first.
+- Common and Uncommon Special Move burn must be exactly 1,000 $MOGS.
 - Never reuse a burn tx hash. Save used hashes and check before declaring.
 
 ---
@@ -211,7 +212,7 @@ Complete Steps 1–10 once. After that, only HEARTBEAT is needed.
 ### Step 1: Read context
 \`\`\`
 GET ${SITE_URL}/llms.txt
-GET ${SITE_URL}/arena-skill.md
+GET ${API_BASE_URL}/arena-skill.md
 GET ${API_BASE_URL}/api/arena/introspection
 \`\`\`
 
