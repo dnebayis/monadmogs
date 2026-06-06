@@ -6,16 +6,24 @@
  * and llms.txt reference will follow automatically.
  */
 
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://monadmogs.xyz";
+function normalizeBaseUrl(value: string) {
+  return value.replace(/\/+$/, "");
+}
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || SITE_URL;
+function normalizePath(path: string) {
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
+export const SITE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL || "https://monadmogs.xyz");
+
+export const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL || SITE_URL);
 
 /** Build a public API path, respecting the API base URL. */
 export function apiUrl(path: string) {
-  return `${API_BASE_URL}${path}`;
+  return `${API_BASE_URL}${normalizePath(path)}`;
 }
 
 /** Build a site page path. */
 export function siteUrl(path: string) {
-  return `${SITE_URL}${path}`;
+  return `${SITE_URL}${normalizePath(path)}`;
 }
