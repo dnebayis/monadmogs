@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Game, RoundResult } from "@/lib/arena";
 import { GAME_TYPES } from "@/lib/arena";
 import { MONAD_EXPLORER_URL } from "@/lib/network";
+import { API_BASE_URL } from "@/lib/urls";
 
 const MOVE_EMOJI: Record<string, string> = {
   rock: "✊",
@@ -62,7 +63,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
       pollInterval = setInterval(async () => {
         if (cancelled) return;
         try {
-          const res = await fetch(`/api/arena/games?id=${gameId}`, { cache: "no-store" });
+          const res = await fetch(`${API_BASE_URL}/api/arena/games?id=${gameId}`, { cache: "no-store" });
           const data = await res.json();
           applyState(data);
           if (data.game?.status === "finished" && pollInterval) {
@@ -76,7 +77,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
     // Initial load always via REST so we have state immediately
     async function initialLoad() {
       try {
-        const res = await fetch(`/api/arena/games?id=${gameId}`, { cache: "no-store" });
+        const res = await fetch(`${API_BASE_URL}/api/arena/games?id=${gameId}`, { cache: "no-store" });
         const data = await res.json();
         applyState(data);
         return data.game as Game | null;
@@ -92,7 +93,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
       // Try SSE — EventSource is available in all modern browsers
       if (typeof EventSource !== "undefined") {
         setUsingSse(true);
-        es = new EventSource(`/api/arena/games/stream?id=${gameId}`);
+        es = new EventSource(`${API_BASE_URL}/api/arena/games/stream?id=${gameId}`);
 
         es.addEventListener("state", (e: MessageEvent) => {
           try { applyState(JSON.parse(e.data)); } catch { /* ignore */ }
@@ -120,7 +121,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
     // Reload on window focus (catches stale state after tab switch)
     const onFocus = async () => {
       if (cancelled) return;
-      const res = await fetch(`/api/arena/games?id=${gameId}`, { cache: "no-store" }).catch(() => null);
+      const res = await fetch(`${API_BASE_URL}/api/arena/games?id=${gameId}`, { cache: "no-store" }).catch(() => null);
       if (res?.ok) applyState(await res.json());
     };
     window.addEventListener("focus", onFocus);

@@ -182,7 +182,7 @@ export function AgentIdentityForm() {
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       try {
-        const response = await fetch(`/api/v0/mogs/${tokenId}`, { signal: controller.signal });
+        const response = await fetch(`${API_BASE_URL}/api/v0/mogs/${tokenId}`, { signal: controller.signal });
         if (!response.ok) throw new Error("Mog metadata could not be loaded.");
         setMog((await response.json()) as MogMetadata);
       } catch (caught) {
@@ -230,7 +230,7 @@ export function AgentIdentityForm() {
       );
       const metadata = await Promise.allSettled(
         ownedIds.map(async (tokenId) => {
-          const response = await fetch(`/api/v0/mogs/${tokenId}`);
+          const response = await fetch(`${API_BASE_URL}/api/v0/mogs/${tokenId}`);
           if (!response.ok) throw new Error(`Mog #${tokenId} metadata could not be loaded.`);
           return (await response.json()) as MogMetadata;
         }),

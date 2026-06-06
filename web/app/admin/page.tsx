@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { API_BASE_URL } from "@/lib/urls";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -73,7 +74,7 @@ export default function AdminPage() {
   useEffect(() => {
     const s = sessionStorage.getItem("admin_secret");
     if (!s) return;
-    fetch("/api/arena/admin", {
+    fetch(`${API_BASE_URL}/api/arena/admin`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-secret": s },
       body: JSON.stringify({ action: "game-hash", gameId: "ping" }),
@@ -88,7 +89,7 @@ export default function AdminPage() {
     setLoginError("");
     setLoginLoading(true);
     try {
-      const res = await fetch("/api/arena/admin", {
+      const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-secret": input },
         body: JSON.stringify({ action: "game-hash", gameId: "ping" }),
@@ -211,8 +212,8 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
     setLoading(true);
     try {
       const [recentRes, openRes] = await Promise.all([
-        fetch("/api/arena?view=recent"),
-        fetch("/api/arena?view=open"),
+        fetch(`${API_BASE_URL}/api/arena?view=recent`),
+        fetch(`${API_BASE_URL}/api/arena?view=open`),
       ]);
       const recent = await recentRes.json();
       const open = await openRes.json();
@@ -225,7 +226,7 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
       const finishedIds = deduped.filter((g) => g.status === "finished").map((g) => g.id);
       const resolveResults = await Promise.all(
         finishedIds.map(async (id) => {
-          const r = await fetch(`/api/arena/games?id=${id}`);
+          const r = await fetch(`${API_BASE_URL}/api/arena/games?id=${id}`);
           const data = await r.json();
           return { id, resolve: data.resolve };
         })
@@ -252,7 +253,7 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
 
     try {
       if (!linked) {
-        const res = await fetch("/api/arena/games", {
+        const res = await fetch(`${API_BASE_URL}/api/arena/games`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-admin-secret": secret },
           body: JSON.stringify({ action: "create", type: gameType }),
@@ -302,7 +303,7 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
 
       body.action = action;
 
-      const res = await fetch("/api/arena/admin", {
+      const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-secret": secret },
         body: JSON.stringify(body),
@@ -489,8 +490,8 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
     setLoading(true);
     try {
       const [matchRes, recentRes] = await Promise.all([
-        fetch("/api/arena?view=matches"),
-        fetch("/api/arena?view=recent"),
+        fetch(`${API_BASE_URL}/api/arena?view=matches`),
+        fetch(`${API_BASE_URL}/api/arena?view=recent`),
       ]);
       const matchData = await matchRes.json();
       setMatches(matchData.matches || []);
@@ -502,7 +503,7 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
       await Promise.all(
         finished.slice(0, 20).map(async (g: { id: string }) => {
           try {
-            const r = await fetch(`/api/arena/games?id=${g.id}`);
+            const r = await fetch(`${API_BASE_URL}/api/arena/games?id=${g.id}`);
             const d = await r.json();
             if (d.resolve?.status === "failed") {
               failed.push({ gameId: g.id, error: d.resolve.error || "Unknown error" });
@@ -526,7 +527,7 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
   async function adminAction(action: string, matchId: number, extra?: Record<string, unknown>) {
     setMsg((m) => ({ ...m, [matchId]: "…" }));
     try {
-      const res = await fetch("/api/arena/admin", {
+      const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-admin-secret": secret },
         body: JSON.stringify({ action, matchId, ...extra }),
@@ -627,7 +628,7 @@ function LeaderboardPanel({ secret, onAuthFail }: { secret: string; onAuthFail: 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/arena?view=leaderboard");
+      const res = await fetch(`${API_BASE_URL}/api/arena?view=leaderboard`);
       const data = await res.json();
       setEntries(data.leaderboard || []);
     } catch {
@@ -640,7 +641,7 @@ function LeaderboardPanel({ secret, onAuthFail }: { secret: string; onAuthFail: 
 
   async function resetLb() {
     if (!window.confirm("Reset leaderboard? This deletes all reputation and game history from KV.")) return;
-    const res = await fetch("/api/arena/admin", {
+    const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-admin-secret": secret },
       body: JSON.stringify({ action: "reset-leaderboard" }),
@@ -677,7 +678,7 @@ function LeaderboardPanel({ secret, onAuthFail }: { secret: string; onAuthFail: 
         <div style={{ marginTop: 24, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <button className="admin-btn" onClick={async () => {
             setMsg("Recalculating…");
-            const res = await fetch("/api/arena/admin", {
+            const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-admin-secret": secret },
               body: JSON.stringify({ action: "recalculate-reputation" }),

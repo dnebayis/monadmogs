@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
 import { GAME_TYPES, type Game, type GameSummary, type LeaderboardEntry } from "@/lib/arena";
 import { getArenaAgentPrompt } from "@/lib/arena-protocol";
+import { API_BASE_URL } from "@/lib/urls";
 
 const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; description: string; bestOf: number }][];
 
@@ -17,9 +18,9 @@ export function ArenaTab() {
 
     const loadArena = () => {
       Promise.all([
-        fetch("/api/arena?view=open", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/arena?view=leaderboard", { cache: "no-store" }).then((r) => r.json()),
-        fetch("/api/arena?view=recent", { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${API_BASE_URL}/api/arena?view=open`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${API_BASE_URL}/api/arena?view=leaderboard`, { cache: "no-store" }).then((r) => r.json()),
+        fetch(`${API_BASE_URL}/api/arena?view=recent`, { cache: "no-store" }).then((r) => r.json()),
       ])
         .then(([open, lb, recent]) => {
           if (cancelled) return;

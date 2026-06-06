@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { StudioProject } from "@/lib/studio";
+import { API_BASE_URL } from "@/lib/urls";
 
 type SubmitForm = {
   title: string;
@@ -24,7 +25,7 @@ export function StudioShowcase() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/studio")
+    fetch(`${API_BASE_URL}/api/studio`)
       .then((res) => res.json())
       .then((data) => setProjects(data.projects || []))
       .catch(() => setProjects([]))
@@ -49,7 +50,7 @@ export function StudioShowcase() {
     setSubmitResult(null);
 
     try {
-      const res = await fetch("/api/studio/upload", {
+      const res = await fetch(`${API_BASE_URL}/api/studio/upload`, {
         method: "POST",
         headers: { "Content-Type": file.type },
         body: file,
@@ -76,7 +77,7 @@ export function StudioShowcase() {
     setSubmitResult(null);
 
     try {
-      const response = await fetch("/api/studio/submit", {
+      const response = await fetch(`${API_BASE_URL}/api/studio/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -94,7 +95,7 @@ export function StudioShowcase() {
       setShowForm(false);
 
       // Refresh project list (bypass cache)
-      const refreshed = await fetch("/api/studio", { cache: "no-store" }).then((r) => r.json());
+      const refreshed = await fetch(`${API_BASE_URL}/api/studio`, { cache: "no-store" }).then((r) => r.json());
       setProjects(refreshed.projects || []);
     } catch {
       setSubmitResult({ ok: false, message: "Network error. Try again." });
