@@ -1,0 +1,35 @@
+{
+  "name": "@monad-mogs/core",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./src/arena": "./src/arena.ts",
+    "./src/arena-protocol": "./src/arena-protocol.ts",
+    "./src/contract": "./src/contract.ts",
+    "./src/erc8004": "./src/erc8004.ts",
+    "./src/mogs": "./src/mogs.ts",
+    "./src/network": "./src/network.ts",
+    "./src/rarity": "./src/rarity.ts",
+    "./src/studio": "./src/studio.ts",
+    "./src/urls": "./src/urls.ts"
+  },
+  "typesVersions": {
+    "*": {
+      "src/arena": ["./src/arena.ts"],
+      "src/arena-protocol": ["./src/arena-protocol.ts"],
+      "src/contract": ["./src/contract.ts"],
+      "src/erc8004": ["./src/erc8004.ts"],
+      "src/mogs": ["./src/mogs.ts"],
+      "src/network": ["./src/network.ts"],
+      "src/rarity": ["./src/rarity.ts"],
+      "src/studio": ["./src/studio.ts"],
+      "src/urls": ["./src/urls.ts"]
+    }
+  },
+  "dependencies": {
+    "viem": "^2.40.3"
+  }
+}
