@@ -44,6 +44,9 @@ export type RoundResult = {
   /** Higher-Lower: the current numbers each player saw before choosing */
   p1CurrentNumber?: number;
   p2CurrentNumber?: number;
+  /** Higher-Lower: the resolved next numbers used to score the round */
+  p1NextNumber?: number;
+  p2NextNumber?: number;
 };
 
 export type GamePlayer = {
@@ -314,6 +317,8 @@ function resolveRound(game: Game): RoundResult | null {
   let roundWinner: string | null = null;
   const specialMoves: RoundSpecialMoveResult[] = [];
   let coinResult: "heads" | "tails" | undefined;
+  let p1NextNumber: number | undefined;
+  let p2NextNumber: number | undefined;
 
   switch (game.type) {
     case "coin-flip": {
@@ -385,6 +390,8 @@ function resolveRound(game: Game): RoundResult | null {
       // nextNumber uses post-move seed (includes both moves) — unpredictable until resolution
       const p1Next = deterministicInt(roundSeed(game, "p1-next"), 100);
       const p2Next = deterministicInt(roundSeed(game, "p2-next"), 100);
+      p1NextNumber = p1Next;
+      p2NextNumber = p2Next;
 
       let p1Correct = p1Next !== p1Current && (
         (p1.move === "higher" && p1Next > p1Current) ||
@@ -441,6 +448,8 @@ function resolveRound(game: Game): RoundResult | null {
     ...(game.type === "higher-lower" ? {
       p1CurrentNumber: p1.currentNumber,
       p2CurrentNumber: p2.currentNumber,
+      p1NextNumber,
+      p2NextNumber,
     } : {}),
   };
 }

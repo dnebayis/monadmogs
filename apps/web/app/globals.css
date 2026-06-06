@@ -2690,6 +2690,11 @@ h2 {
   font-size: 20px;
 }
 
+.match-move.higher-lower-result {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .match-round-result {
   color: var(--cream);
   font-size: 12px;
@@ -3246,6 +3251,10 @@ textarea:focus-visible {
 .admin-msg-inline {
   font-size: 11px;
   color: var(--cyan);
+}
+
+.admin-error {
+  color: #ff8a8a;
 }
 
 .admin-table {

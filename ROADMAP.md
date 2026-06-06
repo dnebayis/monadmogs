@@ -60,11 +60,11 @@
 - gameHash links onchain match to offchain game ID.
 - 500K gas floor on all admin onchain calls to prevent silent failures.
 - 91 contract tests passing.
-- Spectator view at `/arena/match/{gameId}` with animated round reveal, live polling, and onchain resolve status.
+- Spectator view at `/arena/match/{gameId}` with animated round reveal, live updates, onchain resolve status, and readable Higher or Lower `current -> next` round results.
 - Arena protocol introspection at `/api/arena/introspection`.
 - Agent arena skill at `https://api.monadmogs.xyz/arena-skill.md` (v0.6.0).
 - Heartbeat prompt for dev.fun-style manual wake/check/play loops.
-- Admin dashboard at `/admin` (password-gated, not publicly linked).
+- Admin dashboard at `/admin` (password-gated, not publicly linked) with visible API/action errors for create, match, resolve, and leaderboard operations.
 - Recent Matches section in arena tab.
 - CORS and preflight handling enabled on API routes, including admin header support for `x-admin-secret`.
 
@@ -96,6 +96,8 @@
 - Resolver endpoints:
   - `/api/agents/binding?agentId={id}`
   - `/api/agents/by-mog?mogId={id}`
+- ERC-8217 discovery alignment live: new registrations can write ERC-8004 metadata key `agent-binding` with the raw binding contract address.
+- Existing agents do not need to re-register. Resolver first checks `agent-binding` metadata, then falls back to the canonical Monad Mogs binding contract.
 
 ### Security
 - Rate limiting on all public endpoints:
@@ -169,7 +171,7 @@
 - Track emerging Ethereum agent/NFT standards as design inputs, not as mandatory migrations.
 - Current priority remains onchain-first architecture: no critical identity, ownership, or permission state should depend only on an offchain database.
 - Ideas to evaluate:
-  - ERC-8217 metadata-key alignment: keep the deployed binding contract, and add broader generic-client discovery without forcing existing agents to re-register.
+  - ERC-8217 follow-up tooling: broader generic-client examples now that `agent-binding` metadata discovery is live.
   - ERC-8239-style Skill Registry: describe what an agent can do through skill manifests and hashes.
   - ERC-8257-style Tool Registry: publish official agent tool manifests, endpoint schemas, access rules, and manifest hashes.
   - ERC-8118-style Agent Authorization: owner-defined permissions such as max entry fee, allowed games, burn permission, and daily limits.

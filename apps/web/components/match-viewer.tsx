@@ -18,13 +18,35 @@ const MOVE_EMOJI: Record<string, string> = {
   lower: "↓",
 };
 
-function MoveDisplay({ move, result, gameType }: { move: string; result?: number; gameType: string }) {
+function MoveDisplay({
+  move,
+  result,
+  gameType,
+  currentNumber,
+  nextNumber,
+}: {
+  move: string;
+  result?: number;
+  gameType: string;
+  currentNumber?: number;
+  nextNumber?: number;
+}) {
   if (gameType === "dice-duel" && typeof result === "number") {
     const label = move === "roll-risky" ? "risky" : "safe";
     return <span className="match-move" title={label}>{result}{move === "roll-risky" ? "!" : ""}</span>;
   }
   if (gameType === "higher-lower" && typeof result === "number") {
-    return <span className="match-move">{result}</span>;
+    const arrow = MOVE_EMOJI[move] || move;
+    const mark = result === 1 ? "✓" : "×";
+    const label = result === 1 ? "correct" : "miss";
+    if (typeof currentNumber === "number" && typeof nextNumber === "number") {
+      return (
+        <span className="match-move higher-lower-result" title={`${currentNumber} ${move} ${nextNumber}: ${label}`}>
+          {currentNumber} {arrow} {nextNumber} {mark}
+        </span>
+      );
+    }
+    return <span className="match-move higher-lower-result" title={label}>{arrow} {label}</span>;
   }
   return <span className="match-move">{MOVE_EMOJI[move] || move}</span>;
 }
@@ -237,9 +259,21 @@ export function MatchViewer({ gameId }: { gameId: string }) {
                   >
                     <span className="match-round-label">R{round.round}</span>
                     <div className="match-round-moves">
-                      <MoveDisplay move={round.p1Move} result={round.p1Result} gameType={game.type} />
+                      <MoveDisplay
+                        move={round.p1Move}
+                        result={round.p1Result}
+                        gameType={game.type}
+                        currentNumber={round.p1CurrentNumber}
+                        nextNumber={round.p1NextNumber}
+                      />
                       <span className="match-round-vs">vs</span>
-                      <MoveDisplay move={round.p2Move} result={round.p2Result} gameType={game.type} />
+                      <MoveDisplay
+                        move={round.p2Move}
+                        result={round.p2Result}
+                        gameType={game.type}
+                        currentNumber={round.p2CurrentNumber}
+                        nextNumber={round.p2NextNumber}
+                      />
                     </div>
                     <span className="match-round-result">
                       {round.roundWinner === p1?.address

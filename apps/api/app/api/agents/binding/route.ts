@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createPublicClient, http } from "viem";
+import { createPublicClient, getAddress, http, type Address } from "viem";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import {
@@ -16,6 +16,60 @@ const client = createPublicClient({ chain: MONAD_CHAIN, transport: http(MONAD_RP
 
 const TOKEN_STANDARD = ["ERC721", "ERC1155", "ERC6909"] as const;
 const ZERO = "0x0000000000000000000000000000000000000000";
+const AGENT_BINDING_METADATA_KEY = "agent-binding";
+
+function parseBindingMetadata(value: unknown): Address | null {
+  if (typeof value !== "string" || value === "0x") return null;
+  const hex = value.toLowerCase();
+
+  try {
+    if (/^0x[0-9a-f]{40}$/.test(hex)) return getAddress(hex);
+    if (/^0x[0-9a-f]{64}$/.test(hex)) return getAddress(`0x${hex.slice(-40)}`);
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+async function discoverBindingContract(agentId: bigint) {
+  try {
+    const metadataValue = await client.readContract({
+      address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+      abi: ERC8004_IDENTITY_REGISTRY_ABI,
+      functionName: "getMetadata",
+      args: [agentId, AGENT_BINDING_METADATA_KEY],
+    });
+    const discovered = parseBindingMetadata(metadataValue);
+    if (discovered) {
+      return {
+        contract: discovered,
+        metadataPresent: true,
+        source: "erc8004-metadata" as const,
+      };
+    }
+    return {
+      contract: MOGS_AGENT_BINDINGS_ADDRESS,
+      metadataPresent: Boolean(metadataValue && metadataValue !== "0x"),
+      source: "monad-mogs-default" as const,
+    };
+  } catch {
+    return {
+      contract: MOGS_AGENT_BINDINGS_ADDRESS,
+      metadataPresent: false,
+      source: "monad-mogs-default" as const,
+    };
+  }
+}
+
+async function readBinding(agentId: bigint, bindingContract: Address) {
+  return client.readContract({
+    address: bindingContract,
+    abi: MOGS_AGENT_BINDINGS_ABI,
+    functionName: "bindingOf",
+    args: [agentId],
+  });
+}
 
 /**
  * GET /api/agents/binding?agentId={id}
@@ -56,13 +110,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const [binding, owner, agentWallet] = await Promise.all([
-      client.readContract({
-        address: MOGS_AGENT_BINDINGS_ADDRESS,
-        abi: MOGS_AGENT_BINDINGS_ABI,
-        functionName: "bindingOf",
-        args: [agentId],
-      }),
+    let discovery = await discoverBindingContract(agentId);
+    const [owner, agentWallet] = await Promise.all([
       client.readContract({
         address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
         abi: ERC8004_IDENTITY_REGISTRY_ABI,
@@ -77,6 +126,19 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    let binding: Awaited<ReturnType<typeof readBinding>>;
+    try {
+      binding = await readBinding(agentId, discovery.contract);
+    } catch {
+      if (discovery.contract === MOGS_AGENT_BINDINGS_ADDRESS) throw new Error("Binding call failed.");
+      discovery = {
+        contract: MOGS_AGENT_BINDINGS_ADDRESS,
+        metadataPresent: discovery.metadataPresent,
+        source: "monad-mogs-default",
+      };
+      binding = await readBinding(agentId, discovery.contract);
+    }
+
     const b = binding as { standard: number; tokenContract: string; tokenId: bigint };
     const isBound = b.tokenContract !== ZERO;
 
@@ -86,8 +148,15 @@ export async function GET(request: NextRequest) {
         bound: false,
         owner,
         agentWallet,
-        bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
+        bindingContract: discovery.contract,
         spec: "ERC-8217",
+        discovery: {
+          metadataKey: AGENT_BINDING_METADATA_KEY,
+          metadataPresent: discovery.metadataPresent,
+          source: discovery.source,
+          bindingContract: discovery.contract,
+          fallbackContract: MOGS_AGENT_BINDINGS_ADDRESS,
+        },
         hint: "This agent has not yet called bind(agentId, mogId) on the binding contract.",
       });
     }
@@ -119,10 +188,17 @@ export async function GET(request: NextRequest) {
             percentile: rarity.percentile,
           } : null,
         },
-        bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
+        bindingContract: discovery.contract,
+        discovery: {
+          metadataKey: AGENT_BINDING_METADATA_KEY,
+          metadataPresent: discovery.metadataPresent,
+          source: discovery.source,
+          bindingContract: discovery.contract,
+          fallbackContract: MOGS_AGENT_BINDINGS_ADDRESS,
+        },
         registries: {
           identity: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-          binding: MOGS_AGENT_BINDINGS_ADDRESS,
+          binding: discovery.contract,
           chainId: MONAD_CHAIN.id,
         },
       },

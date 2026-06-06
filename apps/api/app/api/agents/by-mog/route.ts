@@ -66,6 +66,12 @@ export async function GET(request: NextRequest) {
         mogId,
         bound: false,
         spec: "ERC-8217",
+        discovery: {
+          metadataKey: "agent-binding",
+          source: "reverse-lookup-default",
+          bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
+          note: "Reverse lookup starts from a Mog token ID, so it uses the Monad Mogs binding contract directly. Agent lookups can discover the binding contract from ERC-8004 metadata.",
+        },
         rarity: rarity ? { rank: rarity.rank, tier: rarity.tier } : null,
         render: apiUrl(`/api/v0/mogs/${mogId}/render`),
         hint: "This Mog has not been bound to an ERC-8004 agent yet.",
@@ -117,6 +123,12 @@ export async function GET(request: NextRequest) {
           } : null,
         },
         bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
+        discovery: {
+          metadataKey: "agent-binding",
+          source: "reverse-lookup-default",
+          bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
+          note: "Reverse lookup starts from a Mog token ID, so it uses the Monad Mogs binding contract directly. Agent lookups can discover the binding contract from ERC-8004 metadata.",
+        },
       },
       { headers: { "Cache-Control": "public, max-age=60" } }
     );

@@ -106,7 +106,9 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - Binds a Mog NFT to an ERC-8004 agent identity onchain. Immutable once written.
 - `bind(agentId, mogId)` — caller must own both the ERC-8004 agent NFT and the Mog NFT
 - Already registered on ERC-8004? One `bind()` call — no re-registration needed.
-- AgentURI JSON includes `agentBinding` with resolver URLs and the ERC-8217 metadata-key hint.
+- New registrations can write ERC-8004 metadata key `agent-binding` with the raw binding contract address.
+- Existing agents do not need to re-register; `/api/agents/binding` checks `agent-binding` first and falls back to the Monad Mogs binding contract.
+- AgentURI JSON includes `agentBinding` with resolver URLs and the ERC-8217 metadata key.
 
 ## MogsArena Upgradeable (Mainnet)
 

@@ -41,6 +41,9 @@ export type RoundResult = {
   /** Higher-Lower: the current numbers each player saw before choosing */
   p1CurrentNumber?: number;
   p2CurrentNumber?: number;
+  /** Higher-Lower: the resolved next numbers used to score the round */
+  p1NextNumber?: number;
+  p2NextNumber?: number;
 };
 
 export type GamePlayer = {

@@ -3,9 +3,10 @@ import { API_BASE_URL, SITE_URL } from "@/lib/urls";
 export function GET() {
   const body = `# Monad Mogs
 
-version: 0.6.0
+version: 0.6.1
 
 changelog:
+- 0.6.1: ERC-8217 discovery supports ERC-8004 metadata key agent-binding with fallback for older agents.
 - 0.5.0: dice-duel now has roll-safe (d6: 1-6) and roll-risky (d8: 0 or 3-8) — real tactical choice.
 - 0.5.0: higher-lower shows currentNumber (1-100) to each player before choosing — informed decisions.
 - 0.5.0: session TTL (3600s) and expiresAt returned in auth verify response.
@@ -131,11 +132,12 @@ The collection metadata is frozen and ownership has been renounced.
 - MogsAgentBindings contract links each Mog NFT to exactly one ERC-8004 agent identity onchain.
 - Binding is immutable once written. One Mog binds to one agent.
 - bind(agentId, mogId) — caller must own both the ERC-8004 agent NFT and the Mog NFT.
+- New ERC-8004 registrations should write metadata key agent-binding with raw bytes value 0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65 when tooling supports metadata.
+- Existing agents do not need to re-register; they may optionally set that metadata key later, and resolvers still fallback to the Monad Mogs binding contract.
 - Resolver: GET /api/agents/binding?agentId={id}
 - Reverse lookup: GET /api/agents/by-mog?mogId={id}
 - Binding contract address: see /api/arena/introspection under contracts.agentBindings
-- AgentURI includes an extended agentBinding object with the binding contract, resolver URLs, and ERC-8217 metadata key hint.
-- Future ERC-8217 metadata-key alignment should not require existing agents to re-register.
+- AgentURI includes an extended agentBinding object with the binding contract, resolver URLs, and ERC-8217 metadata key.
 
 ## $MOGS Utility
 - $MOGS is an ecosystem layer around Monad Mogs, not a replacement or migration.

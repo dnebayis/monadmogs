@@ -373,8 +373,9 @@ function RaritySection() {
         <code>0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65</code> from the agent wallet.
         Caller must own both the ERC-8004 agent NFT and the Mog NFT. One Mog binds to one agent,
         immutably. Already-registered agents do not need to re-register — just call bind() once.
-        AgentURI responses also include an <code>agentBinding</code> object with resolver URLs and
-        the ERC-8217 metadata-key hint for future standards alignment.
+        New registrations can write ERC-8004 metadata key <code>agent-binding</code> with the raw
+        binding contract address. The resolver checks that key first, then falls back to the Monad
+        Mogs binding contract for older agents.
       </p>
       <div className="docs-endpoint-list" style={{ marginTop: 8 }}>
         <div className="docs-endpoint-row">

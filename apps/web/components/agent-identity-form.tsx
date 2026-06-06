@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { BaseError, createPublicClient, getAddress, http, stringToHex } from "viem";
 import { useAccount, useReadContract, useSignMessage, useWaitForTransactionReceipt, useWriteContract } from "wagmi";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
-import { ERC8004_IDENTITY_REGISTRY_ABI, ERC8004_IDENTITY_REGISTRY_ADDRESS, type AgentRegistration } from "@/lib/erc8004";
+import {
+  ERC8004_IDENTITY_REGISTRY_ABI,
+  ERC8004_IDENTITY_REGISTRY_ADDRESS,
+  MOGS_AGENT_BINDINGS_ADDRESS,
+  type AgentRegistration,
+} from "@/lib/erc8004";
 import { MAX_SUPPLY, type MogMetadata } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_EXPLORER_URL, MONAD_RPC_URL } from "@/lib/network";
 import { API_BASE_URL, SITE_URL } from "@/lib/urls";
@@ -103,6 +108,11 @@ function buildOnchainMetadata(input: Pick<AgentRegistration, "mogId" | "agentNam
     { metadataKey: "version", metadataValue: stringToHex("1.0.0") },
     { metadataKey: "category", metadataValue: stringToHex("onchain-collectible-agent") },
     { metadataKey: "pricing", metadataValue: stringToHex("free") },
+    { metadataKey: "agent-binding", metadataValue: MOGS_AGENT_BINDINGS_ADDRESS },
+    { metadataKey: "agent-binding-spec", metadataValue: stringToHex("ERC-8217") },
+    { metadataKey: "agent-binding-contract", metadataValue: stringToHex(MOGS_AGENT_BINDINGS_ADDRESS) },
+    { metadataKey: "mogContract", metadataValue: stringToHex(MONAD_MOGS_ADDRESS) },
+    { metadataKey: "mogChainId", metadataValue: stringToHex(String(MONAD_CHAIN.id)) },
     { metadataKey: "mogId", metadataValue: stringToHex(String(input.mogId)) },
     { metadataKey: "mogName", metadataValue: stringToHex(`Monad Mogs #${input.mogId}`) },
     { metadataKey: "mogDetail", metadataValue: stringToHex(detail) },

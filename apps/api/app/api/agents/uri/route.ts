@@ -268,7 +268,7 @@ export async function GET(request: NextRequest) {
       resolver: apiUrl(`/api/agents/binding?agentId=${agentId || "{agentId}"}`),
       reverseResolver: apiUrl(`/api/agents/by-mog?mogId=${tokenId}`),
       status: agentId ? "resolvable" : "pending-agent-registration",
-      note: "Current Monad Mogs resolver reads the deployed binding contract directly. Future ERC-8217 metadata-key alignment can be added without re-registering the agent.",
+      note: "New registrations write the ERC-8217 binding contract to ERC-8004 metadata key agent-binding. Existing agents still resolve through the Monad Mogs fallback contract, so re-registration is not required.",
     },
     nft: {
       name: mog.name,
