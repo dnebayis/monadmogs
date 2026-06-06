@@ -49,10 +49,16 @@ export async function validateAndReserveSpecialMoveBurn(params: {
   }
 
   const usedKey = USED_BURN_TX_KEY(txHash);
-  const existing = await kv.get<{ gameId: string; consumed: boolean }>(usedKey);
+  const existing = await kv.get<{ gameId: string; mogId?: number; agentAddress?: string; consumed: boolean }>(usedKey);
   if (existing) {
-    // Allow re-declaration within the same game if not yet consumed
-    if (existing.gameId === params.gameId && !existing.consumed) {
+    // Allow re-declaration within the same game only by the same agent/Mog while not consumed.
+    if (
+      existing.gameId === params.gameId &&
+      !existing.consumed &&
+      existing.mogId === params.mogId &&
+      existing.agentAddress &&
+      getAddress(existing.agentAddress) === getAddress(params.agentAddress)
+    ) {
       return { ok: true };
     }
     return { ok: false, error: "This burn transaction has already been used." };

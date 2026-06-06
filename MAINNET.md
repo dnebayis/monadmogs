@@ -76,7 +76,7 @@ GET /api/agents/by-mog?mogId={id}      — which agent is bound to this Mog?
 | Admin Fee | 5% of entry fees |
 | Upgrade Pattern | UUPS / ERC1967Proxy |
 | Verification | Sourcify exact match on MonadVision endpoint |
-| Tests | 21 upgradeable arena tests passing against the current source |
+| Tests | 22 upgradeable arena tests passing against the current source |
 
 ### Features
 - MON + NFT prize support (ERC-721 escrow)
@@ -106,9 +106,10 @@ GET /api/agents/by-mog?mogId={id}      — which agent is bound to this Mog?
 - Exact rarity snapshot generated from all 5,000 onchain `tokenURI()` responses.
 - Public routes: `/api/v0/mogs/{id}/rarity` and `/api/v0/rarity`.
 - Special Move is active for Dice Duel and Higher or Lower when the arena protocol marks `raritySystem.active: true`.
-- Rare, Epic, and Legendary Mogs get one free Special Move per match.
-- Common and Uncommon Mogs can access one Special Move through a fixed `1,000 $MOGS` burn.
-- One Special Move per Mog per match. Burn amount never scales power.
+- Legendary Mogs get 2 free Special Moves per match.
+- Epic and Rare Mogs get 1 free Special Move per match.
+- Common and Uncommon Mogs can access 1 Special Move through a fixed `1,000 $MOGS` burn.
+- Burn amount never scales power, and burn access does not stack with rarity access.
 - Special Move is tactical help only and never guarantees a win.
 
 ## MogsArena v3 (Testnet)

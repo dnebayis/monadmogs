@@ -59,14 +59,14 @@
 - Waiting linked matches support `leaveMatch(matchId)` plus API `leave`.
 - gameHash links onchain match to offchain game ID.
 - 500K gas floor on all admin onchain calls to prevent silent failures.
-- 76 contract tests passing.
+- 91 contract tests passing.
 - Spectator view at `/arena/match/{gameId}` with animated round reveal, live polling, and onchain resolve status.
 - Arena protocol introspection at `/api/arena/introspection`.
-- Agent arena skill at `/arena-skill.md` (v0.4.0).
+- Agent arena skill at `https://api.monadmogs.xyz/arena-skill.md` (v0.6.0).
 - Heartbeat prompt for dev.fun-style manual wake/check/play loops.
 - Admin dashboard at `/admin` (password-gated, not publicly linked).
 - Recent Matches section in arena tab.
-- CORS enabled on all public API routes.
+- CORS and preflight handling enabled on API routes, including admin header support for `x-admin-secret`.
 
 ### Reputation v0
 - Reputation computed from totals: `max(0, wins*10 - losses*3)` — deterministic regardless of game order.
@@ -82,10 +82,20 @@
 - Tiers: Legendary rank 1-50, Epic 51-250, Rare 251-1000, Uncommon 1001-2500, Common 2501-5000.
 - Special Move is active when `/api/arena/introspection` reports `raritySystem.active: true`.
 - Supported games: Dice Duel and Higher or Lower.
-- Rare, Epic, and Legendary Mogs get one free Special Move per match.
-- Common and Uncommon Mogs can unlock one Special Move by burning exactly `1,000 $MOGS`.
-- Burn amount does not scale power, and only one Special Move can affect a Mog per match.
+- Legendary Mogs get 2 free Special Moves per match.
+- Epic and Rare Mogs get 1 free Special Move per match.
+- Common and Uncommon Mogs can unlock 1 Special Move by burning exactly `1,000 $MOGS`.
+- Burn amount does not scale power, and burn access does not stack with rarity access.
 - Special Move is transparent, capped, and never guarantees a win.
+
+### ERC-8217 Agent NFT Binding
+- MogsAgentBindings deployed on Monad mainnet (`0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65`).
+- `bind(agentId, mogId)` creates an immutable onchain Mog NFT to ERC-8004 agent identity link.
+- Caller must own both the ERC-8004 agent NFT and the Monad Mog NFT.
+- Already registered ERC-8004 agents do not need to re-register; they only need the binding transaction.
+- Resolver endpoints:
+  - `/api/agents/binding?agentId={id}`
+  - `/api/agents/by-mog?mogId={id}`
 
 ### Security
 - Rate limiting on all public endpoints:
@@ -109,11 +119,16 @@
 - ERC-8004 spec compliance: AgentURI as URL (not raw JSON) with services, registrations, supportedTrust, and extended Monad Mogs fields.
 
 ### Builder Kit v0
-- `/llms.txt` for LLM-readable project context.
+- `https://api.monadmogs.xyz/llms.txt` for LLM-readable project context.
 - Copyable agent prompt for AI tools.
 - Copyable arena heartbeat prompt for agents.
 - Developer docs with endpoint reference and code examples.
 - Remix-friendly cc0 IP rules.
+
+### API Subdomain
+- `api.monadmogs.xyz` is the canonical host for API routes and machine-readable files.
+- `www.monadmogs.xyz` is the canonical frontend host.
+- Centralized URL config via `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_SITE_URL`.
 
 ### Studio v0
 - Community project submission and gallery (Vercel KV).
@@ -134,39 +149,17 @@
 
 ## In Progress
 
-### ERC-8217-Style Agent NFT Binding
-- First priority for the next agent layer: make the relationship between a Mog NFT and its ERC-8004 agent identity explicit.
-- Direction is onchain-first. Monad Mogs should not rely on a purely offchain binding table as the source of truth.
-- Existing ERC-8004 agent registrations already include Mog metadata (`mogId`, `mogName`, `mogImage`, `mogMetadata`, `agentURI`), so current agents should be recognized without asking users to register again.
-- New registrations should write a clearer binding metadata key that points to:
-  - Monad Mogs NFT contract
-  - tokenId
-  - chainId
-  - ERC-8004 agentId
-  - agent wallet
-- Build read endpoints that resolve and verify the binding from onchain ERC-8004 data plus current NFT ownership:
-  - `/api/agents/binding?agentId={id}`
-  - `/api/agents/by-mog/{mogId}`
-  - `/api/mogs/{mogId}/agent`
-- These endpoints are resolvers, not the authority. Authority should remain onchain: ERC-8004 registry data, AgentURI, and Monad Mogs ownership.
-- If a future exact ERC-8217 implementation requires a new metadata key for older agents, make it optional through a one-click metadata upgrade, never a mandatory re-registration.
-- Goal: every system layer can answer one question clearly: which Mog NFT does this agent represent?
-
 ### Arena Operations
 - Keep `ARENA_WALLET_PRIVATE_KEY`, `MOGS_ARENA_ADDRESS`, and `ARENA_ADMIN_SECRET` configured in Vercel.
 - Use linked admin actions for normal prize games.
 - `ARENA_DEV_MODE` must remain off in production.
 - Improve operational visibility for failed onchain resolves and orphaned onchain matches.
+- Source hardening added for future arena upgrades: `rescueERC721` must not rescue an NFT that is currently escrowed in an Open or Full match.
 
 ### Agent Heartbeat
 - Current model follows dev.fun: users wake agents from their own AI tool with a prompt.
 - Next step is a small local runner/cron helper for repeated heartbeat checks.
 - Hosted autonomous agents remain a later layer.
-
-### API Subdomain
-- `api.monadmogs.xyz` for all API routes.
-- Centralized URL config via `NEXT_PUBLIC_API_BASE_URL` (`lib/urls.ts`).
-- When ready, flip the env var and all references update automatically.
 
 ---
 
@@ -176,7 +169,7 @@
 - Track emerging Ethereum agent/NFT standards as design inputs, not as mandatory migrations.
 - Current priority remains onchain-first architecture: no critical identity, ownership, or permission state should depend only on an offchain database.
 - Ideas to evaluate:
-  - ERC-8217-style Agent NFT Identity Binding: bind an ERC-8004 agent identity to a specific Monad Mogs NFT.
+  - ERC-8217 metadata-key alignment: keep the deployed binding contract, and add broader generic-client discovery without forcing existing agents to re-register.
   - ERC-8239-style Skill Registry: describe what an agent can do through skill manifests and hashes.
   - ERC-8257-style Tool Registry: publish official agent tool manifests, endpoint schemas, access rules, and manifest hashes.
   - ERC-8118-style Agent Authorization: owner-defined permissions such as max entry fee, allowed games, burn permission, and daily limits.

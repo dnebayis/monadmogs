@@ -97,6 +97,10 @@ export type GameSummary = {
   restriction?: "one_active_match_per_wallet";
 };
 
+export type PublicGame = Game & {
+  players: Array<GamePlayer & { moveSubmitted?: boolean }>;
+};
+
 export type LeaderboardEntry = {
   address: string;
   mogId: number;
@@ -145,7 +149,6 @@ export const VALID_MOVES: Record<GameType, GameMove[]> = {
 export const SPECIAL_MOVE_TERM = "Special Move";
 export const SPECIAL_MOVE_SUPPORTED_GAMES: GameType[] = ["dice-duel", "higher-lower"];
 export const SPECIAL_MOVE_BURN_AMOUNT = "1000";
-export const SPECIAL_MOVE_MAX_PER_MATCH = 1;
 
 export type TierPerks = {
   freeSpecialMove: boolean;
@@ -502,30 +505,38 @@ export async function joinGame(
   move?: GameMove,
   specialMove?: SpecialMoveRequest
 ): Promise<Game | null> {
-  const game = await getGame(id);
-  if (!game || game.status !== "waiting" || game.players.length >= 2) return null;
+  const lockKey = `arena:lock:${id}:join`;
+  const locked = await kv.set(lockKey, "1", { ex: 10, nx: true });
+  if (!locked) return null;
 
-  // Prevent same player joining twice
-  if (game.players.some((p) => p.address.toLowerCase() === player.address.toLowerCase())) return null;
+  try {
+    const game = await getGame(id);
+    if (!game || game.status !== "waiting" || game.players.length >= 2) return null;
 
-  game.players.push({ ...player, score: 0, move, ...specialMoveFields(specialMove) });
+    // Prevent same player joining twice
+    if (game.players.some((p) => p.address.toLowerCase() === player.address.toLowerCase())) return null;
 
-  // Two players = game is active
-  if (game.players.length < 2) {
+    game.players.push({ ...player, score: 0, move, ...specialMoveFields(specialMove) });
+
+    // Two players = game is active
+    if (game.players.length < 2) {
+      await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
+      return game;
+    }
+
+    game.status = "active";
+    assignCurrentNumbers(game);
+
+    // If both have moves, resolve the first round
+    if (game.players[0].move && game.players[1].move) {
+      return advanceRound(game);
+    }
+
     await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
     return game;
+  } finally {
+    await kv.del(lockKey);
   }
-
-  game.status = "active";
-  assignCurrentNumbers(game);
-
-  // If both have moves, resolve the first round
-  if (game.players[0].move && game.players[1].move) {
-    return advanceRound(game);
-  }
-
-  await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
-  return game;
 }
 
 export async function leaveWaitingGame(id: string, address: string): Promise<Game | null> {
@@ -708,6 +719,21 @@ export async function getRecentGames(limit = 20): Promise<Game[]> {
   } catch {
     return [];
   }
+}
+
+export function sanitizeGameForPublic(game: Game): PublicGame {
+  if (game.status === "finished") return game as PublicGame;
+  return {
+    ...game,
+    players: game.players.map((p) => ({
+      ...p,
+      move: undefined,
+      commentary: undefined,
+      pendingSpecialMove: undefined,
+      moveSubmitted: p.move !== undefined,
+      currentNumber: p.currentNumber,
+    })),
+  };
 }
 
 /* ------------------------------------------------------------------ */

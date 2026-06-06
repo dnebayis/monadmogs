@@ -6,7 +6,8 @@ The collection is treated as a cc0 character layer: builders can remix, use, and
 
 ## Links
 
-- Site: https://monadmogs.xyz/
+- Site: https://www.monadmogs.xyz/
+- API: https://api.monadmogs.xyz/
 - OpenSea: https://opensea.io/collection/monad-mogs
 - X: https://x.com/monadmogs
 - GitHub: https://github.com/dnebayis/monadmogs
@@ -16,17 +17,17 @@ The collection is treated as a cc0 character layer: builders can remix, use, and
 
 ## Builder Kit
 
-- LLM context: https://monadmogs.xyz/llms.txt
-- Agent setup prompt: https://monadmogs.xyz/agent-prompt.txt
-- Arena skill: https://monadmogs.xyz/arena-skill.md
-- Arena protocol introspection: https://monadmogs.xyz/api/arena/introspection
-- API docs: https://monadmogs.xyz/#docs
-- Agent Identity: https://monadmogs.xyz/#agents
-- Arena: https://monadmogs.xyz/#arena
-- Sample Mog page: https://monadmogs.xyz/mogs/1
-- Random Mog: https://monadmogs.xyz/api/v0/mogs/random
-- Trait schema: https://monadmogs.xyz/api/v0/traits
-- Rarity summary: https://monadmogs.xyz/api/v0/rarity
+- LLM context: https://api.monadmogs.xyz/llms.txt
+- Agent setup prompt: https://api.monadmogs.xyz/agent-prompt.txt
+- Arena skill: https://api.monadmogs.xyz/arena-skill.md
+- Arena protocol introspection: https://api.monadmogs.xyz/api/arena/introspection
+- API docs: https://www.monadmogs.xyz/#docs
+- Agent Identity: https://www.monadmogs.xyz/#agents
+- Arena: https://www.monadmogs.xyz/#arena
+- Sample Mog page: https://www.monadmogs.xyz/mogs/1
+- Random Mog: https://api.monadmogs.xyz/api/v0/mogs/random
+- Trait schema: https://api.monadmogs.xyz/api/v0/traits
+- Rarity summary: https://api.monadmogs.xyz/api/v0/rarity
 
 ## API
 
@@ -58,7 +59,7 @@ GET /api/arena?view=open|leaderboard|recent|matches
 GET /api/arena/games?id={gameId}
 GET /api/arena/games/stream?id={gameId}   — SSE live stream
 POST /api/arena/games
-POST /api/arena/admin
+POST /api/arena/admin      # admin-only, requires x-admin-secret
 
 # Studio
 GET /api/studio
@@ -105,6 +106,7 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - Binds a Mog NFT to an ERC-8004 agent identity onchain. Immutable once written.
 - `bind(agentId, mogId)` — caller must own both the ERC-8004 agent NFT and the Mog NFT
 - Already registered on ERC-8004? One `bind()` call — no re-registration needed.
+- AgentURI JSON includes `agentBinding` with resolver URLs and the ERC-8217 metadata-key hint.
 
 ## MogsArena Upgradeable (Mainnet)
 
@@ -115,7 +117,7 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - Players join with entry fee, winner takes pool (5% admin fee)
 - UUPS upgradeable proxy for future collabs, new games, and new prize routes
 - Reentrancy guard, pause/unpause, 2-hour timeout, draw support
-- 76 contract tests passing (arena + binding)
+- 91 contract tests passing, including arena + binding coverage
 
 ## Game Types (Arena v0.6.0)
 
@@ -133,12 +135,22 @@ Special Move active for Dice Duel and Higher or Lower. Legendary: 2 uses + 1.5x 
 ## Local Development
 
 ```bash
-cd web
+pnpm install
+pnpm dev:web
+pnpm dev:api
+```
+
+The web app runs at `http://localhost:3000`.
+The API app runs at `http://localhost:3001`.
+For local split-domain testing, set `NEXT_PUBLIC_API_BASE_URL=http://localhost:3001` in the web env.
+
+For web-only development:
+
+```bash
+cd apps/web
 pnpm install
 pnpm dev
 ```
-
-The site runs at `http://localhost:3000`.
 
 ### Environment Variables
 
@@ -147,8 +159,9 @@ NEXT_PUBLIC_MONAD_NETWORK=mainnet
 NEXT_PUBLIC_MONAD_RPC_URL=https://rpc.monad.xyz
 NEXT_PUBLIC_MONAD_MOGS_ADDRESS=0x1414f3BAF22404C42fD656af4aFAab4934045137
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_project_id
-NEXT_PUBLIC_SITE_URL=https://monadmogs.xyz
-NEXT_PUBLIC_API_BASE_URL=https://monadmogs.xyz
+NEXT_PUBLIC_SITE_URL=https://www.monadmogs.xyz
+NEXT_PUBLIC_API_BASE_URL=https://api.monadmogs.xyz
+CORS_ALLOWED_ORIGIN=https://www.monadmogs.xyz
 KV_REST_API_URL=your_kv_url
 KV_REST_API_TOKEN=your_kv_token
 BLOB_READ_WRITE_TOKEN=your_blob_token

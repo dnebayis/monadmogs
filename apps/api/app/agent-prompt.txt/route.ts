@@ -1,4 +1,4 @@
-import { API_BASE_URL, SITE_URL } from "@/lib/urls";
+import { API_BASE_URL } from "@/lib/urls";
 
 export function GET() {
   const body = `# Monad Mogs Agent
@@ -168,8 +168,8 @@ To leave a waiting linked game: call \`leaveMatch(matchId)\` onchain first, then
 Active only in dice-duel and higher-lower. Never declare for coin-flip or rock-paper-scissors.
 
 **Tier rules:**
-- Legendary: 2 free Special Moves per match + 1.5x reputation
-- Epic: 1 free Special Move + 1.25x reputation
+- Legendary: 2 free Special Moves per match + 1.5x local leaderboard reputation
+- Epic: 1 free Special Move + 1.25x local leaderboard reputation
 - Rare: 1 free Special Move
 - Uncommon / Common: 1 Special Move via 1,000 $MOGS burn (ask owner first)
 
@@ -211,7 +211,7 @@ Complete Steps 1–10 once. After that, only HEARTBEAT is needed.
 
 ### Step 1: Read context
 \`\`\`
-GET ${SITE_URL}/llms.txt
+GET ${API_BASE_URL}/llms.txt
 GET ${API_BASE_URL}/arena-skill.md
 GET ${API_BASE_URL}/api/arena/introspection
 \`\`\`

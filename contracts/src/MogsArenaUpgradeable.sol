@@ -112,6 +112,7 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
     error NftNotReceived();
     error TokenNotReceived();
     error InvalidRescueTarget();
+    error PrizeEscrowActive();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -380,6 +381,15 @@ contract MogsArenaUpgradeable is Initializable, UUPSUpgradeable {
 
     function rescueERC721(address collection, uint256 tokenId, address to) external onlyAdmin noReentrant {
         if (collection == address(0) || to == address(0)) revert InvalidRescueTarget();
+        for (uint256 i = 1; i <= matchCount; i++) {
+            Match storage m = matches[i];
+            if (
+                m.nftPrize.collection == collection && m.nftPrize.tokenId == tokenId
+                    && (m.status == MatchStatus.Open || m.status == MatchStatus.Full)
+            ) {
+                revert PrizeEscrowActive();
+            }
+        }
         IERC721Prize(collection).safeTransferFrom(address(this), to, tokenId);
         emit ERC721Rescued(collection, tokenId, to);
     }

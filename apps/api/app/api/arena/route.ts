@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getOpenGames, getRecentGames, getLeaderboard } from "@/lib/arena";
+import { getOpenGames, getRecentGames, getLeaderboard, sanitizeGameForPublic } from "@/lib/arena";
 import { getOnchainMatch, getMatchCount, MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { getArenaProtocol } from "@/lib/arena-protocol";
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     if (view === "recent") {
       const games = await getRecentGames(20);
-      return NextResponse.json({ games });
+      return NextResponse.json({ games: games.map(sanitizeGameForPublic) });
     }
 
     if (view === "introspection") {

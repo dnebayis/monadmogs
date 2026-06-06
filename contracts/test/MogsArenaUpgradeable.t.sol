@@ -238,6 +238,15 @@ contract MogsArenaUpgradeableTest is Test {
         arena.rescueERC721(address(nft), 2127, attacker);
     }
 
+    function test_rescueERC721_revertsForActiveNftPrize() public {
+        nft.mint(adm, 2127);
+        nft.approve(address(arena), 2127);
+        arena.createMatchWithNft{value: SPONSOR}(ENTRY, HASH, address(nft), 2127);
+
+        vm.expectRevert(MogsArenaUpgradeable.PrizeEscrowActive.selector);
+        arena.rescueERC721(address(nft), 2127, adm);
+    }
+
     function test_fullMatchDeadlineResetsWhenSecondPlayerJoins() public {
         mogs.approve(address(arena), TOKEN_PRIZE);
         uint256 id = arena.createMatchWithToken{value: SPONSOR}(ENTRY, HASH, address(mogs), TOKEN_PRIZE);

@@ -5,6 +5,7 @@ import {
   ERC8004_IDENTITY_REGISTRY_ABI,
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_REPUTATION_REGISTRY_ADDRESS,
+  MOGS_AGENT_BINDINGS_ADDRESS,
 } from "@/lib/erc8004";
 import { getMogMetadata, MAX_SUPPLY, parseTokenId } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
@@ -247,7 +248,7 @@ export async function GET(request: NextRequest) {
           endpoint: rarityUrl,
         }
       : null,
-    context: siteUrl("/llms.txt"),
+    context: apiUrl("/llms.txt"),
     attributes: mog.attributes,
     tags: ["monad", "monad-mogs", "erc-8004", "onchain", "pixel", "hamster"],
 
@@ -260,6 +261,15 @@ export async function GET(request: NextRequest) {
     },
 
     // --- NFT binding ---
+    agentBinding: {
+      spec: "ERC-8217",
+      contract: MOGS_AGENT_BINDINGS_ADDRESS,
+      metadataKey: "agent-binding",
+      resolver: apiUrl(`/api/agents/binding?agentId=${agentId || "{agentId}"}`),
+      reverseResolver: apiUrl(`/api/agents/by-mog?mogId=${tokenId}`),
+      status: agentId ? "resolvable" : "pending-agent-registration",
+      note: "Current Monad Mogs resolver reads the deployed binding contract directly. Future ERC-8217 metadata-key alignment can be added without re-registering the agent.",
+    },
     nft: {
       name: mog.name,
       tokenId,

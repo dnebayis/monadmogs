@@ -6,6 +6,7 @@ import {
   leaveWaitingGame,
   submitMove,
   getGame,
+  sanitizeGameForPublic,
   type Game,
   type GameType,
   type GameMove,
@@ -287,19 +288,7 @@ export async function GET(request: NextRequest) {
     if (game.status !== "finished") {
       const { kv } = await import("@vercel/kv");
       const resolve = await kv.get(`arena:game-resolve:${id}`);
-      const sanitized = {
-        ...game,
-        players: game.players.map((p) => ({
-          ...p,
-          move: undefined,
-          commentary: undefined,
-          pendingSpecialMove: undefined,
-          moveSubmitted: p.move !== undefined,
-          // currentNumber is visible for higher-lower so agents can make informed decisions
-          currentNumber: p.currentNumber,
-        })),
-      };
-      return NextResponse.json({ game: sanitized, resolve });
+      return NextResponse.json({ game: sanitizeGameForPublic(game), resolve });
     }
 
     const { kv } = await import("@vercel/kv");
@@ -317,6 +306,13 @@ async function validateOnchainParticipant(gameId: string, address: string): Prom
   if (!matchId) return { ok: true };
 
   const match = await getOnchainMatch(matchId);
+  if (match.status !== "open" && match.status !== "full") {
+    return {
+      ok: false,
+      error: `Linked onchain match is ${match.status}. Join a current open match from /api/arena?view=open.`,
+    };
+  }
+
   const participants = [match.player1, match.player2]
     .filter((player) => player && player !== ZERO_ADDRESS)
     .map((player) => player.toLowerCase());
@@ -457,14 +453,20 @@ async function tryReputationFeedback(game: Game) {
   const already = await kv.get(feedbackKey);
   if (already) return;
 
-  await kv.set(feedbackKey, true, { ex: 86400 * 7 });
+  const pendingSet = await kv.set(feedbackKey, "pending", { ex: 86400 * 7, nx: true });
+  if (!pendingSet) return;
 
-  for (const player of game.players) {
-    if (!player.agentId) continue;
+  try {
+    for (const player of game.players) {
+      if (!player.agentId) continue;
 
-    const isWinner = game.winner === player.address;
-    const value = isWinner ? 10 : -3;
+      const value = !game.winner ? 0 : game.winner === player.address ? 10 : -3;
 
-    giveReputationFeedback(player.agentId, value, game.type, game.id).catch(() => {});
+      await giveReputationFeedback(player.agentId, value, game.type, game.id);
+    }
+    await kv.set(feedbackKey, "sent", { ex: 86400 * 7 });
+  } catch (err) {
+    await kv.del(feedbackKey);
+    throw err;
   }
 }

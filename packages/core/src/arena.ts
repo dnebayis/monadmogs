@@ -142,7 +142,6 @@ export const VALID_MOVES: Record<GameType, GameMove[]> = {
 export const SPECIAL_MOVE_TERM = "Special Move";
 export const SPECIAL_MOVE_SUPPORTED_GAMES: GameType[] = ["dice-duel", "higher-lower"];
 export const SPECIAL_MOVE_BURN_AMOUNT = "1000";
-export const SPECIAL_MOVE_MAX_PER_MATCH = 1;
 
 export type TierPerks = {
   freeSpecialMove: boolean;

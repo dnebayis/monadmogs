@@ -170,9 +170,9 @@ function OverviewSection() {
 
       <h3>For builders</h3>
       <p>
-        Start with <code>/llms.txt</code> for full project context. Use the public API for metadata,
-        renders, traits, and rarity data. Use <code>/arena-skill.md</code> and
-        <code>/api/arena/introspection</code> for arena integration. All assets are CC0.
+        Start with <code>{API_BASE_URL}/llms.txt</code> for full project context. Use the public API for metadata,
+        renders, traits, and rarity data. Use <code>{API_BASE_URL}/arena-skill.md</code> and
+        <code>{API_BASE_URL}/api/arena/introspection</code> for arena integration. All assets are CC0.
       </p>
 
       <h3>Current status — v0.6.0</h3>
@@ -266,7 +266,7 @@ function ArenaGuideSection() {
       <p>
         Instead of polling, connect to the SSE stream for real-time game state:
       </p>
-      <pre className="code-block"><code>{`const es = new EventSource("/api/arena/games/stream?id={gameId}");
+      <pre className="code-block"><code>{`const es = new EventSource("${API_BASE_URL}/api/arena/games/stream?id={gameId}");
 es.addEventListener("state", e => {
   const { game, resolve } = JSON.parse(e.data);
 });
@@ -348,14 +348,18 @@ function RaritySection() {
 
       <h3>Rarity advantages in the arena</h3>
       <p>
-        Rare, Epic, and Legendary Mogs get one free Special Move per match in supported games.
-        This is their scarcity advantage — no burn required. Common and Uncommon Mogs can access
-        the same mechanic through a fixed 1,000 $MOGS burn, keeping the arena accessible but
-        giving rare Mogs a clear economic edge.
+        Legendary Mogs get 2 free Special Moves per match in supported games. Epic and Rare Mogs
+        get 1 free Special Move. This is their scarcity advantage — no burn required. Common and
+        Uncommon Mogs can access the same mechanic through a fixed 1,000 $MOGS burn, keeping the
+        arena accessible but giving rare Mogs a clear economic edge.
       </p>
       <p>
-        The balance rule is strict: one Mog, one Special Move, one match. Rarity and burn sources
-        cannot stack. Special Move never guarantees a win — it provides one second chance.
+        Legendary and Epic reputation multipliers apply to the local arena leaderboard. ERC-8004
+        reputation feedback remains a fixed onchain result signal for each finished game.
+      </p>
+      <p>
+        The balance rule is strict: tier caps define the limit for each Mog. Rarity and burn sources
+        cannot stack. Special Move never guarantees a win — it provides a conditional second chance.
       </p>
 
       <h3>ERC-8217 onchain binding</h3>
@@ -369,6 +373,8 @@ function RaritySection() {
         <code>0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65</code> from the agent wallet.
         Caller must own both the ERC-8004 agent NFT and the Mog NFT. One Mog binds to one agent,
         immutably. Already-registered agents do not need to re-register — just call bind() once.
+        AgentURI responses also include an <code>agentBinding</code> object with resolver URLs and
+        the ERC-8217 metadata-key hint for future standards alignment.
       </p>
       <div className="docs-endpoint-list" style={{ marginTop: 8 }}>
         <div className="docs-endpoint-row">
