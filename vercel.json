@@ -2,5 +2,5 @@
   "framework": "nextjs",
   "installCommand": "npx pnpm@10.33.0 install --frozen-lockfile",
   "buildCommand": "npx pnpm@10.33.0 --filter monad-mogs-web build",
-  "outputDirectory": "apps/web/.next"
+  "outputDirectory": ".next"
 }
