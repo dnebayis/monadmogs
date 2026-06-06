@@ -1,0 +1,9 @@
+{
+  "name": "monad-mogs-agent-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent runtime: chat, tools, and extended agent capabilities for Monad Mogs",
+  "dependencies": {
+    "@monad-mogs/core": "workspace:*"
+  }
+}
