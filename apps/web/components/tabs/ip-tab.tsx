@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "@/lib/urls";
+
 export function IpTab() {
   return (
     <section className="api-summary">
@@ -43,10 +45,10 @@ export function IpTab() {
         </article>
       </div>
       <div className="hero-actions">
-        <a className="text-link" href="/api/v0/mogs/1/render" target="_blank" rel="noreferrer">
+        <a className="text-link" href={`${API_BASE_URL}/api/v0/mogs/1/render`} target="_blank" rel="noreferrer">
           Open SVG render
         </a>
-        <a className="text-link muted" href="/api/v0/mogs/random" target="_blank" rel="noreferrer">
+        <a className="text-link muted" href={`${API_BASE_URL}/api/v0/mogs/random`} target="_blank" rel="noreferrer">
           Random Mog
         </a>
         <a className="text-link muted" href="/developers">

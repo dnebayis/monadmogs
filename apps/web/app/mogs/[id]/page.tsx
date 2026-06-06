@@ -80,10 +80,10 @@ export default async function MogPage({ params }: MogPageProps) {
             <a className="text-link muted" href={mog.links.monadscan} target="_blank" rel="noreferrer">
               Monadscan
             </a>
-            <a className="text-link muted" href={`/api/v0/mogs/${mog.tokenId}/render`} target="_blank" rel="noreferrer">
+            <a className="text-link muted" href={`${API_BASE_URL}/api/v0/mogs/${mog.tokenId}/render`} target="_blank" rel="noreferrer">
               SVG Render
             </a>
-            <a className="text-link muted" href={`/api/v0/mogs/${mog.tokenId}/rarity`} target="_blank" rel="noreferrer">
+            <a className="text-link muted" href={`${API_BASE_URL}/api/v0/mogs/${mog.tokenId}/rarity`} target="_blank" rel="noreferrer">
               Rarity JSON
             </a>
             <Link className="text-link muted" href="/">

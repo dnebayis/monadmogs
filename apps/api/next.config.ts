@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const allowedOrigin = process.env.CORS_ALLOWED_ORIGIN || "https://monadmogs.xyz";
+const allowedOrigin = process.env.CORS_ALLOWED_ORIGIN || "*";
 
 const nextConfig: NextConfig = {
   async headers() {

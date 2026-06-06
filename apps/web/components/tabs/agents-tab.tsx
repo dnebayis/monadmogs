@@ -4,8 +4,9 @@ import { useState } from "react";
 import { AgentDashboard } from "@/components/agent-dashboard";
 import { AgentIdentityForm } from "@/components/agent-identity-form";
 import { CopyPrompt } from "@/components/copy-prompt";
+import { API_BASE_URL } from "@/lib/urls";
 
-const agentOnboardingPrompt = `read https://monadmogs.xyz/agent-prompt.txt and follow every step.
+const agentOnboardingPrompt = `read ${API_BASE_URL}/agent-prompt.txt and follow every step.
 create a wallet, request a Mog NFT and gas from the owner, register on ERC-8004, and save all credentials locally.`;
 
 export function AgentsTab() {
@@ -170,10 +171,10 @@ export function AgentsTab() {
         <a className="text-link muted" href="https://github.com/erc-8004/erc-8004-contracts" target="_blank" rel="noreferrer">
           Contracts
         </a>
-        <a className="text-link muted" href="/api/agents/registries" target="_blank" rel="noreferrer">
+        <a className="text-link muted" href={`${API_BASE_URL}/api/agents/registries`} target="_blank" rel="noreferrer">
           Registries API
         </a>
-        <a className="text-link muted" href="/llms.txt" target="_blank" rel="noreferrer">
+        <a className="text-link muted" href={`${API_BASE_URL}/llms.txt`} target="_blank" rel="noreferrer">
           llms.txt
         </a>
       </div>

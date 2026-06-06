@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import type { AgentRegistration } from "@/lib/erc8004";
 import { MONAD_EXPLORER_URL } from "@/lib/network";
+import { API_BASE_URL } from "@/lib/urls";
 
 export function AgentDashboard() {
   const { address, isConnected } = useAccount();
@@ -43,7 +44,7 @@ export function AgentDashboard() {
   }
 
   const isOnchain = Boolean(registration.txHash);
-  const mogImageUrl = `/api/v0/mogs/${registration.mogId}/render`;
+  const mogImageUrl = `${API_BASE_URL}/api/v0/mogs/${registration.mogId}/render`;
   const createdDate = new Date(registration.createdAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",

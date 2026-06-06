@@ -7,7 +7,7 @@ import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import { ERC8004_IDENTITY_REGISTRY_ABI, ERC8004_IDENTITY_REGISTRY_ADDRESS, type AgentRegistration } from "@/lib/erc8004";
 import { MAX_SUPPLY, type MogMetadata } from "@/lib/mogs";
 import { MONAD_CHAIN, MONAD_EXPLORER_URL, MONAD_RPC_URL } from "@/lib/network";
-import { API_BASE_URL } from "@/lib/urls";
+import { API_BASE_URL, SITE_URL } from "@/lib/urls";
 
 const CAPABILITIES = [
   "gmonad-chat",
@@ -94,7 +94,7 @@ function getFriendlyError(caught: unknown) {
 }
 
 function buildOnchainMetadata(input: Pick<AgentRegistration, "mogId" | "agentName" | "capabilities" | "strategy" | "agentURI">) {
-  const detail = `${API_BASE_URL}/mogs/${input.mogId}`;
+  const detail = `${SITE_URL}/mogs/${input.mogId}`;
   const image = `${API_BASE_URL}/api/v0/mogs/${input.mogId}/render`;
   const metadata = `${API_BASE_URL}/api/v0/mogs/${input.mogId}`;
 

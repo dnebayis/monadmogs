@@ -59,13 +59,13 @@ export function ArenaTab() {
         </div>
         <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
         <div className="hero-actions arena-start-actions">
-          <a className="text-link" href="/agent-prompt.txt" target="_blank" rel="noreferrer">
+          <a className="text-link" href={`${API_BASE_URL}/agent-prompt.txt`} target="_blank" rel="noreferrer">
             Full Setup
           </a>
-          <a className="text-link muted" href="/arena-skill.md" target="_blank" rel="noreferrer">
+          <a className="text-link muted" href={`${API_BASE_URL}/arena-skill.md`} target="_blank" rel="noreferrer">
             arena-skill.md
           </a>
-          <a className="text-link muted" href="/api/arena/introspection" target="_blank" rel="noreferrer">
+          <a className="text-link muted" href={`${API_BASE_URL}/api/arena/introspection`} target="_blank" rel="noreferrer">
             Arena Protocol
           </a>
         </div>
@@ -182,7 +182,7 @@ export function ArenaTab() {
               <div key={entry.address} className="arena-lb-row">
                 <span>{i + 1}</span>
                 <span className="arena-lb-player">
-                  <img src={`/api/v0/mogs/${entry.mogId}/render`} alt={entry.mogName} />
+                  <img src={`${API_BASE_URL}/api/v0/mogs/${entry.mogId}/render`} alt={entry.mogName} />
                   {entry.mogName}
                 </span>
                 <span className="arena-lb-rep">{entry.reputation ?? 0}</span>

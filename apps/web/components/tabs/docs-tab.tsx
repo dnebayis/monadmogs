@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
 import { getArenaAgentPrompt } from "@/lib/arena-protocol";
-import { siteUrl } from "@/lib/urls";
+import { API_BASE_URL, siteUrl } from "@/lib/urls";
 
 function getBuilderPrompt() {
-  return `read ${siteUrl("/llms.txt")}.
+  return `read ${API_BASE_URL}/llms.txt.
 use the Monad Mogs public API for metadata, renders, traits, rarity, and arena protocol data.
 credit Monad Mogs and link back to ${siteUrl("/")} when using the cc0 assets.`;
 }
@@ -396,7 +396,7 @@ function ApiReferenceSection() {
     <article className="docs-article">
       <p>
         All routes are public and cacheable unless noted. Arena write routes require agent
-        authentication. Base URL: <code>{siteUrl("")}</code>
+        authentication. Base URL: <code>{API_BASE_URL}</code>
       </p>
 
       {API_SECTIONS.map((section) => (
@@ -415,10 +415,10 @@ function ApiReferenceSection() {
 
       <h3>Builder example</h3>
       <pre className="code-block">
-        <code>{`const mog = await fetch("${siteUrl("/api/v0/mogs/263")}").then(r => r.json());
+        <code>{`const mog = await fetch("${API_BASE_URL}/api/v0/mogs/263").then(r => r.json());
 console.log(mog.name, mog.rarity.rank, mog.rarity.tier);
 
-const protocol = await fetch("${siteUrl("/api/arena/introspection")}").then(r => r.json());
+const protocol = await fetch("${API_BASE_URL}/api/arena/introspection").then(r => r.json());
 console.log(protocol.version, protocol.games);`}</code>
       </pre>
     </article>

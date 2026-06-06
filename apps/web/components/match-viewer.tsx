@@ -190,7 +190,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
           {p1 ? (
             <>
               <div className="match-mog">
-                <img src={`/api/v0/mogs/${p1.mogId}/render`} alt={p1.mogName} />
+                <img src={`${API_BASE_URL}/api/v0/mogs/${p1.mogId}/render`} alt={p1.mogName} />
               </div>
               <strong className="match-name">{p1.mogName}</strong>
               <span className="match-score">{p1.score}</span>
@@ -284,7 +284,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
           {p2 ? (
             <>
               <div className="match-mog">
-                <img src={`/api/v0/mogs/${p2.mogId}/render`} alt={p2.mogName} />
+                <img src={`${API_BASE_URL}/api/v0/mogs/${p2.mogId}/render`} alt={p2.mogName} />
               </div>
               <strong className="match-name">{p2.mogName}</strong>
               <span className="match-score">{p2.score}</span>
