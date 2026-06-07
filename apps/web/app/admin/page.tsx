@@ -36,7 +36,7 @@ type Game = {
 };
 
 type ResolveRecord = {
-  status: "resolved" | "failed";
+  status: "resolved" | "failed" | "cancelled";
   matchId?: number;
   winnerAddress?: string | null;
   txHash?: string;
@@ -603,7 +603,7 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
           </div>
         )}
         <div className="admin-table">
-          <div className="admin-table-head">
+          <div className="admin-table-head matches">
             <span>#</span><span>Status</span><span>P1</span><span>P2</span><span>Entry</span><span>Prize</span><span>Deadline</span><span>Actions</span>
           </div>
           {matches.map((m) => {
@@ -611,7 +611,7 @@ function MatchesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
             const hasNft = m.nftPrize.collection !== ZERO;
             const hasToken = m.tokenPrize.amount !== "0";
             return (
-              <div key={m.id} className={`admin-table-row ${expired ? "expired" : ""}`}>
+              <div key={m.id} className={`admin-table-row matches ${expired ? "expired" : ""}`}>
                 <span className="admin-mono">#{m.id}</span>
                 <span className={`admin-status ${m.status}`}>{m.status}{expired ? " ⚠️" : ""}</span>
                 <span className="admin-mono admin-addr">{m.player1 === ZERO ? "—" : m.player1.slice(0, 8)}</span>
@@ -696,11 +696,11 @@ function LeaderboardPanel({ secret, onAuthFail }: { secret: string; onAuthFail: 
           <button className="admin-refresh" onClick={load}>{loading ? "…" : "↻"}</button>
         </div>
         <div className="admin-table">
-          <div className="admin-table-head">
+          <div className="admin-table-head leaderboard">
             <span>#</span><span>Mog</span><span>Address</span><span>Rep</span><span>W</span><span>L</span>
           </div>
           {entries.map((e, i) => (
-            <div key={e.address} className="admin-table-row">
+            <div key={e.address} className="admin-table-row leaderboard">
               <span>{i + 1}</span>
               <span>{e.mogName}</span>
               <span className="admin-mono admin-addr">{e.address.slice(0, 10)}…</span>

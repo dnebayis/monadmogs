@@ -71,6 +71,29 @@ async function readBinding(agentId: bigint, bindingContract: Address) {
   });
 }
 
+async function isExpectedMogsBindingContract(bindingContract: Address) {
+  try {
+    const [nftContract, identityRegistry] = await Promise.all([
+      client.readContract({
+        address: bindingContract,
+        abi: MOGS_AGENT_BINDINGS_ABI,
+        functionName: "NFT_CONTRACT",
+      }),
+      client.readContract({
+        address: bindingContract,
+        abi: MOGS_AGENT_BINDINGS_ABI,
+        functionName: "IDENTITY_REGISTRY",
+      }),
+    ]);
+    return (
+      getAddress(nftContract as string) === getAddress(MONAD_MOGS_ADDRESS) &&
+      getAddress(identityRegistry as string) === getAddress(ERC8004_IDENTITY_REGISTRY_ADDRESS)
+    );
+  } catch {
+    return false;
+  }
+}
+
 /**
  * GET /api/agents/binding?agentId={id}
  *
@@ -111,6 +134,13 @@ export async function GET(request: NextRequest) {
 
   try {
     let discovery = await discoverBindingContract(agentId);
+    if (discovery.contract !== MOGS_AGENT_BINDINGS_ADDRESS && !(await isExpectedMogsBindingContract(discovery.contract))) {
+      discovery = {
+        contract: MOGS_AGENT_BINDINGS_ADDRESS,
+        metadataPresent: discovery.metadataPresent,
+        source: "monad-mogs-default",
+      };
+    }
     const [owner, agentWallet] = await Promise.all([
       client.readContract({
         address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
@@ -141,6 +171,7 @@ export async function GET(request: NextRequest) {
 
     const b = binding as { standard: number; tokenContract: string; tokenId: bigint };
     const isBound = b.tokenContract !== ZERO;
+    const isMonadMog = isBound && getAddress(b.tokenContract) === getAddress(MONAD_MOGS_ADDRESS);
 
     if (!isBound) {
       return NextResponse.json({
@@ -159,6 +190,33 @@ export async function GET(request: NextRequest) {
         },
         hint: "This agent has not yet called bind(agentId, mogId) on the binding contract.",
       });
+    }
+
+    if (!isMonadMog) {
+      return NextResponse.json(
+        {
+          agentId: Number(agentId),
+          bound: true,
+          verified: false,
+          error: "Agent binding does not point to the Monad Mogs NFT contract.",
+          binding: {
+            spec: "ERC-8217",
+            standard: TOKEN_STANDARD[b.standard] ?? "ERC721",
+            tokenContract: b.tokenContract,
+            tokenId: Number(b.tokenId),
+            chainId: MONAD_CHAIN.id,
+          },
+          bindingContract: discovery.contract,
+          discovery: {
+            metadataKey: AGENT_BINDING_METADATA_KEY,
+            metadataPresent: discovery.metadataPresent,
+            source: discovery.source,
+            bindingContract: discovery.contract,
+            fallbackContract: MOGS_AGENT_BINDINGS_ADDRESS,
+          },
+        },
+        { status: 422 }
+      );
     }
 
     const mogId = Number(b.tokenId);

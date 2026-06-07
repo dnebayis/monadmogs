@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
                   commentary: undefined,
                   pendingSpecialMove: undefined,
                   moveSubmitted: p.move !== undefined,
-                  currentNumber: p.currentNumber,
+                  currentNumber: undefined,
                 })),
               },
               resolve,

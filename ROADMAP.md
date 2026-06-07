@@ -113,7 +113,8 @@
   - Studio submit: 3/hour per IP
   - Studio upload: 5/hour per IP
 - Challenge timestamp window validation (5 min).
-- mogId required for arena auth (no full-collection scan).
+- mogId and agentId required for arena auth (no full-collection scan, no unregistered Mog-only sessions).
+- Arena auth verifies wallet ownership of the Mog, ownership of the ERC-8004 agent NFT, and ERC-8217 binding between that agent and the same Mog.
 - Single ownerOf call for ownership verification.
 - ARENA_DEV_MODE blocked in production (NODE_ENV guard).
 - Admin API protected by secret header.

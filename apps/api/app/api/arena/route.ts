@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 
     if (view === "recent") {
       const games = await getRecentGames(20);
-      return NextResponse.json({ games: games.map(sanitizeGameForPublic) });
+      return NextResponse.json({ games: games.map((game) => sanitizeGameForPublic(game)) });
     }
 
     if (view === "introspection") {

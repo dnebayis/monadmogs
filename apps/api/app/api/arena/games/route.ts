@@ -288,7 +288,8 @@ export async function GET(request: NextRequest) {
     if (game.status !== "finished") {
       const { kv } = await import("@vercel/kv");
       const resolve = await kv.get(`arena:game-resolve:${id}`);
-      return NextResponse.json({ game: sanitizeGameForPublic(game), resolve });
+      const session = await validateAuthHeader(request.headers.get("authorization"));
+      return NextResponse.json({ game: sanitizeGameForPublic(game, session?.address), resolve });
     }
 
     const { kv } = await import("@vercel/kv");
@@ -462,7 +463,8 @@ async function tryReputationFeedback(game: Game) {
 
       const value = !game.winner ? 0 : game.winner === player.address ? 10 : -3;
 
-      await giveReputationFeedback(player.agentId, value, game.type, game.id);
+      const result = await giveReputationFeedback(player.agentId, value, game.type, game.id);
+      if (!result) throw new Error(`Reputation feedback skipped for agent #${player.agentId}.`);
     }
     await kv.set(feedbackKey, "sent", { ex: 86400 * 7 });
   } catch (err) {

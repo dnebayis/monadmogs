@@ -678,6 +678,6 @@ export async function giveReputationFeedback(
     return { txHash: hash };
   } catch (err) {
     console.error("Failed to give reputation feedback:", err);
-    return null;
+    throw err;
   }
 }

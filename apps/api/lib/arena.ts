@@ -501,7 +501,10 @@ export async function createOpenGame(type: GameType, id = crypto.randomUUID()): 
 }
 
 export async function linkGameToMatch(gameId: string, matchId: number): Promise<void> {
-  await kv.set(`arena:game-match:${gameId}`, matchId, { ex: 86400 * 7 });
+  await Promise.all([
+    kv.set(`arena:game-match:${gameId}`, matchId, { ex: 86400 * 7 }),
+    kv.set(`arena:match-game:${matchId}`, gameId, { ex: 86400 * 7 }),
+  ]);
 }
 
 export async function getGame(id: string): Promise<Game | null> {
@@ -730,8 +733,9 @@ export async function getRecentGames(limit = 20): Promise<Game[]> {
   }
 }
 
-export function sanitizeGameForPublic(game: Game): PublicGame {
+export function sanitizeGameForPublic(game: Game, viewerAddress?: string): PublicGame {
   if (game.status === "finished") return game as PublicGame;
+  const viewer = viewerAddress?.toLowerCase();
   return {
     ...game,
     players: game.players.map((p) => ({
@@ -740,7 +744,7 @@ export function sanitizeGameForPublic(game: Game): PublicGame {
       commentary: undefined,
       pendingSpecialMove: undefined,
       moveSubmitted: p.move !== undefined,
-      currentNumber: p.currentNumber,
+      currentNumber: viewer && p.address.toLowerCase() === viewer ? p.currentNumber : undefined,
     })),
   };
 }

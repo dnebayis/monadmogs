@@ -19,6 +19,21 @@ import type { GameType } from "@/lib/arena";
 
 const ADMIN_SECRET = process.env.ARENA_ADMIN_SECRET || "";
 
+async function getLinkedGameId(matchId: number, explicitGameId?: unknown) {
+  if (typeof explicitGameId === "string" && explicitGameId) return explicitGameId;
+  return kv.get<string>(`arena:match-game:${matchId}`);
+}
+
+async function markLinkedResolve(
+  matchId: number,
+  record: Record<string, unknown>,
+  explicitGameId?: unknown
+) {
+  const gameId = await getLinkedGameId(matchId, explicitGameId);
+  if (!gameId) return;
+  await kv.set(`arena:game-resolve:${gameId}`, record, { ex: 86400 * 7 });
+}
+
 /* POST /api/arena/admin — admin actions (requires secret) */
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get("x-admin-secret");
@@ -53,8 +68,9 @@ export async function POST(request: NextRequest) {
     }
 
     const gameId = crypto.randomUUID();
+    let match: Awaited<ReturnType<typeof createOnchainMatch>> | null = null;
     try {
-      const match = await createOnchainMatch(BigInt(entryFee), gameId, BigInt(sponsorMon));
+      match = await createOnchainMatch(BigInt(entryFee), gameId, BigInt(sponsorMon));
       const game = await createOpenGame(type, gameId);
       await linkGameToMatch(game.id, match.matchId);
       return NextResponse.json(
@@ -68,7 +84,7 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (err) {
-      return NextResponse.json({ error: String(err), gameId }, { status: 500 });
+      return NextResponse.json({ error: String(err), gameId, matchId: match?.matchId, txHash: match?.txHash }, { status: 500 });
     }
   }
 
@@ -91,8 +107,9 @@ export async function POST(request: NextRequest) {
     }
 
     const gameId = crypto.randomUUID();
+    let match: Awaited<ReturnType<typeof createOnchainMatchWithToken>> | null = null;
     try {
-      const match = await createOnchainMatchWithToken(
+      match = await createOnchainMatchWithToken(
         BigInt(entryFee),
         gameId,
         BigInt(sponsorMon || "0"),
@@ -114,7 +131,7 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (err) {
-      return NextResponse.json({ error: String(err), gameId }, { status: 500 });
+      return NextResponse.json({ error: String(err), gameId, matchId: match?.matchId, txHash: match?.txHash }, { status: 500 });
     }
   }
 
@@ -139,8 +156,9 @@ export async function POST(request: NextRequest) {
     }
 
     const gameId = crypto.randomUUID();
+    let match: Awaited<ReturnType<typeof createOnchainMatchWithNftAndToken>> | null = null;
     try {
-      const match = await createOnchainMatchWithNftAndToken(
+      match = await createOnchainMatchWithNftAndToken(
         BigInt(entryFee),
         gameId,
         BigInt(sponsorMon || "0"),
@@ -165,7 +183,7 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (err) {
-      return NextResponse.json({ error: String(err), gameId }, { status: 500 });
+      return NextResponse.json({ error: String(err), gameId, matchId: match?.matchId, txHash: match?.txHash }, { status: 500 });
     }
   }
 
@@ -189,8 +207,9 @@ export async function POST(request: NextRequest) {
     }
 
     const gameId = crypto.randomUUID();
+    let match: Awaited<ReturnType<typeof createOnchainMatchWithNft>> | null = null;
     try {
-      const match = await createOnchainMatchWithNft(
+      match = await createOnchainMatchWithNft(
         BigInt(entryFee),
         gameId,
         BigInt(sponsorMon || "0"),
@@ -211,7 +230,7 @@ export async function POST(request: NextRequest) {
         { status: 201 }
       );
     } catch (err) {
-      return NextResponse.json({ error: String(err), gameId }, { status: 500 });
+      return NextResponse.json({ error: String(err), gameId, matchId: match?.matchId, txHash: match?.txHash }, { status: 500 });
     }
   }
 
@@ -275,12 +294,20 @@ export async function POST(request: NextRequest) {
 
   /* ---- Resolve match ---- */
   if (action === "resolve-match") {
-    const { matchId, winner } = body as { matchId: number; winner: string };
+    const { matchId, winner, gameId } = body as { matchId: number; winner: string; gameId?: string };
     if (!matchId || !winner) {
       return NextResponse.json({ error: "matchId and winner required." }, { status: 400 });
     }
     try {
       const result = await resolveOnchainMatch(matchId, winner);
+      await markLinkedResolve(matchId, {
+        status: "resolved",
+        matchId,
+        winnerAddress: winner,
+        txHash: result.txHash,
+        resolvedAt: new Date().toISOString(),
+        source: "admin",
+      }, gameId);
       return NextResponse.json({ success: true, txHash: result.txHash });
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -295,6 +322,14 @@ export async function POST(request: NextRequest) {
     }
     try {
       const result = await resolveOnchainDraw(matchId);
+      await markLinkedResolve(matchId, {
+        status: "resolved",
+        matchId,
+        winnerAddress: null,
+        txHash: result.txHash,
+        resolvedAt: new Date().toISOString(),
+        source: "admin",
+      }, body.gameId);
       return NextResponse.json({ success: true, txHash: result.txHash });
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -309,6 +344,13 @@ export async function POST(request: NextRequest) {
     }
     try {
       const result = await cancelOnchainMatch(matchId);
+      await markLinkedResolve(matchId, {
+        status: "cancelled",
+        matchId,
+        txHash: result.txHash,
+        resolvedAt: new Date().toISOString(),
+        source: "admin",
+      }, body.gameId);
       return NextResponse.json({ success: true, txHash: result.txHash });
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 500 });
@@ -323,6 +365,14 @@ export async function POST(request: NextRequest) {
     }
     try {
       const result = await expireOnchainMatch(matchId);
+      await markLinkedResolve(matchId, {
+        status: "resolved",
+        matchId,
+        winnerAddress: null,
+        txHash: result.txHash,
+        resolvedAt: new Date().toISOString(),
+        source: "admin-expire",
+      }, body.gameId);
       return NextResponse.json({ success: true, txHash: result.txHash });
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 500 });

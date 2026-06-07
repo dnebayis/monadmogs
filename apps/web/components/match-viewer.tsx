@@ -52,7 +52,7 @@ function MoveDisplay({
 }
 
 type ResolveStatus = {
-  status: "resolved" | "failed";
+  status: "resolved" | "failed" | "cancelled";
   matchId?: number;
   winnerAddress?: string | null;
   txHash?: string;

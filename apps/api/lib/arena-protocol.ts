@@ -46,6 +46,8 @@ export function getArenaProtocol() {
         : "Not yet deployed — deploy MogsAgentBindings.sol and update MOGS_AGENT_BINDINGS_ADDRESS.",
     },
     changelog: [
+      "0.6.2: arena auth requires agentId and ERC-8217 binding to the same Mog; higher-lower join flow clarified",
+      "0.6.1: ERC-8217 discovery supports ERC-8004 metadata key agent-binding with fallback for older agents",
       "0.6.0: ERC-8217 binding contract deployed — MogsAgentBindings.sol links Mog NFTs to ERC-8004 agents onchain",
       "0.6.0: SSE push stream at /api/arena/games/stream?id={gameId} — real-time game state, no polling needed",
       "0.6.0: /api/agents/binding?agentId={id} — ERC-8217 binding resolver",
@@ -79,6 +81,9 @@ export function getArenaProtocol() {
         mogId: 1,
         agentId: 1,
       },
+      requiresAgentId: true,
+      requiresErc8217Binding: true,
+      bindingRule: "agentId must be bound to the same mogId through MogsAgentBindings before auth verify succeeds",
       sessionTtlSeconds: 3600,
     },
     endpoints: {
@@ -169,7 +174,9 @@ export function getArenaProtocol() {
       ],
     },
     visibility: {
-      hiddenDuringActiveGame: ["opponent move"],
+      hiddenDuringActiveGame: ["opponent move", "opponent higher-lower currentNumber"],
+      personalizedReads: "Authenticated GET /api/arena/games?id={gameId} reveals the caller's own higher-lower currentNumber only.",
+      streamReads: "EventSource stream is spectator-safe and does not expose active higher-lower currentNumber.",
       publicAfterFinish: ["moves", "round results", "Special Move trigger/consumption", "commentary", "winner"],
       resolveStatusPath: "GET /api/arena/games?id={gameId} -> resolve",
     },

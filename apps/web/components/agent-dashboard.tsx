@@ -6,6 +6,17 @@ import type { AgentRegistration } from "@/lib/erc8004";
 import { MONAD_EXPLORER_URL } from "@/lib/network";
 import { API_BASE_URL } from "@/lib/urls";
 
+function readSavedRegistration(key: string) {
+  const saved = window.localStorage.getItem(key);
+  if (!saved) return null;
+  try {
+    return JSON.parse(saved) as AgentRegistration;
+  } catch {
+    window.localStorage.removeItem(key);
+    return null;
+  }
+}
+
 export function AgentDashboard() {
   const { address, isConnected } = useAccount();
   const [registration, setRegistration] = useState<AgentRegistration | null>(null);
@@ -16,8 +27,7 @@ export function AgentDashboard() {
       return;
     }
 
-    const saved = window.localStorage.getItem(`monad-mogs-agent:${address.toLowerCase()}`);
-    setRegistration(saved ? (JSON.parse(saved) as AgentRegistration) : null);
+    setRegistration(readSavedRegistration(`monad-mogs-agent:${address.toLowerCase()}`));
   }, [address]);
 
   if (!isConnected) {

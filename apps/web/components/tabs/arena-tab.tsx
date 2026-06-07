@@ -12,15 +12,17 @@ export function ArenaTab() {
   const [openGames, setOpenGames] = useState<GameSummary[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [recentGames, setRecentGames] = useState<Game[]>([]);
+  const [arenaError, setArenaError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
     const loadArena = () => {
+      setArenaError("");
       Promise.all([
-        fetch(`${API_BASE_URL}/api/arena?view=open`, { cache: "no-store" }).then((r) => r.json()),
-        fetch(`${API_BASE_URL}/api/arena?view=leaderboard`, { cache: "no-store" }).then((r) => r.json()),
-        fetch(`${API_BASE_URL}/api/arena?view=recent`, { cache: "no-store" }).then((r) => r.json()),
+        fetchArenaJson(`${API_BASE_URL}/api/arena?view=open`),
+        fetchArenaJson(`${API_BASE_URL}/api/arena?view=leaderboard`),
+        fetchArenaJson(`${API_BASE_URL}/api/arena?view=recent`),
       ])
         .then(([open, lb, recent]) => {
           if (cancelled) return;
@@ -28,7 +30,10 @@ export function ArenaTab() {
           setLeaderboard(lb.leaderboard || []);
           setRecentGames(recent.games || []);
         })
-        .catch(() => {});
+        .catch((caught) => {
+          if (cancelled) return;
+          setArenaError(caught instanceof Error ? caught.message : "Arena API could not be loaded.");
+        });
     };
 
     loadArena();
@@ -70,6 +75,12 @@ export function ArenaTab() {
           </a>
         </div>
       </div>
+
+      {arenaError && (
+        <div className="arena-empty arena-error">
+          <p>{arenaError}</p>
+        </div>
+      )}
 
       <div className="tab-block">
         <div className="tab-block-header">
@@ -200,4 +211,14 @@ export function ArenaTab() {
 
     </section>
   );
+}
+
+async function fetchArenaJson(url: string) {
+  const response = await fetch(url, { cache: "no-store" });
+  const text = await response.text();
+  const data = text ? JSON.parse(text) : {};
+  if (!response.ok) {
+    throw new Error(data?.error || `Arena API failed (${response.status})`);
+  }
+  return data;
 }

@@ -1,7 +1,12 @@
 import { createPublicClient, http, verifyMessage, type Address, getAddress } from "viem";
 import { kv } from "@vercel/kv";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
-import { ERC8004_IDENTITY_REGISTRY_ABI, ERC8004_IDENTITY_REGISTRY_ADDRESS } from "@/lib/erc8004";
+import {
+  ERC8004_IDENTITY_REGISTRY_ABI,
+  ERC8004_IDENTITY_REGISTRY_ADDRESS,
+  MOGS_AGENT_BINDINGS_ABI,
+  MOGS_AGENT_BINDINGS_ADDRESS,
+} from "@/lib/erc8004";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 
 /* ------------------------------------------------------------------ */
@@ -28,6 +33,7 @@ const CHALLENGE_TTL = 300; // 5 minutes
 const DEV_MODE = process.env.ARENA_DEV_MODE === "true" && process.env.NODE_ENV !== "production";
 const CHALLENGE_PREFIX = "arena:challenge:";
 const SESSION_PREFIX = "arena:session:";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /* ------------------------------------------------------------------ */
 /*  Client                                                              */
@@ -116,6 +122,9 @@ export async function verifyAgentWallet(
     if (!claimedMogId || claimedMogId < 1 || claimedMogId > 5000) {
       return { error: "mogId is required (1-5000)." };
     }
+    if (!claimedAgentId || !Number.isInteger(claimedAgentId) || claimedAgentId < 1) {
+      return { error: "agentId is required and must be a positive integer." };
+    }
 
     // Verify onchain ownership — single ownerOf call, no scanning
     try {
@@ -135,25 +144,35 @@ export async function verifyAgentWallet(
       return { error: "Could not verify Mog ownership on Monad." };
     }
 
-    if (claimedAgentId !== undefined) {
-      if (!Number.isInteger(claimedAgentId) || claimedAgentId < 1) {
-        return { error: "agentId must be a positive integer." };
-      }
-
-      try {
-        const agentOwner = await client.readContract({
+    try {
+      const [agentOwner, binding] = await Promise.all([
+        client.readContract({
           address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
           abi: ERC8004_IDENTITY_REGISTRY_ABI,
           functionName: "ownerOf",
           args: [BigInt(claimedAgentId)],
-        });
-        if (getAddress(agentOwner) !== getAddress(address as Address)) {
-          return { error: `Agent #${claimedAgentId} is not owned by this wallet.` };
-        }
-        agentId = claimedAgentId;
-      } catch {
-        return { error: "Could not verify ERC-8004 agent ownership." };
+        }),
+        client.readContract({
+          address: MOGS_AGENT_BINDINGS_ADDRESS,
+          abi: MOGS_AGENT_BINDINGS_ABI,
+          functionName: "bindingOf",
+          args: [BigInt(claimedAgentId)],
+        }),
+      ]);
+      if (getAddress(agentOwner) !== getAddress(address as Address)) {
+        return { error: `Agent #${claimedAgentId} is not owned by this wallet.` };
       }
+
+      const bound = binding as { tokenContract: string; tokenId: bigint };
+      if (bound.tokenContract === ZERO_ADDRESS) {
+        return { error: `Agent #${claimedAgentId} is not bound to a Monad Mog. Call bind(agentId, mogId) first.` };
+      }
+      if (getAddress(bound.tokenContract) !== getAddress(MONAD_MOGS_ADDRESS) || Number(bound.tokenId) !== claimedMogId) {
+        return { error: `Agent #${claimedAgentId} is not bound to Mog #${claimedMogId}.` };
+      }
+      agentId = claimedAgentId;
+    } catch {
+      return { error: "Could not verify ERC-8004 agent ownership and ERC-8217 Mog binding." };
     }
   }
 

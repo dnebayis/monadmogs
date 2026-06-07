@@ -128,6 +128,17 @@ function buildOnchainMetadata(input: Pick<AgentRegistration, "mogId" | "agentNam
   ];
 }
 
+function readSavedRegistration(key: string) {
+  const saved = window.localStorage.getItem(key);
+  if (!saved) return null;
+  try {
+    return JSON.parse(saved) as AgentRegistration;
+  } catch {
+    window.localStorage.removeItem(key);
+    return null;
+  }
+}
+
 export function AgentIdentityForm() {
   const { address, isConnected } = useAccount();
   const { signMessageAsync, isPending } = useSignMessage();
@@ -208,8 +219,7 @@ export function AgentIdentityForm() {
 
   useEffect(() => {
     if (!address) return;
-    const saved = window.localStorage.getItem(`monad-mogs-agent:${address.toLowerCase()}`);
-    setRegistration(saved ? (JSON.parse(saved) as AgentRegistration) : null);
+    setRegistration(readSavedRegistration(`monad-mogs-agent:${address.toLowerCase()}`));
     setOwnedMogs([]);
     setOwnedScanCursor(1);
   }, [address]);

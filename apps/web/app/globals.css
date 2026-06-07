@@ -2678,7 +2678,9 @@ h2 {
 .match-round-moves {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
 }
 
 .match-round-vs {
@@ -2691,8 +2693,10 @@ h2 {
 }
 
 .match-move.higher-lower-result {
-  font-size: 13px;
-  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: normal;
+  word-break: keep-all;
 }
 
 .match-round-result {
@@ -3257,6 +3261,11 @@ textarea:focus-visible {
   color: #ff8a8a;
 }
 
+.arena-error {
+  border-color: rgba(255, 138, 138, 0.45);
+  color: #ffb0b0;
+}
+
 .admin-table {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -3274,6 +3283,16 @@ textarea:focus-visible {
   color: var(--muted);
   font-size: 11px;
   text-transform: uppercase;
+}
+
+.admin-table-head.matches,
+.admin-table-row.matches {
+  grid-template-columns: 52px 88px 82px 82px 80px 1fr 96px minmax(180px, 260px);
+}
+
+.admin-table-head.leaderboard,
+.admin-table-row.leaderboard {
+  grid-template-columns: 44px minmax(130px, 1fr) 120px 70px 44px 44px;
 }
 
 .admin-table-row {
