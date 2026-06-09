@@ -52,13 +52,14 @@ function MoveDisplay({
 }
 
 type ResolveStatus = {
-  status: "resolved" | "failed" | "cancelled";
+  status: "resolved" | "failed" | "cancelled" | null;
   matchId?: number;
   winnerAddress?: string | null;
   txHash?: string;
   error?: string;
   resolvedAt?: string;
   failedAt?: string;
+  reason?: string;
 } | null;
 
 export function MatchViewer({ gameId }: { gameId: string }) {
@@ -229,7 +230,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
         <div className="match-board">
           {isWaiting ? (
             <div className="match-waiting-board">
-              {resolve ? (
+              {resolve && resolve.status ? (
                 <p className="match-waiting-resolved">
                   {resolve.status === "resolved" ? "Match settled onchain — opponent never joined." : "Match cancelled or expired."}
                 </p>
@@ -358,7 +359,7 @@ export function MatchViewer({ gameId }: { gameId: string }) {
         </div>
       )}
 
-      {resolve && (
+      {resolve && resolve.status !== null && (
         <div className={`match-resolve ${resolve.status}`}>
           {resolve.status === "resolved" ? (
             <>
@@ -383,6 +384,15 @@ export function MatchViewer({ gameId }: { gameId: string }) {
               <span className="match-resolve-hint">Contact arena admin to resolve manually.</span>
             </>
           )}
+        </div>
+      )}
+
+      {resolve && resolve.status === null && (
+        <div className="match-resolve pending">
+          <span className="match-resolve-label">
+            {resolve.matchId ? "Prize settlement pending" : "Offchain-only match"}
+          </span>
+          {resolve.reason && <span className="match-resolve-hint">{resolve.reason}</span>}
         </div>
       )}
 

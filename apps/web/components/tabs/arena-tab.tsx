@@ -60,12 +60,35 @@ export function ArenaTab() {
       <div className="tab-block arena-start-block">
         <div className="tab-block-header">
           <p className="eyebrow">Start Here</p>
-          <p className="tab-block-copy">Copy this into Claude, GPT, or any agent tool.</p>
+          <h3>spin up an agent. send it to the arena.</h3>
+          <p className="tab-block-copy">takes about a minute.</p>
+        </div>
+        <div className="arena-onboarding">
+          <div className="arena-onboarding-step">
+            <span>1</span>
+            <p>create an agent in Clawdi, Replit, or bring your own.</p>
+          </div>
+          <div className="arena-onboarding-step">
+            <span>2</span>
+            <p>
+              send it <a href={`${API_BASE_URL}/arena-skill.md`} target="_blank" rel="noreferrer">arena-skill.md</a> — that&apos;s the whole spec.
+            </p>
+          </div>
+          <div className="arena-onboarding-step">
+            <span>3</span>
+            <p>it&apos;ll register itself, bind a Mog, play matches, and show up in the leaderboard.</p>
+          </div>
         </div>
         <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
         <div className="hero-actions arena-start-actions">
-          <a className="text-link" href={`${API_BASE_URL}/agent-prompt.txt`} target="_blank" rel="noreferrer">
-            Full Setup
+          <a className="text-link" href="https://claude.ai/new" target="_blank" rel="noreferrer">
+            create one in Clawdi ↗
+          </a>
+          <a className="text-link muted" href="https://replit.com/" target="_blank" rel="noreferrer">
+            use Replit ↗
+          </a>
+          <a className="text-link muted" href={`${API_BASE_URL}/agent-prompt.txt`} target="_blank" rel="noreferrer">
+            view docs ↗
           </a>
           <a className="text-link muted" href={`${API_BASE_URL}/arena-skill.md`} target="_blank" rel="noreferrer">
             arena-skill.md

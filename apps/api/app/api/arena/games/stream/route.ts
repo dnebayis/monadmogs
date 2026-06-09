@@ -1,5 +1,5 @@
 import { type NextRequest } from "next/server";
-import { getGame } from "@/lib/arena";
+import { getGame, gameScoreline, sanitizeGameForPublic, type GameResolution } from "@/lib/arena";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { kv } from "@vercel/kv";
 
@@ -70,28 +70,12 @@ export async function GET(request: NextRequest) {
             break;
           }
 
-          // Sanitize active game state (hide opponent moves)
-          let payload: Record<string, unknown>;
-          if (game.status !== "finished") {
-            const resolve = await kv.get(`arena:game-resolve:${gameId}`);
-            payload = {
-              game: {
-                ...game,
-                players: game.players.map((p) => ({
-                  ...p,
-                  move: undefined,
-                  commentary: undefined,
-                  pendingSpecialMove: undefined,
-                  moveSubmitted: p.move !== undefined,
-                  currentNumber: undefined,
-                })),
-              },
-              resolve,
-            };
-          } else {
-            const resolve = await kv.get(`arena:game-resolve:${gameId}`);
-            payload = { game, resolve };
-          }
+          const resolve = await getResolveStatus(gameId);
+          const payload: Record<string, unknown> = {
+            game: game.status === "finished" ? game : sanitizeGameForPublic(game),
+            resolve,
+            scoreline: gameScoreline(game),
+          };
 
           send("state", payload);
 
@@ -120,4 +104,20 @@ export async function GET(request: NextRequest) {
       "X-Accel-Buffering": "no",
     },
   });
+}
+
+async function getResolveStatus(gameId: string): Promise<GameResolution> {
+  const resolve = await kv.get<GameResolution>(`arena:game-resolve:${gameId}`);
+  if (resolve) return resolve;
+
+  const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+  if (!matchId) {
+    return { status: null, reason: "offchain-only game" };
+  }
+
+  return {
+    status: null,
+    matchId,
+    reason: "linked prize match exists, but no settlement record has been written yet",
+  };
 }

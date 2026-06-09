@@ -2134,6 +2134,51 @@ h2 {
 
 /* === Arena === */
 
+.arena-onboarding {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.arena-onboarding-step {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 248, 238, 0.12);
+}
+
+.arena-onboarding-step:last-child {
+  border-bottom: 1px solid rgba(255, 248, 238, 0.12);
+}
+
+.arena-onboarding-step span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: var(--cream);
+  color: var(--bg);
+  font-weight: 800;
+}
+
+.arena-onboarding-step p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.35;
+}
+
+.arena-onboarding-step a {
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+.arena-onboarding-step a:hover {
+  color: var(--cream);
+}
+
 .arena-game-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -2825,6 +2870,11 @@ h2 {
 .match-resolve.failed {
   background: rgba(220, 60, 60, 0.08);
   border: 1px solid rgba(220, 60, 60, 0.25);
+}
+
+.match-resolve.pending {
+  background: rgba(133, 230, 255, 0.05);
+  border: 1px solid rgba(133, 230, 255, 0.16);
 }
 
 .match-resolve-label {

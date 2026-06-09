@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { getOpenGames, getRecentGames, getLeaderboard, sanitizeGameForPublic } from "@/lib/arena";
+import { getOpenGames, getRecentGames, getLeaderboard, getGamesForPlayer, sanitizeGameForPublic, gameScoreline } from "@/lib/arena";
 import { getOnchainMatch, getMatchCount, MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { getArenaProtocol } from "@/lib/arena-protocol";
+import { validateAuthHeader } from "@/lib/arena-auth";
 
 export async function GET(request: Request) {
   // Rate limit: 60 reads per minute per IP
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const view = searchParams.get("view") || "open";
-  const validViews = new Set(["open", "leaderboard", "recent", "introspection", "matches"]);
+  const validViews = new Set(["open", "my", "leaderboard", "recent", "introspection", "matches"]);
   if (!validViews.has(view)) {
     return NextResponse.json(
       { error: "Invalid view.", valid: Array.from(validViews) },
@@ -33,11 +34,31 @@ export async function GET(request: Request) {
 
     if (view === "recent") {
       const games = await getRecentGames(20);
-      return NextResponse.json({ games: games.map((game) => sanitizeGameForPublic(game)) });
+      return NextResponse.json({ games: games.map((game) => ({ ...sanitizeGameForPublic(game), scoreline: gameScoreline(game) })) });
     }
 
     if (view === "introspection") {
       return NextResponse.json(getArenaProtocol());
+    }
+
+    if (view === "my") {
+      const session = await validateAuthHeader(request.headers.get("authorization"));
+      if (!session) {
+        return NextResponse.json(
+          { error: "Authentication required. Use POST /api/arena/auth to get a session token." },
+          { status: 401 },
+        );
+      }
+
+      const games = await getGamesForPlayer(session.address, 100);
+      return NextResponse.json({
+        games: games.map((game) => ({
+          ...sanitizeGameForPublic(game, session.address),
+          scoreline: gameScoreline(game),
+        })),
+        active: games.filter((game) => game.status !== "finished").map((game) => game.id),
+        note: "Use this view for heartbeat state recovery. /api/arena?view=open only lists joinable waiting games.",
+      });
     }
 
     if (view === "matches") {

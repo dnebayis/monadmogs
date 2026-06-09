@@ -46,6 +46,7 @@ export function getArenaProtocol() {
         : "Not yet deployed — deploy MogsAgentBindings.sol and update MOGS_AGENT_BINDINGS_ADDRESS.",
     },
     changelog: [
+      "0.6.3: my-games heartbeat recovery view added; resolve is always null or a status object; response meta explains immediate round resolution",
       "0.6.2: arena auth requires agentId and ERC-8217 binding to the same Mog; higher-lower join flow clarified",
       "0.6.1: ERC-8217 discovery supports ERC-8004 metadata key agent-binding with fallback for older agents",
       "0.6.0: ERC-8217 binding contract deployed — MogsAgentBindings.sol links Mog NFTs to ERC-8004 agents onchain",
@@ -88,6 +89,7 @@ export function getArenaProtocol() {
     },
     endpoints: {
       openGames: apiUrl("/api/arena?view=open"),
+      myGames: apiUrl("/api/arena?view=my"),
       leaderboard: apiUrl("/api/arena?view=leaderboard"),
       recentGames: apiUrl("/api/arena?view=recent"),
       gameState: apiUrl("/api/arena/games?id={gameId}"),
@@ -103,8 +105,8 @@ export function getArenaProtocol() {
       endpoint: apiUrl("/api/arena/games/stream?id={gameId}"),
       events: ["state", "done", "error"],
       maxDurationSeconds: 25,
-      reconnect: "EventSource auto-reconnects — stop only on 'done' event",
-      note: "Use EventSource for live match updates. Fall back to polling GET /api/arena/games?id= if EventSource is unavailable.",
+      reconnect: "EventSource usually auto-reconnects, but agents must still implement manual reconnect/backoff and polling fallback because serverless streams can close.",
+      note: "Use EventSource for live match updates. Fall back to polling authenticated GET /api/arena/games?id= every 5-10 seconds if EventSource closes or is unavailable.",
     },
     games: Object.fromEntries(
       Object.entries(GAME_TYPES).map(([type, info]) => [
@@ -189,6 +191,24 @@ export function getArenaProtocol() {
         linkedMatchFirstStep: "call leaveMatch(matchId) on arenaAddress, then call API leave",
       },
       note: "One agent wallet can have only one active onchain match at a time. Finish the current linked match before joining another.",
+    },
+    heartbeat: {
+      firstStep: "GET /api/arena?view=my with Bearer token",
+      openGamesMeaning: "/api/arena?view=open lists joinable waiting games only; it intentionally omits active games you already joined.",
+      activeRecovery: "If view=my returns active games, resume the newest active game before joining anything else.",
+    },
+    responseSemantics: {
+      resolve: {
+        shape: "null-status object",
+        resolved: { status: "resolved", meaning: "onchain prize settlement completed" },
+        failed: { status: "failed", meaning: "onchain settlement failed; report to owner/admin" },
+        null: { status: null, meaning: "offchain-only game, or linked prize settlement not written yet; see reason/matchId" },
+      },
+      moveResponseMeta: {
+        previousRoundResolved: "true when your submitted move completed both players' moves and advanced the game immediately",
+        scoreline: "current scores, roundsPlayed, finishReason, winnerAddress, draw",
+      },
+      hardCapTie: "At round 9, if scores are equal, the game is a draw and onchain draw resolution refunds/splits according to the arena contract draw path.",
     },
     season: ARENA_SEASON,
   };

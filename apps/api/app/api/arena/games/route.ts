@@ -7,6 +7,8 @@ import {
   submitMove,
   getGame,
   sanitizeGameForPublic,
+  gameScoreline,
+  type GameResolution,
   type Game,
   type GameType,
   type GameMove,
@@ -130,7 +132,11 @@ export async function POST(request: NextRequest) {
         tryReputationFeedback(game).catch(() => {});
       }
 
-      return NextResponse.json({ game });
+      return NextResponse.json({
+        game,
+        meta: gameResponseMeta(existingGame, game),
+        resolve: game.status === "finished" ? await getResolveStatus(gameId) : null,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       return NextResponse.json(
@@ -192,7 +198,11 @@ export async function POST(request: NextRequest) {
         tryReputationFeedback(game).catch(() => {});
       }
 
-      return NextResponse.json({ game });
+      return NextResponse.json({
+        game,
+        meta: gameResponseMeta(existingGame, game),
+        resolve: game.status === "finished" ? await getResolveStatus(gameId) : null,
+      });
     } catch {
       return NextResponse.json({ error: "Failed to submit move." }, { status: 500 });
     }
@@ -247,7 +257,7 @@ export async function POST(request: NextRequest) {
       if (!game) {
         return NextResponse.json({ error: "Cannot leave this game." }, { status: 400 });
       }
-      return NextResponse.json({ game });
+      return NextResponse.json({ game, resolve: null });
     } catch (err) {
       return NextResponse.json(
         { error: "Failed to leave game.", detail: err instanceof Error ? err.message : "Unknown error" },
@@ -286,18 +296,47 @@ export async function GET(request: NextRequest) {
     // Hide opponent moves for active games, but expose moveSubmitted so agents
     // can tell if they already submitted a move this round without seeing the move content.
     if (game.status !== "finished") {
-      const { kv } = await import("@vercel/kv");
-      const resolve = await kv.get(`arena:game-resolve:${id}`);
+      const resolve = await getResolveStatus(id);
       const session = await validateAuthHeader(request.headers.get("authorization"));
-      return NextResponse.json({ game: sanitizeGameForPublic(game, session?.address), resolve });
+      return NextResponse.json({ game: sanitizeGameForPublic(game, session?.address), resolve, scoreline: gameScoreline(game) });
     }
 
-    const { kv } = await import("@vercel/kv");
-    const resolve = await kv.get(`arena:game-resolve:${id}`);
-    return NextResponse.json({ game, resolve });
+    const resolve = await getResolveStatus(id);
+    return NextResponse.json({ game, resolve, scoreline: gameScoreline(game) });
   } catch {
     return NextResponse.json({ error: "Failed to fetch game." }, { status: 500 });
   }
+}
+
+function gameResponseMeta(before: Game, after: Game) {
+  const previousRoundResolved = after.rounds.length > before.rounds.length;
+  return {
+    previousRoundResolved,
+    resolvedRound: previousRoundResolved ? after.rounds.at(-1)?.round ?? null : null,
+    currentRound: after.round,
+    status: after.status,
+    scoreline: gameScoreline(after),
+    note: previousRoundResolved
+      ? "Both players had submitted moves, so the previous round resolved immediately in this response."
+      : null,
+  };
+}
+
+async function getResolveStatus(gameId: string): Promise<GameResolution> {
+  const { kv } = await import("@vercel/kv");
+  const resolve = await kv.get<GameResolution>(`arena:game-resolve:${gameId}`);
+  if (resolve) return resolve;
+
+  const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+  if (!matchId) {
+    return { status: null, reason: "offchain-only game" };
+  }
+
+  return {
+    status: null,
+    matchId,
+    reason: "linked prize match exists, but no settlement record has been written yet",
+  };
 }
 
 /* ---- Helper: ensure offchain players match onchain entrants ---- */

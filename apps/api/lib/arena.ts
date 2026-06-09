@@ -81,6 +81,7 @@ export type Game = {
   winner?: string;
   createdAt: string;
   finishedAt?: string;
+  finishReason?: "score_target" | "hard_cap_leader" | "hard_cap_draw";
 };
 
 export type GameSummary = {
@@ -98,6 +99,17 @@ export type GameSummary = {
   tokenPrize?: { token: string; amount: string };
   onchainStatus?: string;
   restriction?: "one_active_match_per_wallet";
+};
+
+export type GameResolution = {
+  status: "resolved" | "failed" | null;
+  matchId?: number;
+  winnerAddress?: string | null;
+  txHash?: string;
+  resolvedAt?: string;
+  error?: string;
+  failedAt?: string;
+  reason?: string;
 };
 
 export type PublicGame = Game & {
@@ -627,18 +639,24 @@ async function advanceRound(game: Game): Promise<Game> {
     game.status = "finished";
     game.winner = game.players[0].address;
     game.finishedAt = new Date().toISOString();
+    game.finishReason = "score_target";
   } else if (game.players[1].score >= needed) {
     game.status = "finished";
     game.winner = game.players[1].address;
     game.finishedAt = new Date().toISOString();
+    game.finishReason = "score_target";
   } else if (hardCapReached) {
     // Hard cap: bestOf rounds played, whoever leads wins; tie = draw
     game.status = "finished";
     game.finishedAt = new Date().toISOString();
     if (game.players[0].score > game.players[1].score) {
       game.winner = game.players[0].address;
+      game.finishReason = "hard_cap_leader";
     } else if (game.players[1].score > game.players[0].score) {
       game.winner = game.players[1].address;
+      game.finishReason = "hard_cap_leader";
+    } else {
+      game.finishReason = "hard_cap_draw";
     }
     // If scores are equal, winner stays undefined (draw)
   } else {
@@ -731,6 +749,36 @@ export async function getRecentGames(limit = 20): Promise<Game[]> {
   } catch {
     return [];
   }
+}
+
+export async function getGamesForPlayer(address: string, limit = 50): Promise<Game[]> {
+  try {
+    const normalized = address.toLowerCase();
+    const ids = await kv.lrange<string>(GAMES_KEY, 0, limit - 1);
+    if (!ids.length) return [];
+
+    const games = await Promise.all(ids.map((id) => getGame(id)));
+    return games
+      .filter((g): g is Game => g !== null)
+      .filter((g) => g.players.some((p) => p.address.toLowerCase() === normalized))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch {
+    return [];
+  }
+}
+
+export function gameScoreline(game: Game) {
+  const [p1, p2] = game.players;
+  return {
+    p1: p1 ? { address: p1.address, score: p1.score } : null,
+    p2: p2 ? { address: p2.address, score: p2.score } : null,
+    roundsPlayed: game.rounds.length,
+    bestOf: game.bestOf,
+    winsNeeded: winsNeeded(game.bestOf),
+    finishReason: game.finishReason || null,
+    winnerAddress: game.winner || null,
+    draw: game.status === "finished" && !game.winner,
+  };
 }
 
 export function sanitizeGameForPublic(game: Game, viewerAddress?: string): PublicGame {

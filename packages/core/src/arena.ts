@@ -78,6 +78,7 @@ export type Game = {
   winner?: string;
   createdAt: string;
   finishedAt?: string;
+  finishReason?: "score_target" | "hard_cap_leader" | "hard_cap_draw";
 };
 
 export type GameSummary = {
