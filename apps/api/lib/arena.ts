@@ -1,5 +1,6 @@
 import { kv } from "@vercel/kv";
 import { markBurnTxConsumed } from "@/lib/mogs-burn";
+import { KV_TTL, kvKeys } from "@/lib/kv-keys";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -217,10 +218,10 @@ export function supportsSpecialMove(type: GameType): boolean {
 /*  KV Keys                                                             */
 /* ------------------------------------------------------------------ */
 
-const GAMES_KEY = "arena:games";
-const GAME_KEY = (id: string) => `arena:game:${id}`;
-const LEADERBOARD_KEY = "arena:leaderboard";
-const PLAYER_STATS_KEY = (address: string) => `arena:stats:${address.toLowerCase()}`;
+const GAMES_KEY = kvKeys.arena.games.list;
+const GAME_KEY = kvKeys.arena.games.item;
+const LEADERBOARD_KEY = kvKeys.arena.leaderboard.sortedSet;
+const PLAYER_STATS_KEY = kvKeys.arena.leaderboard.playerStats;
 
 /* ------------------------------------------------------------------ */
 /*  Round Resolution                                                    */
@@ -507,15 +508,15 @@ export async function createOpenGame(type: GameType, id = crypto.randomUUID()): 
     createdAt: new Date().toISOString(),
   };
 
-  await kv.set(GAME_KEY(game.id), game, { ex: 86400 * 7 });
+  await kv.set(GAME_KEY(game.id), game, { ex: KV_TTL.game });
   await kv.lpush(GAMES_KEY, game.id);
   return game;
 }
 
 export async function linkGameToMatch(gameId: string, matchId: number): Promise<void> {
   await Promise.all([
-    kv.set(`arena:game-match:${gameId}`, matchId, { ex: 86400 * 7 }),
-    kv.set(`arena:match-game:${matchId}`, gameId, { ex: 86400 * 7 }),
+    kv.set(kvKeys.arena.games.matchByGame(gameId), matchId, { ex: KV_TTL.game }),
+    kv.set(kvKeys.arena.games.gameByMatch(matchId), gameId, { ex: KV_TTL.game }),
   ]);
 }
 
@@ -529,8 +530,8 @@ export async function joinGame(
   move?: GameMove,
   specialMove?: SpecialMoveRequest
 ): Promise<Game | null> {
-  const lockKey = `arena:lock:${id}:join`;
-  const locked = await kv.set(lockKey, "1", { ex: 10, nx: true });
+  const lockKey = kvKeys.arena.locks.join(id);
+  const locked = await kv.set(lockKey, "1", { ex: KV_TTL.lock, nx: true });
   if (!locked) return null;
 
   try {
@@ -544,7 +545,7 @@ export async function joinGame(
 
     // Two players = game is active
     if (game.players.length < 2) {
-      await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
+      await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
       return game;
     }
 
@@ -556,7 +557,7 @@ export async function joinGame(
       return advanceRound(game);
     }
 
-    await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
+    await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
     return game;
   } finally {
     await kv.del(lockKey);
@@ -571,7 +572,7 @@ export async function leaveWaitingGame(id: string, address: string): Promise<Gam
   game.players = game.players.filter((p) => p.address.toLowerCase() !== address.toLowerCase());
   if (game.players.length === before) return null;
 
-  await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
+  await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
   return game;
 }
 
@@ -582,10 +583,10 @@ export async function submitMove(
   commentary?: string,
   specialMove?: SpecialMoveRequest
 ): Promise<Game | null> {
-  const lockKey = `arena:lock:${id}`;
+  const lockKey = kvKeys.arena.locks.move(id);
 
   // Simple lock to prevent race conditions
-  const locked = await kv.set(lockKey, "1", { ex: 10, nx: true });
+  const locked = await kv.set(lockKey, "1", { ex: KV_TTL.lock, nx: true });
   if (!locked) return null; // another move is being processed
 
   try {
@@ -607,7 +608,7 @@ export async function submitMove(
       return advanceRound(game);
     }
 
-    await kv.set(GAME_KEY(id), game, { ex: 86400 * 7 });
+    await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
     return game;
   } finally {
     await kv.del(lockKey);
@@ -617,7 +618,7 @@ export async function submitMove(
 async function advanceRound(game: Game): Promise<Game> {
   const roundResult = resolveRound(game);
   if (!roundResult) {
-    await kv.set(GAME_KEY(game.id), game, { ex: 86400 * 7 });
+    await kv.set(GAME_KEY(game.id), game, { ex: KV_TTL.game });
     return game;
   }
 
@@ -679,7 +680,7 @@ async function advanceRound(game: Game): Promise<Game> {
   game.players[0].result = roundResult.p1Result;
   game.players[1].result = roundResult.p2Result;
 
-  await kv.set(GAME_KEY(game.id), game, { ex: 86400 * 7 });
+  await kv.set(GAME_KEY(game.id), game, { ex: KV_TTL.game });
 
   if (game.status === "finished") {
     await updateStats(game);
@@ -714,7 +715,7 @@ export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
         createdAt: g.createdAt,
       };
 
-      const matchId = await kv.get<number>(`arena:game-match:${g.id}`);
+      const matchId = await kv.get<number>(kvKeys.arena.games.matchByGame(g.id));
       if (!matchId) return summary;
 
       summary.matchId = matchId;

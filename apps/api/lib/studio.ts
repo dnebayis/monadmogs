@@ -1,6 +1,7 @@
 import { kv } from "@vercel/kv";
+import { kvKeys } from "@/lib/kv-keys";
 
-export const STUDIO_PROJECTS_KEY = "studio:projects";
+export const STUDIO_PROJECTS_KEY = kvKeys.studio.projects;
 
 export type StudioProject = {
   id: string;

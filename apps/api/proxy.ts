@@ -32,5 +32,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/api/:path*", "/llms.txt", "/agent-prompt.txt", "/arena-skill.md"],
+  matcher: ["/api/:path*", "/llms.txt", "/agent-prompt.txt", "/arena-skill.md", "/skills/:path*"],
 };

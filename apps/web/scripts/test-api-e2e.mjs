@@ -74,12 +74,17 @@ await check("AgentURI includes rarity service and rare-plus flag", async () => {
 
 await check("arena introspection marks Special Move active", async () => {
   const protocol = await request("/api/arena/introspection");
+  assert(protocol.version === "0.7.0", `expected protocol 0.7.0, received ${protocol.version}`);
   assert(protocol.raritySystem?.active === true, "Special Move should be marked active");
   assert(protocol.raritySystem?.term === "Special Move", "Special Move term missing");
   assert(protocol.raritySystem?.activeFeatures?.includes("rarity-rank-api"), "rarity API active feature missing");
   assert(protocol.raritySystem?.supportedGames?.includes("dice-duel"), "Dice Duel Special Move support missing");
   assert(protocol.raritySystem?.supportedGames?.includes("higher-lower"), "Higher or Lower Special Move support missing");
   assert(protocol.raritySystem?.burnAmount === "1000", "Special Move burn amount mismatch");
+  assert(protocol.endpoints?.pendingActions?.includes("/api/arena/pending-actions"), "pending-actions endpoint missing");
+  assert(protocol.endpoints?.agentStatus?.includes("/api/arena/agent/status"), "agent/status endpoint missing");
+  assert(protocol.endpoints?.bugReport?.includes("/api/arena/bug-report"), "bug-report endpoint missing");
+  assert(protocol.gameSkills?.diceDuel?.includes("/skills/dice-duel.md"), "dice-duel skill missing");
 });
 
 await check("arena invalid view fails closed", async () => {
@@ -89,14 +94,52 @@ await check("arena invalid view fails closed", async () => {
 
 await check("agent prompt teaches rarity and burn limits", async () => {
   const prompt = await request("/agent-prompt.txt");
+  assert(prompt.includes("version: 0.7.0"), "agent prompt version mismatch");
+  assert(prompt.includes("/api/arena/pending-actions"), "agent prompt missing pending-actions");
   assert(prompt.includes("mogs-agent-rarity.json"), "agent prompt missing rarity file instruction");
   assert(prompt.includes("exactly 1,000 $MOGS"), "agent prompt missing fixed burn amount");
 });
 
 await check("arena skill states Special Move rules", async () => {
   const skill = await request("/arena-skill.md");
-  assert(skill.includes("Special Move is active only for dice-duel and higher-lower"), "arena skill missing active Special Move scope");
-  assert(skill.includes("mogs-agent-rarity.json"), "arena skill missing rarity file");
+  assert(skill.includes("version: 0.7.0"), "arena skill version mismatch");
+  assert(skill.includes("/api/arena/pending-actions"), "arena skill missing pending-actions");
+  assert(skill.includes("Dice Duel"), "arena skill missing game skill links");
+});
+
+await check("arena auth-only endpoints fail closed without bearer token", async () => {
+  const pending = await request("/api/arena/pending-actions", 401);
+  assert(pending.error?.includes("Authentication required"), "pending-actions should require auth");
+  const status = await request("/api/arena/agent/status", 401);
+  assert(status.error?.includes("Authentication required"), "agent/status should require auth");
+  const report = await fetch(`${BASE_URL}/api/arena/bug-report`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ category: "other", severity: "low", summary: "x", details: "x" }),
+  });
+  assert(report.status === 401, `bug-report should require auth, received ${report.status}`);
+});
+
+await check("arena season exposes eligibility", async () => {
+  const season = await request("/api/arena/season");
+  assert(season.seasonId === "season-0", "season id missing");
+  assert(season.leaderboardMode === "practice", "practice leaderboard mode missing");
+  assert(season.eligibleGames?.includes("higher-lower"), "eligible games missing");
+  assert(season.requirements?.some((item) => item.includes("ERC-8217")), "ERC-8217 requirement missing");
+});
+
+await check("game-specific skills are readable", async () => {
+  const files = [
+    ["/skills/coin-flip.md", "Coin Flip"],
+    ["/skills/rock-paper-scissors.md", "Rock Paper Scissors"],
+    ["/skills/dice-duel.md", "Dice Duel"],
+    ["/skills/higher-lower.md", "Higher or Lower"],
+  ];
+  for (const [path, title] of files) {
+    const text = await request(path);
+    assert(text.includes(title), `${path} missing ${title}`);
+    assert(text.includes("version: 0.7.0"), `${path} version mismatch`);
+  }
 });
 
 const results = await Promise.all(checks);

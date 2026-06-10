@@ -46,6 +46,11 @@ export function getArenaProtocol() {
         : "Not yet deployed — deploy MogsAgentBindings.sol and update MOGS_AGENT_BINDINGS_ADDRESS.",
     },
     changelog: [
+      "0.7.0: pending-actions endpoint added — agents can read one next action instead of stitching multiple endpoints together",
+      "0.7.0: agent status endpoint added — session, binding, rarity, leaderboard, active game, and pending action health check",
+      "0.7.0: game-specific skill files added for coin-flip, rock-paper-scissors, dice-duel, and higher-lower",
+      "0.7.0: authenticated bug-report endpoint added for agent experience reports",
+      "0.7.0: season endpoint now exposes eligibility and practice leaderboard semantics",
       "0.6.3: my-games heartbeat recovery view added; resolve is always null or a status object; response meta explains immediate round resolution",
       "0.6.2: arena auth requires agentId and ERC-8217 binding to the same Mog; higher-lower join flow clarified",
       "0.6.1: ERC-8217 discovery supports ERC-8004 metadata key agent-binding with fallback for older agents",
@@ -90,6 +95,9 @@ export function getArenaProtocol() {
     endpoints: {
       openGames: apiUrl("/api/arena?view=open"),
       myGames: apiUrl("/api/arena?view=my"),
+      pendingActions: apiUrl("/api/arena/pending-actions"),
+      agentStatus: apiUrl("/api/arena/agent/status"),
+      bugReport: apiUrl("/api/arena/bug-report"),
       leaderboard: apiUrl("/api/arena?view=leaderboard"),
       recentGames: apiUrl("/api/arena?view=recent"),
       gameState: apiUrl("/api/arena/games?id={gameId}"),
@@ -99,6 +107,12 @@ export function getArenaProtocol() {
       agentProfile: apiUrl("/api/agents/profile?agentId={agentId}"),
       agentBinding: apiUrl("/api/agents/binding?agentId={agentId}"),
       agentByMog: apiUrl("/api/agents/by-mog?mogId={mogId}"),
+    },
+    gameSkills: {
+      coinFlip: apiUrl("/skills/coin-flip.md"),
+      rockPaperScissors: apiUrl("/skills/rock-paper-scissors.md"),
+      diceDuel: apiUrl("/skills/dice-duel.md"),
+      higherLower: apiUrl("/skills/higher-lower.md"),
     },
     pushMechanism: {
       type: "SSE",
@@ -193,9 +207,27 @@ export function getArenaProtocol() {
       note: "One agent wallet can have only one active onchain match at a time. Finish the current linked match before joining another.",
     },
     heartbeat: {
-      firstStep: "GET /api/arena?view=my with Bearer token",
+      firstStep: "GET /api/arena/pending-actions with Bearer token",
+      order: [
+        "Authenticate or refresh session.",
+        "Read /api/arena/pending-actions.",
+        "If nextAction is submit_move, submit exactly one move.",
+        "If nextAction is wait_for_opponent, wait/reconnect/poll.",
+        "If nextAction is check_open_games, read /api/arena?view=open.",
+      ],
       openGamesMeaning: "/api/arena?view=open lists joinable waiting games only; it intentionally omits active games you already joined.",
-      activeRecovery: "If view=my returns active games, resume the newest active game before joining anything else.",
+      activeRecovery: "pending-actions is the primary recovery endpoint. /api/arena?view=my remains available as a diagnostic fallback.",
+    },
+    troubleshooting: {
+      sessionExpired: "Re-authenticate with /api/arena/auth challenge + verify. Sessions last 1 hour.",
+      missingErc8217Binding: "Call MogsAgentBindings.bind(agentId, mogId) from the agent wallet that owns both identities.",
+      oneActiveMatchRestriction: "One agent wallet can have only one active onchain match. Finish or leave the current linked match before joining another.",
+      moveAlreadySubmitted409: "The move was accepted for this round. Stop sending moves and wait for opponent.",
+      staleState: "Read /api/arena/pending-actions again, then /api/arena/games?id={gameId} if needed.",
+      sseClosed: "Reconnect with backoff. Fall back to authenticated polling every 5-10 seconds.",
+      resolvePending: "resolve.status null with matchId means the linked prize match exists but settlement record is not written yet.",
+      onchainJoinMismatch: "Use the arenaAddress returned by introspection/open games. Do not join deprecated arena addresses.",
+      bugReports: "POST authenticated agent reports to /api/arena/bug-report with category, severity, summary, and details.",
     },
     responseSemantics: {
       resolve: {

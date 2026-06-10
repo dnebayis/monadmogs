@@ -25,6 +25,7 @@ import { validateAndReserveSpecialMoveBurn } from "@/lib/mogs-burn";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { getMogRarity, type RarityTier } from "@/lib/rarity";
 import { MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
+import { KV_TTL, kvKeys } from "@/lib/kv-keys";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest) {
       }
 
       const { kv } = await import("@vercel/kv");
-      const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+      const matchId = await kv.get<number>(kvKeys.arena.games.matchByGame(gameId));
       if (matchId) {
         const match = await getOnchainMatch(matchId);
         if (
@@ -324,10 +325,10 @@ function gameResponseMeta(before: Game, after: Game) {
 
 async function getResolveStatus(gameId: string): Promise<GameResolution> {
   const { kv } = await import("@vercel/kv");
-  const resolve = await kv.get<GameResolution>(`arena:game-resolve:${gameId}`);
+  const resolve = await kv.get<GameResolution>(kvKeys.arena.games.resolve(gameId));
   if (resolve) return resolve;
 
-  const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+  const matchId = await kv.get<number>(kvKeys.arena.games.matchByGame(gameId));
   if (!matchId) {
     return { status: null, reason: "offchain-only game" };
   }
@@ -342,7 +343,7 @@ async function getResolveStatus(gameId: string): Promise<GameResolution> {
 /* ---- Helper: ensure offchain players match onchain entrants ---- */
 async function validateOnchainParticipant(gameId: string, address: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const { kv } = await import("@vercel/kv");
-  const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+  const matchId = await kv.get<number>(kvKeys.arena.games.matchByGame(gameId));
   if (!matchId) return { ok: true };
 
   const match = await getOnchainMatch(matchId);
@@ -447,7 +448,7 @@ async function validateSpecialMove(
 async function tryResolveOnchain(gameId: string, winnerAddress: string | undefined) {
   try {
     const { kv } = await import("@vercel/kv");
-    const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+    const matchId = await kv.get<number>(kvKeys.arena.games.matchByGame(gameId));
     if (!matchId) return;
 
     const match = await getOnchainMatch(matchId);
@@ -460,22 +461,22 @@ async function tryResolveOnchain(gameId: string, winnerAddress: string | undefin
       result = await resolveOnchainDraw(matchId);
     }
 
-    await kv.set(`arena:game-resolve:${gameId}`, {
+    await kv.set(kvKeys.arena.games.resolve(gameId), {
       status: "resolved",
       matchId,
       winnerAddress: winnerAddress || null,
       txHash: result.txHash,
       resolvedAt: new Date().toISOString(),
-    }, { ex: 86400 * 7 });
+    }, { ex: KV_TTL.resolve });
   } catch (err) {
     try {
       const { kv } = await import("@vercel/kv");
-      await kv.set(`arena:game-resolve:${gameId}`, {
+      await kv.set(kvKeys.arena.games.resolve(gameId), {
         status: "failed",
         winnerAddress: winnerAddress || null,
         error: err instanceof Error ? err.message : "Unknown resolve error",
         failedAt: new Date().toISOString(),
-      }, { ex: 86400 * 7 });
+      }, { ex: KV_TTL.resolve });
     } catch {
       // best-effort visibility
     }
@@ -489,11 +490,11 @@ async function tryReputationFeedback(game: Game) {
 
   const { kv } = await import("@vercel/kv");
   // Prevent duplicate feedback
-  const feedbackKey = `arena:reputation:${game.id}`;
+  const feedbackKey = kvKeys.arena.leaderboard.reputationFeedback(game.id);
   const already = await kv.get(feedbackKey);
   if (already) return;
 
-  const pendingSet = await kv.set(feedbackKey, "pending", { ex: 86400 * 7, nx: true });
+  const pendingSet = await kv.set(feedbackKey, "pending", { ex: KV_TTL.reputationFeedback, nx: true });
   if (!pendingSet) return;
 
   try {
@@ -505,7 +506,7 @@ async function tryReputationFeedback(game: Game) {
       const result = await giveReputationFeedback(player.agentId, value, game.type, game.id);
       if (!result) throw new Error(`Reputation feedback skipped for agent #${player.agentId}.`);
     }
-    await kv.set(feedbackKey, "sent", { ex: 86400 * 7 });
+    await kv.set(feedbackKey, "sent", { ex: KV_TTL.reputationFeedback });
   } catch (err) {
     await kv.del(feedbackKey);
     throw err;

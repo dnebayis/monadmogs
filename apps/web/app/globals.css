@@ -3405,6 +3405,60 @@ textarea:focus-visible {
 
 .admin-resolve-badge.resolved { background: rgba(120,220,120,0.1); color: #7ddc7d; }
 .admin-resolve-badge.failed { background: rgba(220,80,80,0.1); color: #e05555; }
+.admin-resolve-badge.cancelled,
+.admin-resolve-badge.pending { background: rgba(255, 232, 179, 0.1); color: var(--cream); }
+
+.admin-report-list {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-report-card {
+  border: 1px solid var(--line);
+  background: rgba(10, 8, 18, 0.72);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.admin-report-card.high,
+.admin-report-card.critical {
+  border-color: rgba(224, 85, 85, 0.55);
+}
+
+.admin-report-top,
+.admin-report-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.admin-report-card strong {
+  color: var(--fg);
+  font-size: 14px;
+}
+
+.admin-report-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.admin-report-severity {
+  border: 1px solid var(--line);
+  color: var(--cream);
+  padding: 2px 6px;
+  text-transform: uppercase;
+}
+
+.admin-report-meta a {
+  color: var(--cyan);
+  text-decoration: none;
+}
 
 .admin-actions {
   display: flex;

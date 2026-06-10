@@ -1,4 +1,5 @@
 import { kv } from "@vercel/kv";
+import { kvKeys } from "@/lib/kv-keys";
 
 type RateLimitResult = { ok: true } | { ok: false; retryAfter: number };
 
@@ -13,7 +14,7 @@ export async function rateLimit(
   limit: number,
   windowSeconds: number
 ): Promise<RateLimitResult> {
-  const kvKey = `rl:${key}`;
+  const kvKey = kvKeys.rateLimit(key);
 
   try {
     const current = await kv.incr(kvKey);

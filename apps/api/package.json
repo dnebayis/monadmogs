@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "next dev --webpack --port 3001",
     "build": "next build --webpack",
-    "start": "next start"
+    "start": "next start",
+    "kv:migrate:dry": "node scripts/kv-migrate-v1.mjs --dry-run",
+    "kv:migrate:copy": "node scripts/kv-migrate-v1.mjs --copy",
+    "kv:migrate:verify": "node scripts/kv-migrate-v1.mjs --verify",
+    "kv:migrate:cleanup": "node scripts/kv-migrate-v1.mjs --cleanup"
   },
   "dependencies": {
     "@monad-mogs/core": "workspace:*",

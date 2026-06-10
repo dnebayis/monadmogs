@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 import { getGame, gameScoreline, sanitizeGameForPublic, type GameResolution } from "@/lib/arena";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { kv } from "@vercel/kv";
+import { kvKeys } from "@/lib/kv-keys";
 
 // Max stream duration on Vercel: 25s (well under 30s function limit)
 const MAX_DURATION_MS = 25_000;
@@ -107,10 +108,10 @@ export async function GET(request: NextRequest) {
 }
 
 async function getResolveStatus(gameId: string): Promise<GameResolution> {
-  const resolve = await kv.get<GameResolution>(`arena:game-resolve:${gameId}`);
+  const resolve = await kv.get<GameResolution>(kvKeys.arena.games.resolve(gameId));
   if (resolve) return resolve;
 
-  const matchId = await kv.get<number>(`arena:game-match:${gameId}`);
+  const matchId = await kv.get<number>(kvKeys.arena.games.matchByGame(gameId));
   if (!matchId) {
     return { status: null, reason: "offchain-only game" };
   }

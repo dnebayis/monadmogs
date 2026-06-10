@@ -8,6 +8,7 @@ import {
   MOGS_AGENT_BINDINGS_ADDRESS,
 } from "@/lib/erc8004";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
+import { KV_TTL, kvKeys } from "@/lib/kv-keys";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -27,12 +28,10 @@ export type AgentSession = {
 /*  Constants                                                           */
 /* ------------------------------------------------------------------ */
 
-const SESSION_TTL = 3600; // 1 hour
-const CHALLENGE_TTL = 300; // 5 minutes
+const SESSION_TTL = KV_TTL.session; // 1 hour
+const CHALLENGE_TTL = KV_TTL.challenge; // 5 minutes
 // DEV_MODE skips Mog ownership verification — NEVER enable in production
 const DEV_MODE = process.env.ARENA_DEV_MODE === "true" && process.env.NODE_ENV !== "production";
-const CHALLENGE_PREFIX = "arena:challenge:";
-const SESSION_PREFIX = "arena:session:";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /* ------------------------------------------------------------------ */
@@ -53,12 +52,12 @@ export async function createChallenge(address: string): Promise<string> {
   const timestamp = Date.now();
   const challenge = `Monad Mogs Arena Authentication\nAddress: ${address}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
 
-  await kv.set(`${CHALLENGE_PREFIX}${address.toLowerCase()}`, challenge, { ex: CHALLENGE_TTL });
+  await kv.set(kvKeys.arena.auth.challenge(address), challenge, { ex: CHALLENGE_TTL });
   return challenge;
 }
 
 export async function getChallenge(address: string): Promise<string | null> {
-  return kv.get<string>(`${CHALLENGE_PREFIX}${address.toLowerCase()}`);
+  return kv.get<string>(kvKeys.arena.auth.challenge(address));
 }
 
 /* ------------------------------------------------------------------ */
@@ -86,7 +85,7 @@ export async function verifyAgentWallet(
     const challengeTime = Number(timestampMatch[1]);
     const now = Date.now();
     if (now - challengeTime > CHALLENGE_TTL * 1000) {
-      await kv.del(`${CHALLENGE_PREFIX}${normalizedAddress}`);
+      await kv.del(kvKeys.arena.auth.challenge(normalizedAddress));
       return { error: "Challenge expired." };
     }
   }
@@ -189,10 +188,10 @@ export async function verifyAgentWallet(
   };
 
   const sessionToken = crypto.randomUUID();
-  await kv.set(`${SESSION_PREFIX}${sessionToken}`, session, { ex: SESSION_TTL });
+  await kv.set(kvKeys.arena.auth.session(sessionToken), session, { ex: SESSION_TTL });
 
   // Clean up challenge
-  await kv.del(`${CHALLENGE_PREFIX}${normalizedAddress}`);
+  await kv.del(kvKeys.arena.auth.challenge(normalizedAddress));
 
   return { ...session, token: sessionToken };
 }
@@ -202,11 +201,11 @@ export async function verifyAgentWallet(
 /* ------------------------------------------------------------------ */
 
 export async function getSession(token: string): Promise<AgentSession | null> {
-  const session = await kv.get<AgentSession>(`${SESSION_PREFIX}${token}`);
+  const session = await kv.get<AgentSession>(kvKeys.arena.auth.session(token));
   if (!session) return null;
 
   if (new Date(session.expiresAt) < new Date()) {
-    await kv.del(`${SESSION_PREFIX}${token}`);
+    await kv.del(kvKeys.arena.auth.session(token));
     return null;
   }
 

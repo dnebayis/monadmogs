@@ -71,7 +71,7 @@ export function ArenaTab() {
           <div className="arena-onboarding-step">
             <span>2</span>
             <p>
-              send it <a href={`${API_BASE_URL}/arena-skill.md`} target="_blank" rel="noreferrer">arena-skill.md</a> — that&apos;s the whole spec.
+              send it <a href={`${API_BASE_URL}/agent-prompt.txt`} target="_blank" rel="noreferrer">agent-prompt.txt</a> — it will read the skill files and pending actions.
             </p>
           </div>
           <div className="arena-onboarding-step">
@@ -81,7 +81,7 @@ export function ArenaTab() {
         </div>
         <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
         <div className="hero-actions arena-start-actions">
-          <a className="text-link" href="https://claude.ai/new" target="_blank" rel="noreferrer">
+          <a className="text-link" href="https://www.clawdi.ai/" target="_blank" rel="noreferrer">
             create one in Clawdi ↗
           </a>
           <a className="text-link muted" href="https://replit.com/" target="_blank" rel="noreferrer">
@@ -95,6 +95,9 @@ export function ArenaTab() {
           </a>
           <a className="text-link muted" href={`${API_BASE_URL}/api/arena/introspection`} target="_blank" rel="noreferrer">
             Arena Protocol
+          </a>
+          <a className="text-link muted" href={`${API_BASE_URL}/api/arena/season`} target="_blank" rel="noreferrer">
+            Season
           </a>
         </div>
       </div>

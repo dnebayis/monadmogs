@@ -2,11 +2,10 @@ import { kv } from "@vercel/kv";
 import { createPublicClient, decodeEventLog, getAddress, http, type Hex } from "viem";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 import { MOGS_TOKEN_ADDRESS } from "@/lib/arena-pool";
+import { KV_TTL, kvKeys } from "@/lib/kv-keys";
 
 export const MOGS_BURN_ADDRESS = "0x000000000000000000000000000000000000dEaD";
 export const SPECIAL_MOVE_BURN_TOKENS = "1000";
-
-const USED_BURN_TX_KEY = (txHash: string) => `arena:special-move-burn:${txHash.toLowerCase()}`;
 
 const erc20Abi = [
   {
@@ -48,7 +47,7 @@ export async function validateAndReserveSpecialMoveBurn(params: {
     return { ok: false, error: "Invalid burnTxHash." };
   }
 
-  const usedKey = USED_BURN_TX_KEY(txHash);
+  const usedKey = kvKeys.arena.specialMove.burnTx(txHash);
   const existing = await kv.get<{ gameId: string; mogId?: number; agentAddress?: string; consumed: boolean }>(usedKey);
   if (existing) {
     // Allow re-declaration within the same game only by the same agent/Mog while not consumed.
@@ -130,7 +129,7 @@ export async function validateAndReserveSpecialMoveBurn(params: {
       consumed: false,
       reservedAt: new Date().toISOString(),
     },
-    { ex: 60 * 60 * 24 * 90, nx: true },
+    { ex: KV_TTL.burnReservation, nx: true },
   );
   if (!reserved) {
     return { ok: false, error: "This burn transaction has already been reserved." };
@@ -140,8 +139,8 @@ export async function validateAndReserveSpecialMoveBurn(params: {
 }
 
 export async function markBurnTxConsumed(txHash: string): Promise<void> {
-  const key = USED_BURN_TX_KEY(txHash.toLowerCase());
+  const key = kvKeys.arena.specialMove.burnTx(txHash);
   const existing = await kv.get<{ gameId: string; mogId: number; agentAddress: string; consumed: boolean; reservedAt: string }>(key);
   if (!existing) return;
-  await kv.set(key, { ...existing, consumed: true }, { ex: 60 * 60 * 24 * 90 });
+  await kv.set(key, { ...existing, consumed: true }, { ex: KV_TTL.burnReservation });
 }

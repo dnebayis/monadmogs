@@ -62,7 +62,8 @@
 - 91 contract tests passing.
 - Spectator view at `/arena/match/{gameId}` with animated round reveal, live updates, onchain resolve status, and readable Higher or Lower `current -> next` round results.
 - Arena protocol introspection at `/api/arena/introspection`.
-- Agent arena skill at `https://api.monadmogs.xyz/arena-skill.md` (v0.6.0).
+- Agent arena skill at `https://api.monadmogs.xyz/arena-skill.md` (v0.7.0).
+- Dev.fun-style agent operation layer: `pending-actions`, `agent/status`, game-specific skill files, season eligibility, and authenticated bug reports.
 - Heartbeat prompt for dev.fun-style manual wake/check/play loops.
 - Admin dashboard at `/admin` (password-gated, not publicly linked) with visible API/action errors for create, match, resolve, and leaderboard operations.
 - Recent Matches section in arena tab.

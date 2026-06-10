@@ -36,11 +36,12 @@ type Game = {
 };
 
 type ResolveRecord = {
-  status: "resolved" | "failed" | "cancelled";
+  status: "resolved" | "failed" | "cancelled" | null;
   matchId?: number;
   winnerAddress?: string | null;
   txHash?: string;
   error?: string;
+  reason?: string;
 };
 
 type LeaderboardEntry = {
@@ -49,6 +50,20 @@ type LeaderboardEntry = {
   wins: number;
   losses: number;
   reputation: number;
+};
+
+type BugReport = {
+  id: string;
+  createdAt: string;
+  reporter: { address: string; agentId: number; mogId: number; mogName: string };
+  category: string;
+  severity: string;
+  summary: string;
+  details: string;
+  gameId?: string;
+  matchId?: number;
+  txHash?: string;
+  endpoint?: string;
 };
 
 /* ------------------------------------------------------------------ */
@@ -66,7 +81,7 @@ export default function AdminPage() {
   const [secret, setSecret] = useState("");
   const [input, setInput] = useState("");
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState<"games" | "matches" | "leaderboard">("games");
+  const [tab, setTab] = useState<"games" | "matches" | "leaderboard" | "reports">("games");
 
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -155,7 +170,7 @@ export default function AdminPage() {
       </div>
 
       <div className="admin-tabs">
-        {(["games", "matches", "leaderboard"] as const).map((t) => (
+        {(["games", "matches", "leaderboard", "reports"] as const).map((t) => (
           <button
             key={t}
             className={`admin-tab-btn ${tab === t ? "active" : ""}`}
@@ -169,6 +184,73 @@ export default function AdminPage() {
       {tab === "games" && <GamesPanel secret={secret} onAuthFail={logout} />}
       {tab === "matches" && <MatchesPanel secret={secret} onAuthFail={logout} />}
       {tab === "leaderboard" && <LeaderboardPanel secret={secret} onAuthFail={logout} />}
+      {tab === "reports" && <ReportsPanel secret={secret} onAuthFail={logout} />}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Reports Panel                                                       */
+/* ------------------------------------------------------------------ */
+
+function ReportsPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => void }) {
+  const [reports, setReports] = useState<BugReport[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({ action: "bug-reports", limit: 50 }),
+      });
+      if (res.status === 401) { onAuthFail(); return; }
+      const data = await readJson<{ reports?: BugReport[] }>(res);
+      setReports(data.reports || []);
+    } catch (caught) {
+      setLoadError(`Failed to load reports: ${errorMessage(caught)}`);
+    }
+    setLoading(false);
+  }, [secret, onAuthFail]);
+
+  useEffect(() => {
+    load();
+    const interval = window.setInterval(load, 30_000);
+    return () => window.clearInterval(interval);
+  }, [load]);
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-section">
+        <div className="admin-section-header">
+          <p className="admin-section-title">Agent Bug Reports</p>
+          <button className="admin-refresh" onClick={load}>{loading ? "…" : "↻"}</button>
+        </div>
+        <div className="admin-report-list">
+          {reports.map((report) => (
+            <div key={report.id} className={`admin-report-card ${report.severity}`}>
+              <div className="admin-report-top">
+                <span className="admin-report-severity">{report.severity}</span>
+                <span>{report.category}</span>
+                <span>{new Date(report.createdAt).toLocaleString()}</span>
+              </div>
+              <strong>{report.summary}</strong>
+              <p>{report.details}</p>
+              <div className="admin-report-meta">
+                <span>{report.reporter.mogName} / Agent #{report.reporter.agentId}</span>
+                {report.gameId && <a href={`/arena/match/${report.gameId}`} target="_blank" rel="noreferrer">Game {report.gameId.slice(0, 8)}…</a>}
+                {report.matchId && <span>Match #{report.matchId}</span>}
+                {report.endpoint && <span>{report.endpoint}</span>}
+              </div>
+            </div>
+          ))}
+          {loadError && <p className="admin-empty admin-error">{loadError}</p>}
+          {reports.length === 0 && !loading && <p className="admin-empty">No reports.</p>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -492,10 +574,16 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
                 </span>
                 <span>
                   {resolve ? (
-                    <span className={`admin-resolve-badge ${resolve.status}`}>
+                    <span className={`admin-resolve-badge ${resolve.status || "pending"}`} title={resolve.reason || ""}>
                       {resolve.status === "resolved"
                         ? `✓ ${resolve.txHash?.slice(0, 8)}…`
-                        : `✗ failed`}
+                        : resolve.status === "failed"
+                          ? "✗ failed"
+                          : resolve.status === "cancelled"
+                            ? "cancelled"
+                            : resolve.matchId
+                              ? `pending #${resolve.matchId}`
+                              : "offchain"}
                     </span>
                   ) : g.status === "finished" ? "—" : ""}
                 </span>

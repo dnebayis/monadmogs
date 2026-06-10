@@ -16,12 +16,13 @@ import {
 } from "@/lib/arena-pool";
 import type { Address } from "viem";
 import type { GameType } from "@/lib/arena";
+import { KV_TTL, kvKeys } from "@/lib/kv-keys";
 
 const ADMIN_SECRET = process.env.ARENA_ADMIN_SECRET || "";
 
 async function getLinkedGameId(matchId: number, explicitGameId?: unknown) {
   if (typeof explicitGameId === "string" && explicitGameId) return explicitGameId;
-  return kv.get<string>(`arena:match-game:${matchId}`);
+  return kv.get<string>(kvKeys.arena.games.gameByMatch(matchId));
 }
 
 async function markLinkedResolve(
@@ -31,7 +32,7 @@ async function markLinkedResolve(
 ) {
   const gameId = await getLinkedGameId(matchId, explicitGameId);
   if (!gameId) return;
-  await kv.set(`arena:game-resolve:${gameId}`, record, { ex: 86400 * 7 });
+  await kv.set(kvKeys.arena.games.resolve(gameId), record, { ex: KV_TTL.resolve });
 }
 
 /* POST /api/arena/admin — admin actions (requires secret) */
@@ -408,10 +409,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ gameId, hash: gameIdToHash(gameId) });
   }
 
+  /* ---- Bug reports ---- */
+  if (action === "bug-reports") {
+    try {
+      const limit = Math.min(Math.max(Number(body.limit || 25), 1), 100);
+      const ids = await kv.lrange<string>(kvKeys.arena.reports.list, 0, limit - 1);
+      const reports = await Promise.all(ids.map((id) => kv.get(kvKeys.arena.reports.item(id))));
+      return NextResponse.json({ reports: reports.filter(Boolean) });
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
+
   /* ---- Recalculate reputation with tier multipliers ---- */
   if (action === "recalculate-reputation") {
     try {
-      const addresses = await kv.zrange<string[]>("arena:leaderboard", 0, -1);
+      const addresses = await kv.zrange<string[]>(kvKeys.arena.leaderboard.sortedSet, 0, -1);
       let updated = 0;
       for (const addr of addresses) {
         const stats = await kv.get<{
@@ -423,7 +436,7 @@ export async function POST(request: NextRequest) {
           draws: number;
           games: number;
           reputation: number;
-        }>(`arena:stats:${addr}`);
+        }>(kvKeys.arena.leaderboard.playerStats(addr));
         if (!stats) continue;
 
         const rarity = getMogRarity(stats.mogId);
@@ -432,8 +445,8 @@ export async function POST(request: NextRequest) {
         const reputation = Math.floor(Math.max(0, stats.wins * 10 - stats.losses * 3) * multiplier);
 
         const updatedStats = { ...stats, reputation };
-        await kv.set(`arena:stats:${addr}`, updatedStats);
-        await kv.zadd("arena:leaderboard", { score: reputation, member: addr });
+        await kv.set(kvKeys.arena.leaderboard.playerStats(addr), updatedStats);
+        await kv.zadd(kvKeys.arena.leaderboard.sortedSet, { score: reputation, member: addr });
         updated++;
       }
       return NextResponse.json({ success: true, updated });
@@ -460,6 +473,7 @@ export async function POST(request: NextRequest) {
         "recalculate-reputation",
         "player-stats",
         "game-hash",
+        "bug-reports",
       ],
     },
     { status: 400 }
