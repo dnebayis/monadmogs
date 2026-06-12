@@ -53,7 +53,7 @@ The collection metadata is frozen and ownership has been renounced.
 - GET ${API_BASE_URL}/api/agents/profile?agentId={id}
 - GET ${API_BASE_URL}/api/agents/registries
 - GET ${API_BASE_URL}/api/agents/binding?agentId={id} (ERC-8217: resolve onchain NFT binding)
-- GET ${API_BASE_URL}/api/agents/by-mog?mogId={id} (ERC-8217: reverse lookup — which agent owns this Mog?)
+- GET ${API_BASE_URL}/api/agents/by-mog?mogId={id} (ERC-8217: reverse lookup — which agent is immutably bound to this Mog?)
 
 ## Arena API
 - GET ${API_BASE_URL}/api/arena/introspection

@@ -49,7 +49,7 @@ GET /api/agents/lookup?agentId={id}
 GET /api/agents/profile?agentId={id}
 GET /api/agents/registries
 GET /api/agents/binding?agentId={id}   — ERC-8217 binding resolver
-GET /api/agents/by-mog?mogId={id}      — ERC-8217 reverse lookup
+GET /api/agents/by-mog?mogId={id}      — ERC-8217 reverse lookup for immutable binding
 
 # Arena
 GET /api/arena/introspection
@@ -57,7 +57,7 @@ GET /api/arena/season
 POST /api/arena/auth
 GET /api/arena?view=open|leaderboard|recent|matches
 GET /api/arena/games?id={gameId}
-GET /api/arena/games/stream?id={gameId}   — SSE live stream
+GET /api/arena/games/stream?id={gameId}   — SSE live stream, spectator-safe
 POST /api/arena/games
 POST /api/arena/admin      # admin-only, requires x-admin-secret
 

@@ -260,8 +260,21 @@ function ReportsPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =
 /* ------------------------------------------------------------------ */
 
 function toWei(mon: string): string {
-  const n = parseFloat(mon) || 0;
-  return BigInt(Math.round(n * 1e18)).toString();
+  const trimmed = mon.trim();
+  if (!trimmed) return "0";
+  if (!/^\d+(\.\d{0,18})?$/.test(trimmed)) {
+    throw new Error("Amount must be a non-negative decimal with at most 18 decimals.");
+  }
+  const [whole, fraction = ""] = trimmed.split(".");
+  return (BigInt(whole || "0") * 10n ** 18n + BigInt(fraction.padEnd(18, "0"))).toString();
+}
+
+function toWeiPreview(mon: string): string {
+  try {
+    return toWei(mon);
+  } catch {
+    return "invalid amount";
+  }
 }
 
 function fromWei(wei: string): string {
@@ -464,7 +477,7 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
                 onChange={(e) => setEntryFeeMon(e.target.value)}
                 placeholder="0.01"
               />
-              <span className="admin-hint">MON &nbsp;→ {toWei(entryFeeMon)} wei</span>
+              <span className="admin-hint">MON &nbsp;→ {toWeiPreview(entryFeeMon)} wei</span>
             </div>
 
             <div className="admin-form-row">
@@ -475,7 +488,7 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
                 onChange={(e) => setSponsorMon(e.target.value)}
                 placeholder="0"
               />
-              <span className="admin-hint">MON &nbsp;→ {toWei(sponsorMon)} wei</span>
+              <span className="admin-hint">MON &nbsp;→ {toWeiPreview(sponsorMon)} wei</span>
             </div>
 
             <div className="admin-form-divider" />
@@ -529,7 +542,7 @@ function GamesPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => 
                   onChange={(e) => setMogsAmount(e.target.value)}
                   placeholder="1000"
                 />
-                <span className="admin-hint">$MOGS &nbsp;→ {mogsAmount ? toWei(mogsAmount) : "0"} wei &nbsp;(Arena wallet must hold this)</span>
+                <span className="admin-hint">$MOGS &nbsp;→ {mogsAmount ? toWeiPreview(mogsAmount) : "0"} wei &nbsp;(Arena wallet must hold this)</span>
               </div>
             )}
           </>

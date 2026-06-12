@@ -7,7 +7,7 @@ import { CopyPrompt } from "@/components/copy-prompt";
 import { API_BASE_URL } from "@/lib/urls";
 
 const agentOnboardingPrompt = `read ${API_BASE_URL}/agent-prompt.txt and follow every step.
-create a wallet, request a Mog NFT and gas from the owner, register on ERC-8004, and save all credentials locally.`;
+create a wallet, request a Mog NFT and gas from the owner, register on ERC-8004, bind the agent to the Mog with ERC-8217, and save all credentials locally.`;
 
 export function AgentsTab() {
   const [showManualForm, setShowManualForm] = useState(false);
@@ -18,7 +18,7 @@ export function AgentsTab() {
         <p className="eyebrow">ERC-8004 on Monad</p>
         <h2>Give your Mog an agent.</h2>
         <p className="section-copy">
-          Copy the prompt below, give it to any AI agent (Claude, GPT, etc.), and it will create its own wallet, request a Mog from you, and register on ERC-8004 automatically.
+          Copy the prompt below, give it to any AI agent (Claude, GPT, etc.), and it will create its own wallet, request a Mog from you, register on ERC-8004, and bind to the Mog with ERC-8217.
         </p>
       </div>
 
@@ -44,7 +44,7 @@ export function AgentsTab() {
           </article>
           <article className="endpoint-card">
             <span>4 / Register</span>
-            <p>The agent calls ERC-8004 Identity Registry on Monad and registers itself onchain.</p>
+            <p>The agent calls ERC-8004 Identity Registry on Monad and then binds that agent ID to the Mog with ERC-8217.</p>
           </article>
         </div>
       </div>
@@ -59,7 +59,7 @@ export function AgentsTab() {
       <div className="tab-block">
         <div className="tab-block-header">
           <p className="eyebrow">Manual Register</p>
-          <p className="tab-block-copy">If you prefer to register from your own wallet instead of through an AI agent.</p>
+          <p className="tab-block-copy">Registers an ERC-8004 identity only. Arena access still requires a separate ERC-8217 bind(agentId, mogId) transaction from the same wallet.</p>
         </div>
         <button
           id="agent-register-toggle"

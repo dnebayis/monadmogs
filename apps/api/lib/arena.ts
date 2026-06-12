@@ -565,15 +565,23 @@ export async function joinGame(
 }
 
 export async function leaveWaitingGame(id: string, address: string): Promise<Game | null> {
-  const game = await getGame(id);
-  if (!game || game.status !== "waiting") return null;
+  const lockKey = kvKeys.arena.locks.join(id);
+  const locked = await kv.set(lockKey, "1", { ex: KV_TTL.lock, nx: true });
+  if (!locked) return null;
 
-  const before = game.players.length;
-  game.players = game.players.filter((p) => p.address.toLowerCase() !== address.toLowerCase());
-  if (game.players.length === before) return null;
+  try {
+    const game = await getGame(id);
+    if (!game || game.status !== "waiting") return null;
 
-  await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
-  return game;
+    const before = game.players.length;
+    game.players = game.players.filter((p) => p.address.toLowerCase() !== address.toLowerCase());
+    if (game.players.length === before) return null;
+
+    await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
+    return game;
+  } finally {
+    await kv.del(lockKey);
+  }
 }
 
 export async function submitMove(

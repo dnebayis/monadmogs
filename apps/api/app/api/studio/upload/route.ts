@@ -24,7 +24,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const contentLength = Number(request.headers.get("content-length") || 0);
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = Number(contentLengthHeader);
+  if (!contentLengthHeader || !Number.isFinite(contentLength) || contentLength <= 0) {
+    return NextResponse.json(
+      { error: "Content-Length is required for uploads." },
+      { status: 411 }
+    );
+  }
   if (contentLength > MAX_SIZE) {
     return NextResponse.json(
       { error: "Image must be under 2MB." },

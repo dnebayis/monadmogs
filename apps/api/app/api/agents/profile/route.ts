@@ -12,6 +12,8 @@ const client = createPublicClient({
   transport: http(MONAD_RPC_URL),
 });
 
+const MAX_PROFILE_BYTES = 64 * 1024;
+
 function isSafeProfileUrl(value: string) {
   try {
     const url = new URL(value);
@@ -36,6 +38,34 @@ function isSafeProfileUrl(value: string) {
   }
 }
 
+async function readBoundedJson(response: Response): Promise<unknown> {
+  const reader = response.body?.getReader();
+  if (!reader) return null;
+
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+    size += value.byteLength;
+    if (size > MAX_PROFILE_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const text = new TextDecoder().decode(bytes);
+  return JSON.parse(text);
+}
+
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
   const rl = await rateLimit(`agent-profile:${ip}`, 60, 60);
@@ -49,7 +79,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const agentIdRaw = searchParams.get("agentId");
 
-  if (!agentIdRaw || Number.isNaN(Number(agentIdRaw)) || Number(agentIdRaw) < 1) {
+  if (!agentIdRaw || !/^[1-9]\d*$/.test(agentIdRaw)) {
     return NextResponse.json({ error: "agentId must be a positive integer." }, { status: 400 });
   }
 
@@ -82,9 +112,13 @@ export async function GET(request: NextRequest) {
       try {
         const response = await fetch(agentURI, {
           next: { revalidate: 300 },
+          redirect: "error",
           signal: AbortSignal.timeout(4000),
         });
-        if (response.ok) profile = await response.json();
+        const contentType = response.headers.get("content-type") || "";
+        if (response.ok && contentType.includes("application/json")) {
+          profile = await readBoundedJson(response);
+        }
       } catch {
         profile = null;
       }

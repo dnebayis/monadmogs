@@ -35,8 +35,17 @@ export type ArenaBugReport = {
   matchId?: number;
   txHash?: string;
   endpoint?: string;
-  response?: unknown;
+  response?: string;
 };
+
+function boundedResponse(value: unknown): string | undefined {
+  if (value === undefined) return undefined;
+  try {
+    return JSON.stringify(value).slice(0, 4000);
+  } catch {
+    return String(value).slice(0, 4000);
+  }
+}
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
@@ -78,6 +87,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "summary and details are required." }, { status: 400 });
   }
 
+  const response = boundedResponse(body.response);
+
   const report: ArenaBugReport = {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
@@ -95,7 +106,7 @@ export async function POST(request: NextRequest) {
     ...(typeof body.matchId === "number" ? { matchId: body.matchId } : {}),
     ...(typeof body.txHash === "string" ? { txHash: body.txHash.slice(0, 90) } : {}),
     ...(typeof body.endpoint === "string" ? { endpoint: body.endpoint.slice(0, 240) } : {}),
-    ...(body.response !== undefined ? { response: body.response } : {}),
+    ...(response !== undefined ? { response } : {}),
   };
 
   await Promise.all([

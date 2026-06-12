@@ -120,6 +120,18 @@ await check("arena auth-only endpoints fail closed without bearer token", async 
   assert(report.status === 401, `bug-report should require auth, received ${report.status}`);
 });
 
+await check("agent id routes reject fractional ids", async () => {
+  const paths = [
+    "/api/agents/lookup?agentId=1.2",
+    "/api/agents/profile?agentId=1.2",
+    "/api/agents/binding?agentId=1.2",
+  ];
+  for (const path of paths) {
+    const error = await request(path, 400);
+    assert(error.error === "agentId must be a positive integer.", `${path} did not reject fractional agentId`);
+  }
+});
+
 await check("arena season exposes eligibility", async () => {
   const season = await request("/api/arena/season");
   assert(season.seasonId === "season-0", "season id missing");

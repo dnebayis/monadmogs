@@ -484,7 +484,7 @@ export function AgentIdentityForm() {
 
             <div className="agent-step">
               <span>Register</span>
-              <p>Sign and submit the AgentURI to the ERC-8004 Identity Registry on Monad.</p>
+              <p>Sign and submit the AgentURI to the ERC-8004 Identity Registry on Monad. After confirmation, bind the new agentId to this Mog with ERC-8217 before using Arena auth.</p>
             </div>
 
             <div className="agent-actions">
@@ -507,8 +507,8 @@ export function AgentIdentityForm() {
 
             {registration ? (
               <div className="agent-status">
-                <span>Registered</span>
-                <p>Agent identity was submitted to the ERC-8004 Identity Registry on Monad.</p>
+                <span>ERC-8004 registered</span>
+                <p>Agent identity was submitted. Arena access is not complete until this agentId is bound to the Mog with MogsAgentBindings.bind(agentId, mogId).</p>
               </div>
             ) : null}
           </div>

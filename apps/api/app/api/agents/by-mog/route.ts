@@ -17,7 +17,8 @@ const client = createPublicClient({ chain: MONAD_CHAIN, transport: http(MONAD_RP
 /**
  * GET /api/agents/by-mog?mogId={id}
  *
- * Reverse ERC-8217 lookup: given a Mog token ID, returns the bound ERC-8004 agent.
+ * Reverse ERC-8217 lookup: given a Mog token ID, returns the immutable bound ERC-8004 agent.
+ * This is binding state, not proof of current Mog ownership.
  */
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);

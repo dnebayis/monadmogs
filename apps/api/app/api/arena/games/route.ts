@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({
-        game,
+        game: game.status === "finished" ? game : sanitizeGameForPublic(game, session.address),
         meta: gameResponseMeta(existingGame, game),
         resolve: game.status === "finished" ? await getResolveStatus(gameId) : null,
       });
@@ -190,6 +190,16 @@ export async function POST(request: NextRequest) {
 
       const game = await submitMove(gameId, session.address, move, commentary, specialMove.specialMove);
       if (!game) {
+        const latestGame = await getGame(gameId);
+        const latestPlayer = latestGame?.players.find(
+          (p) => p.address.toLowerCase() === session.address.toLowerCase()
+        );
+        if (latestPlayer?.move) {
+          return NextResponse.json(
+            { error: "Move already submitted for this round.", round: latestGame?.round },
+            { status: 409 }
+          );
+        }
         return NextResponse.json({ error: "Cannot submit move." }, { status: 400 });
       }
 
@@ -200,7 +210,7 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({
-        game,
+        game: game.status === "finished" ? game : sanitizeGameForPublic(game, session.address),
         meta: gameResponseMeta(existingGame, game),
         resolve: game.status === "finished" ? await getResolveStatus(gameId) : null,
       });

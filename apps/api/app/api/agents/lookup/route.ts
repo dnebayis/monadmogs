@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const agentIdRaw = searchParams.get("agentId");
 
-  if (!agentIdRaw || Number.isNaN(Number(agentIdRaw)) || Number(agentIdRaw) < 1) {
+  if (!agentIdRaw || !/^[1-9]\d*$/.test(agentIdRaw)) {
     return NextResponse.json({ error: "agentId must be a positive integer." }, { status: 400 });
   }
 

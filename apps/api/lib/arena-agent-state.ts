@@ -27,6 +27,8 @@ const client = createPublicClient({
   transport: http(MONAD_RPC_URL),
 });
 
+const PLAYER_RECOVERY_SCAN_LIMIT = 1000;
+
 type LinkedMatchInfo = {
   matchId: number;
   status?: string;
@@ -103,7 +105,7 @@ export async function getBindingStatus(session: AgentSession) {
 }
 
 export async function buildPendingAction(session: AgentSession) {
-  const games = await getGamesForPlayer(session.address, 100);
+  const games = await getGamesForPlayer(session.address, PLAYER_RECOVERY_SCAN_LIMIT);
   const activeGames = games.filter((game) => game.status !== "finished");
   const game = activeGames[0] || null;
 
@@ -176,7 +178,7 @@ export async function buildPendingAction(session: AgentSession) {
 
 export async function buildAgentStatus(session: AgentSession) {
   const [games, stats, binding, pendingAction] = await Promise.all([
-    getGamesForPlayer(session.address, 100),
+    getGamesForPlayer(session.address, PLAYER_RECOVERY_SCAN_LIMIT),
     getPlayerStats(session.address),
     getBindingStatus(session),
     buildPendingAction(session),

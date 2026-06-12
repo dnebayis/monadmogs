@@ -50,7 +50,7 @@ export async function GET(request: Request) {
         );
       }
 
-      const games = await getGamesForPlayer(session.address, 100);
+      const games = await getGamesForPlayer(session.address, 1000);
       return NextResponse.json({
         games: games.map((game) => ({
           ...sanitizeGameForPublic(game, session.address),
