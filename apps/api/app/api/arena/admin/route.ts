@@ -17,8 +17,7 @@ import {
 import type { Address } from "viem";
 import type { GameType } from "@/lib/arena";
 import { KV_TTL, kvKeys } from "@/lib/kv-keys";
-
-const ADMIN_SECRET = process.env.ARENA_ADMIN_SECRET || "";
+import { requireAdminSecret } from "@/lib/http-guards";
 
 async function getLinkedGameId(matchId: number, explicitGameId?: unknown) {
   if (typeof explicitGameId === "string" && explicitGameId) return explicitGameId;
@@ -37,10 +36,8 @@ async function markLinkedResolve(
 
 /* POST /api/arena/admin — admin actions (requires secret) */
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get("x-admin-secret");
-  if (!ADMIN_SECRET || authHeader !== ADMIN_SECRET) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  }
+  const admin = requireAdminSecret(request, "Unauthorized.", 401);
+  if (!admin.ok) return admin.response;
 
   let body: Record<string, unknown>;
   try {

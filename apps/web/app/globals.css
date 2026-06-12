@@ -1590,16 +1590,6 @@ h2 {
   font-size: 18px;
 }
 
-.manual-mog-inline {
-  display: inline-grid;
-  grid-template-columns: auto 88px;
-  align-items: center;
-  gap: 8px;
-  color: var(--cyan);
-  font-size: 16px;
-  text-transform: uppercase;
-}
-
 .agent-config {
   display: grid;
   gap: 14px;
@@ -1666,8 +1656,7 @@ h2 {
 }
 
 .agent-config input,
-.agent-config textarea,
-.manual-mog-inline input {
+.agent-config textarea {
   width: 100%;
   border: 1px solid var(--line);
   background: rgba(255, 248, 238, 0.06);
@@ -1675,8 +1664,7 @@ h2 {
   outline: none;
 }
 
-.agent-config input,
-.manual-mog-inline input {
+.agent-config input {
   min-height: 46px;
   padding: 0 12px;
 }
@@ -1688,8 +1676,7 @@ h2 {
 }
 
 .agent-config input:focus,
-.agent-config textarea:focus,
-.manual-mog-inline input:focus {
+.agent-config textarea:focus {
   border-color: var(--cream);
 }
 

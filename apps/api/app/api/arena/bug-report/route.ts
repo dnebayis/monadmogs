@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { kv } from "@vercel/kv";
-import { validateAuthHeader } from "@/lib/arena-auth";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { KV_TTL, kvKeys } from "@/lib/kv-keys";
+import { enforceIpRateLimit, jsonError, parseJsonBody, requireAgentSession } from "@/lib/http-guards";
 
 const CATEGORIES = new Set([
   "auth",
@@ -48,29 +47,22 @@ function boundedResponse(value: unknown): string | undefined {
 }
 
 export async function POST(request: NextRequest) {
-  const ip = getClientIp(request);
-  const session = await validateAuthHeader(request.headers.get("authorization"));
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required. Use POST /api/arena/auth to get a session token." },
-      { status: 401 },
-    );
-  }
+  const auth = await requireAgentSession(request);
+  if (!auth.ok) return auth.response;
 
-  const rl = await rateLimit(`arena-bug-report:${session.address}:${ip}`, 10, 3600);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many bug reports.", retryAfter: rl.retryAfter },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
-    );
-  }
+  const limited = await enforceIpRateLimit(
+    request,
+    `arena-bug-report:${auth.session.address}`,
+    10,
+    3600,
+    "Too many bug reports.",
+    { includeRetryAfterBody: true },
+  );
+  if (!limited.ok) return limited.response;
 
-  let body: Record<string, unknown>;
-  try {
-    body = (await request.json()) as Record<string, unknown>;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
+  const parsed = await parseJsonBody(request);
+  if (!parsed.ok) return parsed.response;
+  const body = parsed.body;
 
   const category = typeof body.category === "string" ? body.category : "";
   const severity = typeof body.severity === "string" ? body.severity : "";
@@ -78,13 +70,13 @@ export async function POST(request: NextRequest) {
   const details = typeof body.details === "string" ? body.details.trim().slice(0, 4000) : "";
 
   if (!CATEGORIES.has(category)) {
-    return NextResponse.json({ error: "category must be one of auth, binding, gameplay, onchain, reputation, sse, docs, ui, other." }, { status: 400 });
+    return jsonError("category must be one of auth, binding, gameplay, onchain, reputation, sse, docs, ui, other.", 400);
   }
   if (!SEVERITIES.has(severity)) {
-    return NextResponse.json({ error: "severity must be one of low, medium, high, critical." }, { status: 400 });
+    return jsonError("severity must be one of low, medium, high, critical.", 400);
   }
   if (!summary || !details) {
-    return NextResponse.json({ error: "summary and details are required." }, { status: 400 });
+    return jsonError("summary and details are required.", 400);
   }
 
   const response = boundedResponse(body.response);
@@ -93,10 +85,10 @@ export async function POST(request: NextRequest) {
     id: crypto.randomUUID(),
     createdAt: new Date().toISOString(),
     reporter: {
-      address: session.address,
-      agentId: session.agentId,
-      mogId: session.mogId,
-      mogName: session.mogName,
+      address: auth.session.address,
+      agentId: auth.session.agentId,
+      mogId: auth.session.mogId,
+      mogName: auth.session.mogName,
     },
     category,
     severity,

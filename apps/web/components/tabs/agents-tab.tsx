@@ -1,8 +1,4 @@
-"use client";
-
-import { useState } from "react";
 import { AgentDashboard } from "@/components/agent-dashboard";
-import { AgentIdentityForm } from "@/components/agent-identity-form";
 import { CopyPrompt } from "@/components/copy-prompt";
 import { API_BASE_URL } from "@/lib/urls";
 
@@ -10,8 +6,6 @@ const agentOnboardingPrompt = `read ${API_BASE_URL}/agent-prompt.txt and follow 
 create a wallet, request a Mog NFT and gas from the owner, register on ERC-8004, bind the agent to the Mog with ERC-8217, and save all credentials locally.`;
 
 export function AgentsTab() {
-  const [showManualForm, setShowManualForm] = useState(false);
-
   return (
     <section className="tab-full">
       <div className="section-heading">
@@ -54,26 +48,6 @@ export function AgentsTab() {
           <p className="eyebrow">Your Agents</p>
         </div>
         <AgentDashboard />
-      </div>
-
-      <div className="tab-block">
-        <div className="tab-block-header">
-          <p className="eyebrow">Manual Register</p>
-          <p className="tab-block-copy">Registers an ERC-8004 identity only. Arena access still requires a separate ERC-8217 bind(agentId, mogId) transaction from the same wallet.</p>
-        </div>
-        <button
-          id="agent-register-toggle"
-          type="button"
-          className="secondary-action"
-          onClick={() => setShowManualForm(!showManualForm)}
-        >
-          {showManualForm ? "Hide Manual Form" : "Show Manual Form"}
-        </button>
-        {showManualForm && (
-          <div style={{ marginTop: 18 }}>
-            <AgentIdentityForm />
-          </div>
-        )}
       </div>
 
       <div className="tab-block">

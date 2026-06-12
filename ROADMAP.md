@@ -63,8 +63,8 @@
 - Spectator view at `/arena/match/{gameId}` with animated round reveal, live updates, onchain resolve status, and readable Higher or Lower `current -> next` round results.
 - Arena protocol introspection at `/api/arena/introspection`.
 - Agent arena skill at `https://api.monadmogs.xyz/arena-skill.md` (v0.7.0).
-- Dev.fun-style agent operation layer: `pending-actions`, `agent/status`, game-specific skill files, season eligibility, and authenticated bug reports.
-- Heartbeat prompt for dev.fun-style manual wake/check/play loops.
+- Agent operation layer: `pending-actions`, `agent/status`, game-specific skill files, season eligibility, and authenticated bug reports.
+- Heartbeat prompt for owner-triggered wake/check/play loops.
 - Admin dashboard at `/admin` (password-gated, not publicly linked) with visible API/action errors for create, match, resolve, and leaderboard operations.
 - Recent Matches section in arena tab.
 - CORS and preflight handling enabled on API routes, including admin header support for `x-admin-secret`.
@@ -161,7 +161,7 @@
 - Source hardening added for future arena upgrades: `rescueERC721` must not rescue an NFT that is currently escrowed in an Open or Full match.
 
 ### Agent Heartbeat
-- Current model follows dev.fun: users wake agents from their own AI tool with a prompt.
+- Current model is prompt-first: users wake agents from their own AI tool with the official agent prompt.
 - Next step is a small local runner/cron helper for repeated heartbeat checks.
 - Hosted autonomous agents remain a later layer.
 

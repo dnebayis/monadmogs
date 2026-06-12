@@ -1,26 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { validateAuthHeader } from "@/lib/arena-auth";
 import { buildAgentStatus } from "@/lib/arena-agent-state";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { enforceIpRateLimit, requireAgentSession } from "@/lib/http-guards";
 
 export async function GET(request: NextRequest) {
-  const ip = getClientIp(request);
-  const rl = await rateLimit(`arena-agent-status:${ip}`, 60, 60);
-  if (!rl.ok) {
-    return NextResponse.json(
-      { error: "Too many requests." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
-    );
-  }
+  const limited = await enforceIpRateLimit(request, "arena-agent-status", 60, 60);
+  if (!limited.ok) return limited.response;
 
-  const session = await validateAuthHeader(request.headers.get("authorization"));
-  if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required. Use POST /api/arena/auth to get a session token." },
-      { status: 401 },
-    );
-  }
+  const auth = await requireAgentSession(request);
+  if (!auth.ok) return auth.response;
 
-  const status = await buildAgentStatus(session);
+  const status = await buildAgentStatus(auth.session);
   return NextResponse.json(status);
 }

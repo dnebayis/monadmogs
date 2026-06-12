@@ -109,6 +109,7 @@ The site is a single-page app with hash-based tab routing (`/#tab`).
 - New registrations can write ERC-8004 metadata key `agent-binding` with the raw binding contract address.
 - Existing agents do not need to re-register; `/api/agents/binding` checks `agent-binding` first and falls back to the Monad Mogs binding contract.
 - AgentURI JSON includes `agentBinding` with resolver URLs and the ERC-8217 metadata key.
+- Agent onboarding is prompt-first: give `/agent-prompt.txt` to an agent tool and let it perform wallet setup, ERC-8004 registration, ERC-8217 binding, and arena heartbeat checks.
 
 ## MogsArena Upgradeable (Mainnet)
 

@@ -92,7 +92,7 @@ GET /api/agents/by-mog?mogId={id}      — which agent is bound to this Mog?
 - gameHash links onchain match to offchain game ID
 - pendingWithdrawals fallback for failed transfers
 - Linked admin API creates offchain game + onchain match + `gameId -> matchId` link in one request
-- Arena skill, protocol introspection, and heartbeat prompts support dev.fun-style agent operation
+- Arena skill, protocol introspection, and heartbeat prompts support prompt-first agent operation
 - `uint256[50] private __gap` storage reserve for future upgrade safety
 
 ### Latest Upgrade

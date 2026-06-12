@@ -1,4 +1,6 @@
 const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3000";
+const { readFileSync } = await import("node:fs");
+const { resolve } = await import("node:path");
 
 async function request(path, expectedStatus = 200) {
   const response = await fetch(`${BASE_URL}${path}`, {
@@ -15,6 +17,22 @@ async function request(path, expectedStatus = 200) {
     return JSON.parse(text);
   }
   return text;
+}
+
+async function postJson(path, body, expectedStatus = 200, headers = {}) {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json", ...headers },
+    body: JSON.stringify(body),
+  });
+  const text = await response.text();
+
+  if (response.status !== expectedStatus) {
+    throw new Error(`${path} returned ${response.status}, expected ${expectedStatus}: ${text.slice(0, 240)}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("application/json") ? JSON.parse(text) : text;
 }
 
 function assert(condition, message) {
@@ -120,6 +138,20 @@ await check("arena auth-only endpoints fail closed without bearer token", async 
   assert(report.status === 401, `bug-report should require auth, received ${report.status}`);
 });
 
+await check("arena game mutations fail closed without bearer token", async () => {
+  const join = await postJson("/api/arena/games", { action: "join", gameId: "missing" }, 401);
+  assert(join.error?.includes("Authentication required"), "join should require auth");
+  const move = await postJson("/api/arena/games", { action: "move", gameId: "missing", move: "heads" }, 401);
+  assert(move.error?.includes("Authentication required"), "move should require auth");
+  const leave = await postJson("/api/arena/games", { action: "leave", gameId: "missing" }, 401);
+  assert(leave.error?.includes("Authentication required"), "leave should require auth");
+});
+
+await check("arena admin create fails closed without valid secret", async () => {
+  const error = await postJson("/api/arena/games", { action: "create", type: "coin-flip" }, 403);
+  assert(error.error === "Only the arena admin can create games.", "admin create should require x-admin-secret");
+});
+
 await check("agent id routes reject fractional ids", async () => {
   const paths = [
     "/api/agents/lookup?agentId=1.2",
@@ -152,6 +184,27 @@ await check("game-specific skills are readable", async () => {
     assert(text.includes(title), `${path} missing ${title}`);
     assert(text.includes("version: 0.7.0"), `${path} version mismatch`);
   }
+});
+
+await check("arena docs and prompts avoid external source names", async () => {
+  const docs = [
+    await request("/llms.txt"),
+    await request("/agent-prompt.txt"),
+    await request("/arena-skill.md"),
+  ].join("\n");
+  const blocked = new RegExp(["dev", "\\.fun|", "dev", "fun"].join(""), "i");
+  assert(!blocked.test(docs), "agent-facing docs should not mention external source names");
+});
+
+await check("arena game route delegates to service layer", async () => {
+  const root = resolve(process.cwd(), "../..");
+  const route = readFileSync(resolve(root, "apps/api/app/api/arena/games/route.ts"), "utf8");
+  const service = readFileSync(resolve(root, "apps/api/lib/arena-game-service.ts"), "utf8");
+  assert(route.includes("joinArenaGameAction"), "games route should delegate join action");
+  assert(route.includes("submitArenaMoveAction"), "games route should delegate move action");
+  assert(route.includes("leaveArenaGameAction"), "games route should delegate leave action");
+  assert(service.includes("export async function validateSpecialMove"), "validateSpecialMove should be exported for tests");
+  assert(service.includes("Move already submitted for this round."), "duplicate move guard should live in service");
 });
 
 const results = await Promise.all(checks);

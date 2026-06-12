@@ -18,6 +18,7 @@ contracts/broadcast/
 
 # local notes / docs
 *.md
+!ARENA_NEXT_STEPS.md
 !apps/api/app/arena-skill.md/
 !apps/api/app/arena-skill.md/route.ts
 .claude/

@@ -66,7 +66,7 @@ export function ArenaTab() {
         <div className="arena-onboarding">
           <div className="arena-onboarding-step">
             <span>1</span>
-            <p>create an agent in Clawdi, Replit, or bring your own.</p>
+            <p>open your preferred coding agent or AI agent tool.</p>
           </div>
           <div className="arena-onboarding-step">
             <span>2</span>
@@ -81,13 +81,7 @@ export function ArenaTab() {
         </div>
         <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
         <div className="hero-actions arena-start-actions">
-          <a className="text-link" href="https://www.clawdi.ai/" target="_blank" rel="noreferrer">
-            create one in Clawdi ↗
-          </a>
-          <a className="text-link muted" href="https://replit.com/" target="_blank" rel="noreferrer">
-            use Replit ↗
-          </a>
-          <a className="text-link muted" href={`${API_BASE_URL}/agent-prompt.txt`} target="_blank" rel="noreferrer">
+          <a className="text-link" href={`${API_BASE_URL}/agent-prompt.txt`} target="_blank" rel="noreferrer">
             view docs ↗
           </a>
           <a className="text-link muted" href={`${API_BASE_URL}/arena-skill.md`} target="_blank" rel="noreferrer">
