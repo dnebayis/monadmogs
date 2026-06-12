@@ -222,6 +222,7 @@ const GAMES_KEY = kvKeys.arena.games.list;
 const GAME_KEY = kvKeys.arena.games.item;
 const LEADERBOARD_KEY = kvKeys.arena.leaderboard.sortedSet;
 const PLAYER_STATS_KEY = kvKeys.arena.leaderboard.playerStats;
+const PLAYER_GAMES_KEY = kvKeys.arena.players.games;
 
 /* ------------------------------------------------------------------ */
 /*  Round Resolution                                                    */
@@ -524,6 +525,17 @@ export async function getGame(id: string): Promise<Game | null> {
   return kv.get<Game>(GAME_KEY(id));
 }
 
+async function indexPlayerGame(address: string, gameId: string): Promise<void> {
+  const key = PLAYER_GAMES_KEY(address);
+  await kv.lrem(key, 0, gameId).catch(() => {});
+  await kv.lpush(key, gameId);
+  await kv.expire(key, KV_TTL.game);
+}
+
+async function removePlayerGameIndex(address: string, gameId: string): Promise<void> {
+  await kv.lrem(PLAYER_GAMES_KEY(address), 0, gameId).catch(() => {});
+}
+
 export async function joinGame(
   id: string,
   player: GamePlayer,
@@ -542,6 +554,7 @@ export async function joinGame(
     if (game.players.some((p) => p.address.toLowerCase() === player.address.toLowerCase())) return null;
 
     game.players.push({ ...player, score: 0, move, ...specialMoveFields(specialMove) });
+    await indexPlayerGame(player.address, id);
 
     // Two players = game is active
     if (game.players.length < 2) {
@@ -578,6 +591,7 @@ export async function leaveWaitingGame(id: string, address: string): Promise<Gam
     if (game.players.length === before) return null;
 
     await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
+    await removePlayerGameIndex(address, id);
     return game;
   } finally {
     await kv.del(lockKey);
@@ -763,14 +777,17 @@ export async function getRecentGames(limit = 20): Promise<Game[]> {
 export async function getGamesForPlayer(address: string, limit = 50): Promise<Game[]> {
   try {
     const normalized = address.toLowerCase();
-    const ids = await kv.lrange<string>(GAMES_KEY, 0, limit - 1);
+    const indexedIds = await kv.lrange<string>(PLAYER_GAMES_KEY(normalized), 0, limit - 1);
+    const scanIds = await kv.lrange<string>(GAMES_KEY, 0, limit - 1);
+    const ids = Array.from(new Set([...indexedIds, ...scanIds]));
     if (!ids.length) return [];
 
     const games = await Promise.all(ids.map((id) => getGame(id)));
     return games
       .filter((g): g is Game => g !== null)
       .filter((g) => g.players.some((p) => p.address.toLowerCase() === normalized))
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   } catch {
     return [];
   }

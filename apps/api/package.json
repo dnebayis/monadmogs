@@ -10,6 +10,7 @@
     "kv:migrate:dry": "node scripts/kv-migrate-v1.mjs --dry-run",
     "kv:migrate:copy": "node scripts/kv-migrate-v1.mjs --copy",
     "kv:migrate:verify": "node scripts/kv-migrate-v1.mjs --verify",
+    "kv:migrate:player-games": "node scripts/kv-migrate-v1.mjs --backfill-player-games",
     "kv:migrate:cleanup": "node scripts/kv-migrate-v1.mjs --cleanup"
   },
   "dependencies": {

@@ -171,6 +171,12 @@ KV_ENV_FILE=/absolute/path/to/api.env pnpm --filter monad-mogs-api kv:migrate:co
 KV_ENV_FILE=/absolute/path/to/api.env pnpm --filter monad-mogs-api kv:migrate:verify
 ```
 
+To rebuild derived player-to-game indexes from the current `v1` game list without touching legacy keys or existing game records:
+
+```bash
+KV_ENV_FILE=/absolute/path/to/api.env pnpm --filter monad-mogs-api kv:migrate:player-games
+```
+
 After verify passes, set this API environment variable in Vercel:
 
 ```env

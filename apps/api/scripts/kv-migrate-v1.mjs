@@ -11,6 +11,7 @@ const legacy = {
   resolve: (gameId) => `arena:game-resolve:${gameId}`,
   leaderboard: "arena:leaderboard",
   stats: (address) => `arena:stats:${String(address).toLowerCase()}`,
+  playerGames: (address) => `arena:player-games:${String(address).toLowerCase()}`,
   reportList: "arena:bug-reports",
   report: (id) => `arena:bug-report:${id}`,
 };
@@ -24,6 +25,7 @@ const next = {
   resolve: (gameId) => `arena:v1:resolves:${gameId}`,
   leaderboard: "arena:v1:leaderboard",
   stats: (address) => `arena:v1:players:stats:${String(address).toLowerCase()}`,
+  playerGames: (address) => `arena:v1:players:games:${String(address).toLowerCase()}`,
   reportList: "arena:v1:reports:list",
   report: (id) => `arena:v1:reports:${id}`,
 };
@@ -36,6 +38,8 @@ const mode = args.has("--copy")
     ? "verify"
     : args.has("--cleanup")
       ? "cleanup"
+      : args.has("--backfill-player-games")
+        ? "backfill-player-games"
       : "dry-run";
 
 const confirmedDelete = process.env.CONFIRM_DELETE_LEGACY_KV === "DELETE_LEGACY_KV";
@@ -100,13 +104,20 @@ async function collectPlan() {
 
   const gameMatchIds = [];
   const gameResolveIds = [];
+  const playerGames = new Map();
   for (const gameId of gameIds) {
-    const [matchId, resolve] = await Promise.all([
+    const [game, matchId, resolve] = await Promise.all([
+      kv.get(legacy.game(gameId)),
       kv.get(legacy.matchByGame(gameId)),
       kv.get(legacy.resolve(gameId)),
     ]);
     if (matchId !== null && matchId !== undefined) gameMatchIds.push({ gameId, matchId });
     if (resolve !== null && resolve !== undefined) gameResolveIds.push(gameId);
+    for (const player of game?.players || []) {
+      if (!player?.address) continue;
+      const address = String(player.address).toLowerCase();
+      playerGames.set(address, [...(playerGames.get(address) || []), gameId]);
+    }
   }
 
   return {
@@ -116,7 +127,22 @@ async function collectPlan() {
     reportIds,
     studioProjects,
     leaderboardAddresses,
+    playerGames,
   };
+}
+
+async function collectPlayerGameIndex(gameListKey, gameKey) {
+  const gameIds = await readList(gameListKey);
+  const playerGames = new Map();
+  for (const gameId of gameIds) {
+    const game = await kv.get(gameKey(gameId));
+    for (const player of game?.players || []) {
+      if (!player?.address) continue;
+      const address = String(player.address).toLowerCase();
+      playerGames.set(address, [...(playerGames.get(address) || []), gameId]);
+    }
+  }
+  return { gameIds, playerGames };
 }
 
 async function dryRun(plan) {
@@ -124,6 +150,7 @@ async function dryRun(plan) {
   log("games", plan.gameIds.length);
   log("game match links", plan.gameMatchIds.length);
   log("game resolve records", plan.gameResolveIds.length);
+  log("player game indexes", plan.playerGames.size);
   log("leaderboard addresses", plan.leaderboardAddresses.length);
   log("bug reports", plan.reportIds.length);
   log("studio projects", plan.studioProjects.length);
@@ -144,6 +171,9 @@ async function copy(plan) {
   }
   for (const gameId of plan.gameResolveIds) {
     await copyIfExists(legacy.resolve(gameId), next.resolve(gameId));
+  }
+  for (const [address, gameIds] of plan.playerGames.entries()) {
+    await writeListPreservingOrder(next.playerGames(address), gameIds);
   }
 
   await kv.del(next.leaderboard);
@@ -185,6 +215,10 @@ async function verify(plan) {
   }
   for (const gameId of plan.gameResolveIds) {
     if (!(await compareValue(legacy.resolve(gameId), next.resolve(gameId)))) failures.push(`resolve mismatch ${gameId}`);
+  }
+  for (const [address, gameIds] of plan.playerGames.entries()) {
+    const v1PlayerGames = await readList(next.playerGames(address));
+    if (JSON.stringify(gameIds) !== JSON.stringify(v1PlayerGames)) failures.push(`player games mismatch ${address}`);
   }
 
   const v1Leaderboard = await kv.zrange(next.leaderboard, 0, -1).catch(() => []);
@@ -233,6 +267,9 @@ async function cleanup(plan) {
   for (const { matchId } of plan.gameMatchIds) {
     await kv.del(legacy.gameByMatch(matchId));
   }
+  for (const address of plan.playerGames.keys()) {
+    await kv.del(legacy.playerGames(address));
+  }
 
   await kv.del(legacy.leaderboard);
   for (const address of plan.leaderboardAddresses) {
@@ -248,6 +285,17 @@ async function cleanup(plan) {
   log("cleanup complete");
 }
 
+async function backfillPlayerGames() {
+  const source = await collectPlayerGameIndex(next.gamesList, next.game);
+  log("Backfilling v1 player game indexes");
+  log("v1 games", source.gameIds.length);
+  log("player game indexes", source.playerGames.size);
+  for (const [address, gameIds] of source.playerGames.entries()) {
+    await writeListPreservingOrder(next.playerGames(address), gameIds);
+  }
+  log("player game backfill complete");
+}
+
 try {
   loadEnvFile(process.env.KV_ENV_FILE || readArgValue("--env-file"));
 
@@ -261,6 +309,7 @@ try {
   if (mode === "copy") await copy(plan);
   else if (mode === "verify") await verify(plan);
   else if (mode === "cleanup") await cleanup(plan);
+  else if (mode === "backfill-player-games") await backfillPlayerGames();
   else await dryRun(plan);
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);

@@ -12,6 +12,7 @@
  *   arena:v1:matches:byMatch:{matchId}
  *   arena:v1:resolves:{gameId}
  *   arena:v1:players:stats:{address}
+ *   arena:v1:players:games:{address}
  *   arena:v1:leaderboard
  *   arena:v1:auth:sessions:{token}
  *   arena:v1:auth:challenges:{address}
@@ -61,6 +62,10 @@ export const kvKeysLegacy = {
       reputationFeedback: (gameId: string) => `arena:reputation:${gameId}`,
     },
 
+    players: {
+      games: (address: string) => `arena:player-games:${lower(address)}`,
+    },
+
     auth: {
       challenge: (address: string) => `arena:challenge:${lower(address)}`,
       session: (token: string) => `arena:session:${token}`,
@@ -97,6 +102,10 @@ export const kvKeysV1 = {
       sortedSet: "arena:v1:leaderboard",
       playerStats: (address: string) => `arena:v1:players:stats:${lower(address)}`,
       reputationFeedback: (gameId: string) => `arena:v1:reputation:${gameId}`,
+    },
+
+    players: {
+      games: (address: string) => `arena:v1:players:games:${lower(address)}`,
     },
 
     auth: {
