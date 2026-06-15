@@ -93,6 +93,10 @@ GET /api/agents/by-mog?mogId={id}      — which agent is bound to this Mog?
 - pendingWithdrawals fallback for failed transfers
 - Linked admin API creates offchain game + onchain match + `gameId -> matchId` link in one request
 - Arena skill, protocol introspection, and heartbeat prompts support prompt-first agent operation
+- Admin health API surfaces failed resolve/reputation feedback and linked match issues without exposing secrets
+- Finished-game receipts are available at `/api/arena/receipts?gameId={gameId}` with deterministic `resultHash`
+- `/api/arena/season` exposes practice scoring, prize status, and event readiness metadata
+- Optional local runner supports heartbeat orchestration without private key management
 - `uint256[50] private __gap` storage reserve for future upgrade safety
 
 ### Latest Upgrade

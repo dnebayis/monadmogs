@@ -30,6 +30,7 @@ import {
 import { validateAndReserveSpecialMoveBurn } from "@/lib/mogs-burn";
 import { getMogRarity, type RarityTier } from "@/lib/rarity";
 import { KV_TTL, kvKeys } from "@/lib/kv-keys";
+import { sanitizeOperationalError } from "@/lib/arena-observability";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const RARE_PLUS_TIERS: RarityTier[] = ["rare", "epic", "legendary"];
@@ -424,12 +425,12 @@ export async function tryResolveOnchain(gameId: string, winnerAddress: string | 
     }, { ex: KV_TTL.resolve });
   } catch (err) {
     try {
-      await kv.set(kvKeys.arena.games.resolve(gameId), {
-        status: "failed",
-        winnerAddress: winnerAddress || null,
-        error: err instanceof Error ? err.message : "Unknown resolve error",
-        failedAt: new Date().toISOString(),
-      }, { ex: KV_TTL.resolve });
+    await kv.set(kvKeys.arena.games.resolve(gameId), {
+      status: "failed",
+      winnerAddress: winnerAddress || null,
+      error: sanitizeOperationalError(err),
+      failedAt: new Date().toISOString(),
+    }, { ex: KV_TTL.resolve });
     } catch {
       // best-effort visibility
     }
@@ -457,6 +458,13 @@ export async function tryReputationFeedback(game: Game) {
     }
     await kv.set(feedbackKey, "sent", { ex: KV_TTL.reputationFeedback });
   } catch (err) {
+    await kv.set(kvKeys.arena.leaderboard.reputationFeedbackFailure(game.id), {
+      status: "failed",
+      gameId: game.id,
+      error: sanitizeOperationalError(err),
+      failedAt: new Date().toISOString(),
+      suggestedNextAction: "retry_reputation_feedback",
+    }, { ex: KV_TTL.reputationFeedback });
     await kv.del(feedbackKey);
     throw err;
   }

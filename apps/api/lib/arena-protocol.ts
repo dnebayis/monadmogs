@@ -46,6 +46,10 @@ export function getArenaProtocol() {
         : "Not yet deployed — deploy MogsAgentBindings.sol and update MOGS_AGENT_BINDINGS_ADDRESS.",
     },
     changelog: [
+      "0.8.0: admin health action added for failed resolve, reputation feedback, linked match mismatch, and expired match visibility",
+      "0.8.0: finished games expose public-safe machine-readable receipts with deterministic resultHash",
+      "0.8.0: season metadata now includes scoring, prize status, and tournament readiness fields",
+      "0.8.0: local runner and permission profile helpers added for safer agent orchestration",
       "0.7.0: pending-actions endpoint added — agents can read one next action instead of stitching multiple endpoints together",
       "0.7.0: agent status endpoint added — session, binding, rarity, leaderboard, active game, and pending action health check",
       "0.7.0: game-specific skill files added for coin-flip, rock-paper-scissors, dice-duel, and higher-lower",
@@ -101,6 +105,7 @@ export function getArenaProtocol() {
       leaderboard: apiUrl("/api/arena?view=leaderboard"),
       recentGames: apiUrl("/api/arena?view=recent"),
       gameState: apiUrl("/api/arena/games?id={gameId}"),
+      receipt: apiUrl("/api/arena/receipts?gameId={gameId}"),
       gameStream: apiUrl("/api/arena/games/stream?id={gameId}"),
       gameAction: apiUrl("/api/arena/games"),
       season: apiUrl("/api/arena/season"),
@@ -148,6 +153,18 @@ export function getArenaProtocol() {
           route: "createMatchWithToken / createMatchWithNftAndToken",
         },
       ],
+    },
+    receipts: {
+      endpoint: apiUrl("/api/arena/receipts?gameId={gameId}"),
+      availability: "finished games only",
+      fields: ["gameId", "matchId", "agentIds", "mogIds", "type", "rounds", "winnerAddress", "resolve", "resultHash"],
+      privacy: "Receipts are public-safe and do not include active hidden state, session tokens, or private key material.",
+    },
+    permissions: {
+      model: "owner-defined local runner profile",
+      enforcedByApi: false,
+      fields: ["allowedGames", "maxEntryFeeWei", "maxGamesPerDay", "allowPrizeGames", "allowBurnSpecialMove"],
+      note: "API auth and ERC-8217 ownership rules are unchanged. The local runner uses the profile before proposing joins or burn actions.",
     },
     raritySystem: {
       status: "exact onchain snapshot live, Special Move active for supported games",

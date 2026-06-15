@@ -3327,6 +3327,11 @@ textarea:focus-visible {
   grid-template-columns: 52px 88px 82px 82px 80px 1fr 96px minmax(180px, 260px);
 }
 
+.admin-table-head.health,
+.admin-table-row.health {
+  grid-template-columns: 80px 150px 110px 70px 90px minmax(190px, 1fr);
+}
+
 .admin-table-head.leaderboard,
 .admin-table-row.leaderboard {
   grid-template-columns: 44px minmax(130px, 1fr) 120px 70px 44px 44px;
@@ -3394,6 +3399,47 @@ textarea:focus-visible {
 .admin-resolve-badge.failed { background: rgba(220,80,80,0.1); color: #e05555; }
 .admin-resolve-badge.cancelled,
 .admin-resolve-badge.pending { background: rgba(255, 232, 179, 0.1); color: var(--cream); }
+
+.admin-health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.admin-health-card {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.admin-health-card strong {
+  display: block;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.admin-health-card span,
+.admin-health-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.admin-health-card.high { border-color: rgba(224, 85, 85, 0.45); }
+.admin-health-card.medium { border-color: rgba(255, 232, 179, 0.35); }
+.admin-health-card.low { border-color: rgba(133, 230, 255, 0.25); }
+
+.admin-health-severity {
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.admin-health-severity.high { background: rgba(224, 85, 85, 0.16); color: #ff8a8a; }
+.admin-health-severity.medium { background: rgba(255, 232, 179, 0.12); color: var(--cream); }
+.admin-health-severity.low { background: rgba(133, 230, 255, 0.12); color: var(--cyan); }
 
 .admin-report-list {
   display: grid;

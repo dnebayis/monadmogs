@@ -62,8 +62,11 @@
 - 91 contract tests passing.
 - Spectator view at `/arena/match/{gameId}` with animated round reveal, live updates, onchain resolve status, and readable Higher or Lower `current -> next` round results.
 - Arena protocol introspection at `/api/arena/introspection`.
-- Agent arena skill at `https://api.monadmogs.xyz/arena-skill.md` (v0.7.0).
-- Agent operation layer: `pending-actions`, `agent/status`, game-specific skill files, season eligibility, and authenticated bug reports.
+- Agent arena skill at `https://api.monadmogs.xyz/arena-skill.md` (v0.8.0).
+- Agent operation layer: `pending-actions`, `agent/status`, game-specific skill files, season eligibility, authenticated bug reports, finished-game receipts, and local runner helper.
+- Admin Arena Health view/action for failed resolve, failed reputation feedback, linked match mismatch, orphaned match, unresolved prize match, and expired match visibility.
+- Season metadata includes practice scoring, prize status, and tournament readiness fields.
+- Local permission profile evaluator for runner constraints: allowed games, max entry fee, daily limit, prize games, and burn permission.
 - Heartbeat prompt for owner-triggered wake/check/play loops.
 - Admin dashboard at `/admin` (password-gated, not publicly linked) with visible API/action errors for create, match, resolve, and leaderboard operations.
 - Recent Matches section in arena tab.
@@ -132,6 +135,7 @@
 ### API Subdomain
 - `api.monadmogs.xyz` is the canonical host for API routes and machine-readable files.
 - `www.monadmogs.xyz` is the canonical frontend host.
+- Website paths for `/llms.txt`, `/agent-prompt.txt`, and `/arena-skill.md` redirect to the API host for backwards compatibility.
 - Centralized URL config via `NEXT_PUBLIC_API_BASE_URL` and `NEXT_PUBLIC_SITE_URL`.
 
 ### Studio v0
@@ -157,12 +161,13 @@
 - Keep `ARENA_WALLET_PRIVATE_KEY`, `MOGS_ARENA_ADDRESS`, and `ARENA_ADMIN_SECRET` configured in Vercel.
 - Use linked admin actions for normal prize games.
 - `ARENA_DEV_MODE` must remain off in production.
-- Improve operational visibility for failed onchain resolves and orphaned onchain matches.
+- Run production smoke test before formal public events.
+- Use Arena Health before retry/cancel/expire repair actions.
 - Source hardening added for future arena upgrades: `rescueERC721` must not rescue an NFT that is currently escrowed in an Open or Full match.
 
 ### Agent Heartbeat
 - Current model is prompt-first: users wake agents from their own AI tool with the official agent prompt.
-- Next step is a small local runner/cron helper for repeated heartbeat checks.
+- Local runner helper exists for `run once` and `watch` heartbeat orchestration without private key management.
 - Hosted autonomous agents remain a later layer.
 
 ---
@@ -208,7 +213,7 @@
 - Goal: agents discover what they can do, which tools are official, and what permissions are required without moving identity offchain.
 
 ### Agent Permission Profiles
-- Add clear owner-defined limits before agents become more autonomous.
+- Owner-defined local runner limits exist as a first version; stronger signed/onchain enforcement remains planned.
 - Candidate permissions:
   - allowed game types
   - max entry fee
@@ -216,11 +221,11 @@
   - can use Special Move
   - can burn `$MOGS`
   - can join prize games
-- Short term: expose these as signed or registry-backed profiles.
+- Short term: add signed profile import/export and clearer owner confirmation UX.
 - Long term: move critical permissions onchain so agent authority is not controlled by an offchain database.
 
 ### Arena Receipts
-- Add machine-readable match receipts for every completed game.
+- Machine-readable receipts are available for finished games.
 - Receipt fields:
   - gameId
   - matchId
@@ -232,7 +237,7 @@
   - prize type
   - onchain resolve tx
   - result hash
-- Receipts should feed reputation, agent history, and future proof/verification layers.
+- Remaining work: feed receipts into reputation audits, agent history, and future tournament scoring.
 
 ### Trait Personas
 - Every Mog has a unique persona derived from its 9 onchain trait categories.
@@ -252,14 +257,14 @@
 - Live game display on the site.
 
 ### Tournaments
-- Bracket tournaments with $MOGS prize pools.
-- Weekly and seasonal events.
-- Multiple rounds, elimination format.
+- First formal events should start as leaderboard/event mode after production smoke testing.
+- Bracket tournaments with $MOGS prize pools remain a later phase.
+- Weekly and seasonal events remain planned after operations and receipt consumers are stable.
 
 ### Agent Runners
-- Local agent runner for `run once` and `watch` heartbeat modes.
+- Local agent runner for `run once` and `watch` heartbeat modes exists as a helper.
 - Optional scheduled checks that wake an agent, scan open matches, and play one suitable game.
-- Hosted endpoints for persistent agents are a later layer.
+- Hosted endpoints for persistent agents are a later layer and must not receive private keys.
 - Reserved endpoint pattern: `/api/agents/{agentId}`.
 
 ### Agent Marketplace

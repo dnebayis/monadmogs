@@ -18,6 +18,7 @@ import type { Address } from "viem";
 import type { GameType } from "@/lib/arena";
 import { KV_TTL, kvKeys } from "@/lib/kv-keys";
 import { requireAdminSecret } from "@/lib/http-guards";
+import { buildArenaHealth } from "@/lib/arena-health";
 
 async function getLinkedGameId(matchId: number, explicitGameId?: unknown) {
   if (typeof explicitGameId === "string" && explicitGameId) return explicitGameId;
@@ -47,6 +48,19 @@ export async function POST(request: NextRequest) {
   }
 
   const action = body.action as string;
+
+  /* ---- Arena health (read-only) ---- */
+  if (action === "arena-health") {
+    try {
+      const health = await buildArenaHealth({
+        recentLimit: Number(body.recentLimit || 50),
+        matchLimit: Number(body.matchLimit || 20),
+      });
+      return NextResponse.json({ health });
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
 
   /* ---- Create linked offchain game + onchain MON match ---- */
   if (action === "create-linked-game") {
@@ -458,6 +472,7 @@ export async function POST(request: NextRequest) {
       valid: [
         "create-match",
         "create-match-nft",
+        "arena-health",
         "create-linked-game",
         "create-linked-game-mogs",
         "create-linked-game-nft",

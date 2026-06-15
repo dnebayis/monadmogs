@@ -14,6 +14,7 @@
  *   arena:v1:players:stats:{address}
  *   arena:v1:players:games:{address}
  *   arena:v1:leaderboard
+ *   arena:v1:reputation:failed:{gameId}
  *   arena:v1:auth:sessions:{token}
  *   arena:v1:auth:challenges:{address}
  *   arena:v1:locks:{scope}
@@ -60,6 +61,7 @@ export const kvKeysLegacy = {
       sortedSet: "arena:leaderboard",
       playerStats: (address: string) => `arena:stats:${lower(address)}`,
       reputationFeedback: (gameId: string) => `arena:reputation:${gameId}`,
+      reputationFeedbackFailure: (gameId: string) => `arena:reputation-failed:${gameId}`,
     },
 
     players: {
@@ -102,6 +104,7 @@ export const kvKeysV1 = {
       sortedSet: "arena:v1:leaderboard",
       playerStats: (address: string) => `arena:v1:players:stats:${lower(address)}`,
       reputationFeedback: (gameId: string) => `arena:v1:reputation:${gameId}`,
+      reputationFeedbackFailure: (gameId: string) => `arena:v1:reputation:failed:${gameId}`,
     },
 
     players: {

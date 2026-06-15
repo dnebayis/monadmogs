@@ -11,14 +11,19 @@ This file tracks follow-up work after the route/service refactor and prompt-firs
 | Prompt-first onboarding | Web/API | Remove form-based registration UI as the primary path; keep ERC-8004 and ERC-8217 requirements. | Agents tab and prompt docs point to the official prompt/skill flow. |
 | Edge-case coverage | QA | Add API checks for auth/admin fail-closed behavior and Arena docs consistency. | `monad-mogs-web test:api` passes. |
 | Docs sync | Docs | Keep Markdown docs, prompts, `llms.txt`, web copy, and tests aligned when behavior changes. | No stale external reference names in docs or UI copy. |
+| Observability/Admin Repair v1 | Ops/API | Add read-only Arena Health admin action and dashboard tab for failed resolve, failed reputation feedback, linked match mismatch, orphaned match, and expired match visibility. | `arena-health` requires `x-admin-secret` and returns sanitized issue records. |
+| Local agent runner v1 | Agent/API | Add `run once` and `watch` script helper for heartbeat orchestration without private key management. | Dry-run sample proposes a legal move without mutating state. |
+| Permission controls v1 | Security/API | Add local runner permission profile evaluator for allowed games, max entry fee, daily limit, prize games, and burn permission. | Runner refuses disallowed joins/burn suggestions locally. |
+| Receipts/proofs v1 | Protocol/API | Add finished-game receipt endpoint with deterministic `resultHash`. | Active hidden state and session data are not included. |
+| Tournament/season metadata v1 | Product/API/Web | Add scoring, prize status, and event readiness fields to `/api/arena/season` and Arena tab copy. | Frontend season block reads the same API source. |
 
 ## Remaining
 
 | Item | Owner | Action | Check |
 | --- | --- | --- | --- |
 | Production smoke test | Ops | Run one authenticated create/join/move/recover flow with a real agent wallet. | `pending-actions`, `agent/status`, match page, and resolve status agree. |
-| Local agent runner | Agent | Add `run once` and optional watch/cron heartbeat helpers. | Runner authenticates, recovers active games, and submits only legal moves. |
-| Tournament scheduling | Product/API | Define season windows, eligible games, scoring, and prize rules. | `/api/arena/season` and frontend copy show the same state. |
-| Receipts/proofs | Protocol | Emit verifiable records for moves, Special Move usage, resolves, and reputation feedback. | Receipts can be checked from game ID and agent ID. |
-| Permission controls | Security | Add owner-defined limits for entry fees, games, burn permission, and daily activity. | Agent cannot exceed declared owner limits. |
-| Observability | Ops | Add resolve/reputation failure visibility without exposing secrets. | Admin can see failed settlement state and retry safely. |
+| Hosted runner | Agent/Ops | Decide where persistent runners live and how sessions are refreshed without storing private keys server-side. | Hosted flow never receives owner or agent private keys. |
+| Mutating repair workflow | Ops/API | Add explicit retry/cancel helper UX for issues surfaced by Arena Health. | Mutating actions remain separate and require admin confirmation. |
+| Formal tournament scheduling | Product/API | Define actual season windows, eligibility cutoff, prize rules, and leaderboard snapshots. | `/api/arena/season` changes from practice to event state only when operations are ready. |
+| Onchain permission profiles | Security | Evaluate whether critical permissions should move from local config to signed or onchain authorization. | Agent authority is verifiable without trusting only local files. |
+| Expanded receipt consumers | Protocol | Feed receipts into tournament scoring, agent history, and reputation audits. | Scores can be recomputed from public receipts. |

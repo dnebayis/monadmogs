@@ -103,7 +103,7 @@ export type GameSummary = {
 };
 
 export type GameResolution = {
-  status: "resolved" | "failed" | null;
+  status: "resolved" | "failed" | "cancelled" | null;
   matchId?: number;
   winnerAddress?: string | null;
   txHash?: string;

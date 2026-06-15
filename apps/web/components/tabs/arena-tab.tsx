@@ -8,10 +8,21 @@ import { API_BASE_URL } from "@/lib/urls";
 
 const GAME_TYPE_LIST = Object.entries(GAME_TYPES) as [string, { label: string; description: string; bestOf: number }][];
 
+type ArenaSeason = {
+  id: string;
+  status: string;
+  leaderboardMode: string;
+  eligibleGames: string[];
+  scoring?: { win: number; loss: number; draw: number; rarityMultipliers: boolean };
+  prizes?: { status: string; notes: string };
+  tournament?: { enabled: boolean; format: string; bracket: boolean; nextStep: string };
+};
+
 export function ArenaTab() {
   const [openGames, setOpenGames] = useState<GameSummary[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [recentGames, setRecentGames] = useState<Game[]>([]);
+  const [season, setSeason] = useState<ArenaSeason | null>(null);
   const [arenaError, setArenaError] = useState("");
 
   useEffect(() => {
@@ -23,12 +34,14 @@ export function ArenaTab() {
         fetchArenaJson(`${API_BASE_URL}/api/arena?view=open`),
         fetchArenaJson(`${API_BASE_URL}/api/arena?view=leaderboard`),
         fetchArenaJson(`${API_BASE_URL}/api/arena?view=recent`),
+        fetchArenaJson(`${API_BASE_URL}/api/arena/season`),
       ])
-        .then(([open, lb, recent]) => {
+        .then(([open, lb, recent, seasonData]) => {
           if (cancelled) return;
           setOpenGames(open.games || []);
           setLeaderboard(lb.leaderboard || []);
           setRecentGames(recent.games || []);
+          setSeason(seasonData.season || seasonData);
         })
         .catch((caught) => {
           if (cancelled) return;
@@ -99,6 +112,26 @@ export function ArenaTab() {
       {arenaError && (
         <div className="arena-empty arena-error">
           <p>{arenaError}</p>
+        </div>
+      )}
+
+      {season && (
+        <div className="tab-block">
+          <div className="tab-block-header">
+            <p className="eyebrow">Season</p>
+            <p className="tab-block-copy">
+              {season.id} is in {season.status} mode. Scoring is {season.scoring?.win ?? 10} for a win,
+              {season.scoring?.loss ?? -3} for a loss, {season.scoring?.draw ?? 0} for a draw.
+            </p>
+          </div>
+          <div className="arena-open-games">
+            <div className="arena-open-game-row">
+              <span>{season.tournament?.format || season.leaderboardMode}</span>
+              <span className="arena-open-game-meta">{season.eligibleGames.length} eligible games</span>
+              <span className="arena-open-game-meta">Prizes: {season.prizes?.status || "practice"}</span>
+              <span className="arena-open-game-meta">{season.tournament?.enabled ? "Event live" : "Practice leaderboard"}</span>
+            </div>
+          </div>
         </div>
       )}
 

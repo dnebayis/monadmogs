@@ -66,6 +66,27 @@ type BugReport = {
   endpoint?: string;
 };
 
+type ArenaHealthIssue = {
+  type: string;
+  severity: "low" | "medium" | "high";
+  gameId?: string;
+  matchId?: number;
+  status?: string | null;
+  txHash?: string;
+  error?: string;
+  timestamp?: string;
+  suggestedNextAction: string;
+};
+
+type ArenaHealth = {
+  checkedAt: string;
+  arenaAddress: string;
+  scanned: { recentGames: number; recentLimit: number; matchCount: number; matchLimit: number };
+  counts: { total: number; high: number; medium: number; low: number };
+  issues: ArenaHealthIssue[];
+  suggestedNextAction: string;
+};
+
 /* ------------------------------------------------------------------ */
 /*  Constants                                                           */
 /* ------------------------------------------------------------------ */
@@ -81,7 +102,7 @@ export default function AdminPage() {
   const [secret, setSecret] = useState("");
   const [input, setInput] = useState("");
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState<"games" | "matches" | "leaderboard" | "reports">("games");
+  const [tab, setTab] = useState<"health" | "games" | "matches" | "leaderboard" | "reports">("health");
 
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
@@ -170,7 +191,7 @@ export default function AdminPage() {
       </div>
 
       <div className="admin-tabs">
-        {(["games", "matches", "leaderboard", "reports"] as const).map((t) => (
+        {(["health", "games", "matches", "leaderboard", "reports"] as const).map((t) => (
           <button
             key={t}
             className={`admin-tab-btn ${tab === t ? "active" : ""}`}
@@ -181,10 +202,89 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {tab === "health" && <HealthPanel secret={secret} onAuthFail={logout} />}
       {tab === "games" && <GamesPanel secret={secret} onAuthFail={logout} />}
       {tab === "matches" && <MatchesPanel secret={secret} onAuthFail={logout} />}
       {tab === "leaderboard" && <LeaderboardPanel secret={secret} onAuthFail={logout} />}
       {tab === "reports" && <ReportsPanel secret={secret} onAuthFail={logout} />}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Health Panel                                                        */
+/* ------------------------------------------------------------------ */
+
+function HealthPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () => void }) {
+  const [health, setHealth] = useState<ArenaHealth | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({ action: "arena-health", recentLimit: 50, matchLimit: 30 }),
+      });
+      if (res.status === 401) { onAuthFail(); return; }
+      const data = await readJson<{ health?: ArenaHealth }>(res);
+      setHealth(data.health || null);
+    } catch (caught) {
+      setLoadError(`Failed to load arena health: ${errorMessage(caught)}`);
+    }
+    setLoading(false);
+  }, [secret, onAuthFail]);
+
+  useEffect(() => {
+    load();
+    const interval = window.setInterval(load, 30_000);
+    return () => window.clearInterval(interval);
+  }, [load]);
+
+  return (
+    <div className="admin-panel">
+      <div className="admin-section">
+        <div className="admin-section-header">
+          <p className="admin-section-title">Arena Health</p>
+          <span className="admin-hint" style={{ marginLeft: 8, opacity: 0.5 }}>read-only, refreshes every 30s</span>
+          <button className="admin-refresh" onClick={load}>{loading ? "…" : "↻"}</button>
+        </div>
+
+        {health && (
+          <>
+            <div className="admin-health-grid">
+              <div className="admin-health-card"><strong>{health.counts.total}</strong><span>Total issues</span></div>
+              <div className="admin-health-card high"><strong>{health.counts.high}</strong><span>High</span></div>
+              <div className="admin-health-card medium"><strong>{health.counts.medium}</strong><span>Medium</span></div>
+              <div className="admin-health-card low"><strong>{health.counts.low}</strong><span>Low</span></div>
+            </div>
+            <p className="admin-health-meta">
+              Checked {new Date(health.checkedAt).toLocaleString()} · recent games {health.scanned.recentGames}/{health.scanned.recentLimit} · onchain matches scanned {health.scanned.matchLimit}
+            </p>
+          </>
+        )}
+
+        <div className="admin-table">
+          <div className="admin-table-head health">
+            <span>Severity</span><span>Type</span><span>Game</span><span>Match</span><span>Status</span><span>Next Action</span>
+          </div>
+          {(health?.issues || []).map((issue, index) => (
+            <div key={`${issue.type}-${issue.gameId || issue.matchId || index}`} className="admin-table-row health">
+              <span className={`admin-health-severity ${issue.severity}`}>{issue.severity}</span>
+              <span>{issue.type.replaceAll("_", " ")}</span>
+              <span>{issue.gameId ? <a href={`/arena/match/${issue.gameId}`} target="_blank" rel="noreferrer" className="admin-mono">{issue.gameId.slice(0, 8)}…</a> : "—"}</span>
+              <span>{issue.matchId ? `#${issue.matchId}` : "—"}</span>
+              <span>{issue.status || "—"}</span>
+              <span title={issue.error || ""}>{issue.suggestedNextAction.replaceAll("_", " ")}</span>
+            </div>
+          ))}
+          {loadError && <p className="admin-empty admin-error">{loadError}</p>}
+          {health && health.issues.length === 0 && !loading && <p className="admin-empty">No arena health issues found.</p>}
+        </div>
+      </div>
     </div>
   );
 }

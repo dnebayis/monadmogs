@@ -1,0 +1,167 @@
+import { kv } from "@vercel/kv";
+import { getGame, getRecentGames, type GameResolution } from "@/lib/arena";
+import { getMatchCount, getOnchainMatch, MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
+import { getResolveStatus } from "@/lib/arena-game-service";
+import { kvKeys } from "@/lib/kv-keys";
+import { sanitizeOperationalError } from "@/lib/arena-observability";
+
+export type ArenaHealthIssue = {
+  type:
+    | "failed_resolve"
+    | "failed_reputation_feedback"
+    | "unresolved_prize_match"
+    | "orphaned_game_match"
+    | "linked_match_mismatch"
+    | "expired_unresolved_match";
+  severity: "low" | "medium" | "high";
+  gameId?: string;
+  matchId?: number;
+  status?: string | null;
+  txHash?: string;
+  error?: string;
+  timestamp?: string;
+  suggestedNextAction: string;
+};
+
+type ReputationFailure = {
+  status?: string;
+  gameId?: string;
+  error?: string;
+  failedAt?: string;
+  suggestedNextAction?: string;
+};
+
+function resolveTimestamp(resolve: GameResolution): string | undefined {
+  return resolve.resolvedAt || resolve.failedAt;
+}
+
+function pushUnique(issues: ArenaHealthIssue[], issue: ArenaHealthIssue) {
+  const key = `${issue.type}:${issue.gameId || ""}:${issue.matchId || ""}`;
+  if (!issues.some((existing) => `${existing.type}:${existing.gameId || ""}:${existing.matchId || ""}` === key)) {
+    issues.push(issue);
+  }
+}
+
+export async function buildArenaHealth(options: { recentLimit?: number; matchLimit?: number } = {}) {
+  const recentLimit = Math.min(Math.max(Number(options.recentLimit || 50), 1), 100);
+  const matchLimit = Math.min(Math.max(Number(options.matchLimit || 20), 1), 100);
+  const checkedAt = new Date().toISOString();
+  const issues: ArenaHealthIssue[] = [];
+
+  const recentGames = await getRecentGames(recentLimit);
+  for (const game of recentGames) {
+    const resolve = await getResolveStatus(game.id);
+    const matchId = resolve.matchId ?? (await kv.get<number>(kvKeys.arena.games.matchByGame(game.id))) ?? undefined;
+
+    if (resolve.status === "failed") {
+      pushUnique(issues, {
+        type: "failed_resolve",
+        severity: "high",
+        gameId: game.id,
+        matchId,
+        status: resolve.status,
+        error: resolve.error ? sanitizeOperationalError(resolve.error) : undefined,
+        timestamp: resolveTimestamp(resolve),
+        suggestedNextAction: "retry_resolve_or_cancel_match",
+      });
+    }
+
+    if (game.status === "finished" && matchId && !resolve.status) {
+      pushUnique(issues, {
+        type: "unresolved_prize_match",
+        severity: "medium",
+        gameId: game.id,
+        matchId,
+        status: resolve.status,
+        timestamp: game.finishedAt,
+        suggestedNextAction: game.winner ? "resolve_match" : "resolve_draw",
+      });
+    }
+
+    const reputationFailure = await kv.get<ReputationFailure>(
+      kvKeys.arena.leaderboard.reputationFeedbackFailure(game.id),
+    );
+    if (reputationFailure?.status === "failed") {
+      pushUnique(issues, {
+        type: "failed_reputation_feedback",
+        severity: "medium",
+        gameId: game.id,
+        matchId,
+        status: reputationFailure.status,
+        error: reputationFailure.error ? sanitizeOperationalError(reputationFailure.error) : undefined,
+        timestamp: reputationFailure.failedAt,
+        suggestedNextAction: reputationFailure.suggestedNextAction || "retry_reputation_feedback",
+      });
+    }
+  }
+
+  let matchCount = 0;
+  try {
+    matchCount = await getMatchCount();
+    for (let id = matchCount; id >= 1 && matchCount - id < matchLimit; id--) {
+      try {
+        const match = await getOnchainMatch(id);
+        const linkedGameId = await kv.get<string>(kvKeys.arena.games.gameByMatch(id));
+        const linkedGame = linkedGameId ? await getGame(linkedGameId) : null;
+        const isExpired = match.deadline > 0 && Date.now() / 1000 > match.deadline;
+
+        if (!linkedGameId && (match.status === "open" || match.status === "full")) {
+          pushUnique(issues, {
+            type: "orphaned_game_match",
+            severity: match.status === "full" ? "high" : "medium",
+            matchId: id,
+            status: match.status,
+            timestamp: match.createdAt ? new Date(match.createdAt * 1000).toISOString() : undefined,
+            suggestedNextAction: match.status === "full" ? "link_game_or_cancel_match" : "link_game_or_expire_match",
+          });
+        }
+
+        if (linkedGameId && !linkedGame) {
+          pushUnique(issues, {
+            type: "linked_match_mismatch",
+            severity: "high",
+            gameId: linkedGameId,
+            matchId: id,
+            status: match.status,
+            suggestedNextAction: "recover_game_or_cancel_match",
+          });
+        }
+
+        if (isExpired && (match.status === "open" || match.status === "full")) {
+          pushUnique(issues, {
+            type: "expired_unresolved_match",
+            severity: "medium",
+            gameId: linkedGameId || undefined,
+            matchId: id,
+            status: match.status,
+            timestamp: new Date(match.deadline * 1000).toISOString(),
+            suggestedNextAction: "expire_match",
+          });
+        }
+      } catch {
+        continue;
+      }
+    }
+  } catch {
+    matchCount = 0;
+  }
+
+  const counts = issues.reduce(
+    (acc, issue) => {
+      acc.total++;
+      acc[issue.severity]++;
+      return acc;
+    },
+    { total: 0, high: 0, medium: 0, low: 0 },
+  );
+
+  return {
+    checkedAt,
+    arenaAddress: MOGS_ARENA_ADDRESS,
+    scanned: { recentGames: recentGames.length, recentLimit, matchCount, matchLimit },
+    counts,
+    issues,
+    suggestedNextAction:
+      counts.high > 0 ? "review_high_severity_issues" : counts.total > 0 ? "review_medium_low_issues" : "no_action",
+  };
+}
