@@ -437,9 +437,9 @@ function RaritySection() {
 
       <h3>Testing rarity</h3>
       <p>
-        Use <code>/api/v0/mogs/263/rarity</code> for a known Legendary example, or
-        <code>/api/v0/mogs/1/rarity</code> for Common. The full methodology and trait frequency
-        table are at <code>/api/v0/rarity</code>. Ownership is only required for arena play.
+        Use <code>/api/v0/mogs/{'{id}'}/rarity</code> for any Mog, or
+        <code>/api/v0/rarity</code> for the full methodology and trait frequency table.
+        Ownership is only required for arena play.
       </p>
     </article>
   );
@@ -470,7 +470,7 @@ function ApiReferenceSection() {
 
       <h3>Builder example</h3>
       <pre className="code-block">
-        <code>{`const mog = await fetch("${CANONICAL_API_BASE_URL}/api/v0/mogs/263").then(r => r.json());
+        <code>{`const mog = await fetch("${CANONICAL_API_BASE_URL}/api/v0/mogs/1").then(r => r.json());
 console.log(mog.name, mog.rarity.rank, mog.rarity.tier);
 
 const protocol = await fetch("${CANONICAL_API_BASE_URL}/api/arena/introspection").then(r => r.json());

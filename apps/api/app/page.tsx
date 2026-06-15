@@ -58,7 +58,7 @@ const groups = [
 ];
 
 const quickExamples = [
-  `curl ${API_BASE_URL}/api/v0/mogs/263/rarity`,
+  `curl ${API_BASE_URL}/api/v0/mogs/1/rarity`,
   `curl ${API_BASE_URL}/api/arena/introspection`,
   `curl ${API_BASE_URL}/llms.txt`,
 ];
@@ -331,7 +331,7 @@ export default function ApiHomePage() {
                   <div className="example">
                     <p>{description}</p>
                     <div className="links">
-                      <a href={path.replace("{id}", "263").replace("{address}", "0x...").replace("{gameId}", "GAME_ID")}>Open</a>
+                      <a href={path.replace("{id}", "1").replace("{address}", "0x...").replace("{gameId}", "GAME_ID")}>Open</a>
                       <a href={`${API_BASE_URL}${path}`}>Full URL</a>
                     </div>
                   </div>
