@@ -1,7 +1,10 @@
 import { kv } from "@vercel/kv";
 import { kvKeys } from "@/lib/kv-keys";
 
-type RateLimitResult = { ok: true } | { ok: false; retryAfter: number };
+export type RateLimitResult =
+  | { ok: true }
+  | { ok: false; status: 429; retryAfter: number; message: string }
+  | { ok: false; status: 503; retryAfter: number; message: string; degraded: true };
 
 /**
  * Simple sliding-window rate limiter using Vercel KV.
@@ -26,14 +29,24 @@ export async function rateLimit(
 
     if (current > limit) {
       const ttl = await kv.ttl(kvKey);
-      return { ok: false, retryAfter: ttl > 0 ? ttl : windowSeconds };
+      return {
+        ok: false,
+        status: 429,
+        retryAfter: ttl > 0 ? ttl : windowSeconds,
+        message: "Too many requests.",
+      };
     }
 
     return { ok: true };
   } catch (error) {
-    // If KV fails, allow the request (fail-open)
-    console.error("Rate limit failed open:", error);
-    return { ok: true };
+    console.error("Rate limit unavailable:", error);
+    return {
+      ok: false,
+      status: 503,
+      retryAfter: windowSeconds,
+      message: "Rate limit unavailable. Retry later.",
+      degraded: true,
+    };
   }
 }
 

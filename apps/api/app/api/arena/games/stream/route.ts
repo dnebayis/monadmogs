@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
   const rl = await rateLimit(`arena-stream:${ip}`, 20, 60);
   if (!rl.ok) {
     return new Response(
-      `event: error\ndata: ${JSON.stringify({ error: "Too many requests.", retryAfter: rl.retryAfter })}\n\n`,
+      `event: error\ndata: ${JSON.stringify({ error: rl.message, retryAfter: rl.retryAfter, degraded: rl.status === 503 ? true : undefined })}\n\n`,
       {
-        status: 429,
+        status: rl.status,
         headers: {
           "Content-Type": "text/event-stream",
-          "Retry-After": String(rl.retryAfter),
+          ...(rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : {}),
         },
       }
     );

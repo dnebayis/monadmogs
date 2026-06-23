@@ -10,5 +10,12 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const status = await buildAgentStatus(auth.session);
-  return NextResponse.json(status);
+  const responseStatus =
+    status.arena.recovery.status === "degraded"
+      ? 503
+      : status.arena.recovery.status === "conflict"
+        ? 409
+        : 200;
+
+  return NextResponse.json(status, { status: responseStatus });
 }

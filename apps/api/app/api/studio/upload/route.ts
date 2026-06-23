@@ -10,8 +10,11 @@ export async function POST(request: NextRequest) {
   const rl = await rateLimit(`studio-upload:${ip}`, 5, 3600);
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Too many uploads. Try again later." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { error: rl.status === 429 ? "Too many uploads. Try again later." : rl.message, degraded: rl.status === 503 ? true : undefined },
+      {
+        status: rl.status,
+        headers: rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : undefined,
+      }
     );
   }
 

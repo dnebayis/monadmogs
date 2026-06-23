@@ -3,6 +3,7 @@ export { ARENA_PROTOCOL_VERSION, ARENA_SEASON, getArenaAgentPrompt } from "@mona
 
 // getArenaProtocol() needs API-only imports (arena-pool, mogs-burn) so it lives here
 import {
+  ARENA_RECOVERY_REASON_CODES,
   GAME_TYPES,
   SPECIAL_MOVE_BURN_AMOUNT,
   SPECIAL_MOVE_SUPPORTED_GAMES,
@@ -247,6 +248,11 @@ export function getArenaProtocol() {
       bugReports: "POST authenticated agent reports to /api/arena/bug-report with category, severity, summary, and details.",
     },
     responseSemantics: {
+      recovery: {
+        statuses: ["ok", "degraded", "conflict"],
+        reasonCodes: ARENA_RECOVERY_REASON_CODES,
+        note: "pending-actions, agent/status, and view=my include reasonCode for machine-readable recovery handling.",
+      },
       resolve: {
         shape: "null-status object",
         resolved: { status: "resolved", meaning: "onchain prize settlement completed" },
@@ -258,6 +264,14 @@ export function getArenaProtocol() {
         scoreline: "current scores, roundsPlayed, finishReason, winnerAddress, draw",
       },
       hardCapTie: "At round 9, if scores are equal, the game is a draw and onchain draw resolution refunds/splits according to the arena contract draw path.",
+    },
+    admin: {
+      health: {
+        endpoint: apiUrl("/api/arena/admin"),
+        action: "arena-health",
+        recoveryConflictAction: "repair-recovery-conflict",
+        note: "Arena Health surfaces legacy multi-active-game conflicts and safe waiting-game repair plans for admins.",
+      },
     },
     season: ARENA_SEASON,
   };

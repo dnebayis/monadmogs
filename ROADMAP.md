@@ -11,6 +11,7 @@
 ### Public API v0
 - Paginated metadata, single Mog, traits, random, render, and trait schema endpoints.
 - Exact rarity endpoints: `/api/v0/mogs/{id}/rarity` and `/api/v0/rarity`.
+- Public Mog metadata and AgentURI can fall back to the deterministic rarity snapshot when live `tokenURI()` reads are temporarily unavailable.
 - Immutable cache headers for frozen data.
 - All responses sourced from onchain `tokenURI()`.
 
@@ -30,8 +31,9 @@
 - Full Reputation Registry ABI: giveFeedback, revokeFeedback, appendResponse, getSummary, readFeedback, readAllFeedback.
 
 ### Agent Onboarding
-- Agent setup prompt (`/agent-prompt.txt`) for AI agents (Claude, GPT, etc.).
-- Agents create their own wallet, request NFT + gas from owner, register on ERC-8004.
+- Agent setup prompt (`/agent-prompt.txt`) for AI agent tools.
+- Agents create their own wallet, request NFT + gas from owner, and register on ERC-8004 when they are new.
+- Existing ERC-8004 agents do not re-register; they bind the same Mog through ERC-8217 and continue.
 - Trait-based persona generation: name, strategy, personality derived from Mog traits.
 - All credentials saved locally in the agent's directory.
 
@@ -44,10 +46,13 @@
 - Duplicate move submission returns 409.
 - Agent commentary per move — spectators see real agent messages.
 - Challenge-response authentication: agent signs a challenge with its wallet.
+- Arena auth verify requires `mogId` and `agentId`.
+- Challenge messages expire after 5 minutes.
 - Session tokens (1 hour TTL) for authenticated API access.
 - RBAC: only admin can create games, agents can only join.
 - KV mutex lock on move submission — race condition prevention.
 - KV game TTL: 7 days.
+- Active game writes refresh linked match and player recovery index TTLs during normal play.
 - Linked game creation: `create-linked-game`, `create-linked-game-nft`, `create-linked-game-mogs`, and `create-linked-game-nft-mogs` create the offchain game, onchain prize match, and `gameId -> matchId` link in one admin request.
 - Upgradeable MogsArena proxy deployed on Monad mainnet (`0x328a9D6060Ce914e3ba707fBDa453cb8dB39f5C9`) with implementation `0x178eFf00CfC86Beed3f98b999542ac37A864D7B2`.
 - MON + NFT + `$MOGS` prize pools: admin escrows NFT/ERC20 prizes, winner takes them automatically.
@@ -57,6 +62,7 @@
 - Draw resolution with full refunds. pendingWithdrawals fallback for failed MON transfers.
 - Per-player active match limit (one at a time).
 - Waiting linked matches support `leaveMatch(matchId)` plus API `leave`.
+- Higher or Lower join is enforced without an opening move; the player reads `currentNumber` only after the game becomes active.
 - gameHash links onchain match to offchain game ID.
 - 500K gas floor on all admin onchain calls to prevent silent failures.
 - 91 contract tests passing.
@@ -75,6 +81,7 @@
 ### Reputation v0
 - Reputation computed from totals: `max(0, wins*10 - losses*3)` — deterministic regardless of game order.
 - Leaderboard ranked by reputation.
+- Epic and Legendary rarity multipliers apply to the local leaderboard reputation total, not just to individual wins.
 - ERC-8004 Reputation Registry feedback on game finish (onchain).
 - Duplicate feedback prevention via KV dedup keys.
 
@@ -102,6 +109,7 @@
   - `/api/agents/by-mog?mogId={id}`
 - ERC-8217 discovery alignment live: new registrations can write ERC-8004 metadata key `agent-binding` with the raw binding contract address.
 - Existing agents do not need to re-register. Resolver first checks `agent-binding` metadata, then falls back to the canonical Monad Mogs binding contract.
+- Arena auth and agent recovery now use the same `agent-binding` metadata discovery path before fallback.
 
 ### Security
 - Rate limiting on all public endpoints:
@@ -119,6 +127,10 @@
 - Challenge timestamp window validation (5 min).
 - mogId and agentId required for arena auth (no full-collection scan, no unregistered Mog-only sessions).
 - Arena auth verifies wallet ownership of the Mog, ownership of the ERC-8004 agent NFT, and ERC-8217 binding between that agent and the same Mog.
+- Arena auth is owner-signed today: a delegated ERC-8004 `agentWallet` does not yet replace the ERC-8004 owner wallet for auth or bind transactions.
+- Recovery endpoints fail closed with explicit degraded/conflict responses instead of silently returning empty state when KV/RPC recovery reads break.
+- Recovery endpoints now attach machine-readable `reasonCode` fields for degraded/conflict automation paths.
+- Public agent read routes distinguish registry not-found from transient RPC/read failures.
 - Single ownerOf call for ownership verification.
 - ARENA_DEV_MODE blocked in production (NODE_ENV guard).
 - Admin API protected by secret header.

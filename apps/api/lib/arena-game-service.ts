@@ -18,7 +18,10 @@ import {
   isValidMoveForGame,
   supportsSpecialMove,
   type SpecialMoveRequest,
+  getGamesForPlayer,
+  ArenaStateUnavailableError,
 } from "@/lib/arena";
+import { ARENA_RECOVERY_REASON_CODES } from "@monad-mogs/core/src/arena";
 import type { AgentSession } from "@/lib/arena-auth";
 import {
   resolveOnchainMatch,
@@ -89,8 +92,22 @@ export async function joinArenaGameAction(
     if (!existingGame) {
       return { status: 404, body: { error: "Game not found." } };
     }
+    if (existingGame.type === "higher-lower" && move) {
+      return {
+        status: 400,
+        body: {
+          error: "Higher or Lower join must not include an opening move.",
+          nextAction: "join_without_move_then_read_current_number",
+        },
+      };
+    }
     if (move && !isValidMoveForGame(existingGame.type, move)) {
       return { status: 400, body: { error: `Invalid move '${move}' for ${existingGame.type}.` } };
+    }
+
+    const recoveryGate = await validateSingleActiveGame(session.address, gameId);
+    if (!recoveryGate.ok) {
+      return { status: recoveryGate.status, body: recoveryGate.body };
     }
 
     const specialMove = await validateSpecialMove(body.specialMove, existingGame, session, move);
@@ -127,6 +144,56 @@ export async function joinArenaGameAction(
         hint: "Confirm the agent joined the same arenaAddress returned by /api/arena?view=open and that the wallet has no other active onchain match.",
       },
     };
+  }
+}
+
+async function validateSingleActiveGame(address: string, joiningGameId: string) {
+  try {
+    const games = await getGamesForPlayer(address, 1000, { strict: true });
+    const activeGames = games.filter((game) => game.status !== "finished");
+
+    if (activeGames.length > 1) {
+      return {
+        ok: false as const,
+        status: 409,
+        body: {
+          error: "Multiple active games detected for this wallet.",
+          reasonCode: ARENA_RECOVERY_REASON_CODES.legacyMultiActiveConflict,
+          nextAction: "resolve_recovery_conflict",
+          activeGameIds: activeGames.map((game) => game.id),
+        },
+      };
+    }
+
+    const existingActive = activeGames.find((game) => game.id !== joiningGameId);
+    if (existingActive) {
+      return {
+        ok: false as const,
+        status: 409,
+        body: {
+          error: "This wallet already has an active game.",
+          reasonCode: ARENA_RECOVERY_REASON_CODES.existingActiveGame,
+          nextAction: "recover_existing_game",
+          activeGameId: existingActive.id,
+        },
+      };
+    }
+
+    return { ok: true as const };
+  } catch (caught) {
+    if (caught instanceof ArenaStateUnavailableError) {
+      return {
+        ok: false as const,
+        status: 503,
+        body: {
+          error: "Arena recovery state unavailable.",
+          degraded: true,
+          reasonCode: ARENA_RECOVERY_REASON_CODES.recoveryStateUnavailable,
+          nextAction: "retry_later",
+        },
+      };
+    }
+    throw caught;
   }
 }
 
@@ -428,8 +495,11 @@ export async function tryResolveOnchain(gameId: string, winnerAddress: string | 
     await kv.set(kvKeys.arena.games.resolve(gameId), {
       status: "failed",
       winnerAddress: winnerAddress || null,
+      matchId: await kv.get<number>(kvKeys.arena.games.matchByGame(gameId)) || undefined,
       error: sanitizeOperationalError(err),
       failedAt: new Date().toISOString(),
+      retryable: true,
+      suggestedNextAction: "retry_resolve_or_cancel_match",
     }, { ex: KV_TTL.resolve });
     } catch {
       // best-effort visibility
@@ -461,8 +531,10 @@ export async function tryReputationFeedback(game: Game) {
     await kv.set(kvKeys.arena.leaderboard.reputationFeedbackFailure(game.id), {
       status: "failed",
       gameId: game.id,
+      agentIds: game.players.map((player) => player.agentId).filter(Boolean),
       error: sanitizeOperationalError(err),
       failedAt: new Date().toISOString(),
+      retryable: true,
       suggestedNextAction: "retry_reputation_feedback",
     }, { ex: KV_TTL.reputationFeedback });
     await kv.del(feedbackKey);

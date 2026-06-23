@@ -11,6 +11,7 @@ import {
 import { getMogRarity } from "@/lib/rarity";
 import { parseTokenId, MAX_SUPPLY } from "@/lib/mogs";
 import { apiUrl } from "@/lib/urls";
+import { classifyContractReadError } from "@/lib/chain-read-errors";
 
 const client = createPublicClient({ chain: MONAD_CHAIN, transport: http(MONAD_RPC_URL) });
 
@@ -25,8 +26,11 @@ export async function GET(request: NextRequest) {
   const rl = await rateLimit(`agent-by-mog:${ip}`, 60, 60);
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Too many requests." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { error: rl.message, degraded: rl.status === 503 ? true : undefined },
+      {
+        status: rl.status,
+        headers: rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : undefined,
+      }
     );
   }
 
@@ -133,10 +137,15 @@ export async function GET(request: NextRequest) {
       },
       { headers: { "Cache-Control": "public, max-age=60" } }
     );
-  } catch {
+  } catch (error) {
+    const classified = classifyContractReadError(error);
     return NextResponse.json(
-      { error: "Contract call failed.", mogId },
-      { status: 500 }
+      {
+        error: classified.kind === "not_found" ? "Bound agent not found." : "Binding contract read failed.",
+        code: classified.code,
+        mogId,
+      },
+      { status: classified.status }
     );
   }
 }

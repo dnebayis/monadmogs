@@ -4,6 +4,7 @@ import { getMatchCount, getOnchainMatch, MOGS_ARENA_ADDRESS } from "@/lib/arena-
 import { getResolveStatus } from "@/lib/arena-game-service";
 import { kvKeys } from "@/lib/kv-keys";
 import { sanitizeOperationalError } from "@/lib/arena-observability";
+import { inspectRecoveryConflict } from "@/lib/arena-repair";
 
 export type ArenaHealthIssue = {
   type:
@@ -12,7 +13,8 @@ export type ArenaHealthIssue = {
     | "unresolved_prize_match"
     | "orphaned_game_match"
     | "linked_match_mismatch"
-    | "expired_unresolved_match";
+    | "expired_unresolved_match"
+    | "recovery_conflict";
   severity: "low" | "medium" | "high";
   gameId?: string;
   matchId?: number;
@@ -20,14 +22,27 @@ export type ArenaHealthIssue = {
   txHash?: string;
   error?: string;
   timestamp?: string;
+  playerAddress?: string;
+  activeGameIds?: string[];
+  retryable?: boolean;
+  retryMeta?: Record<string, unknown>;
+  repair?: {
+    strategy: "clear_waiting_games" | "manual_review_required";
+    keepGameId: string | null;
+    removableGameIds: string[];
+    blockedGameIds: string[];
+    requiresExplicitConfirmation: true;
+  };
   suggestedNextAction: string;
 };
 
 type ReputationFailure = {
   status?: string;
   gameId?: string;
+  agentIds?: number[];
   error?: string;
   failedAt?: string;
+  retryable?: boolean;
   suggestedNextAction?: string;
 };
 
@@ -36,8 +51,8 @@ function resolveTimestamp(resolve: GameResolution): string | undefined {
 }
 
 function pushUnique(issues: ArenaHealthIssue[], issue: ArenaHealthIssue) {
-  const key = `${issue.type}:${issue.gameId || ""}:${issue.matchId || ""}`;
-  if (!issues.some((existing) => `${existing.type}:${existing.gameId || ""}:${existing.matchId || ""}` === key)) {
+  const key = `${issue.type}:${issue.playerAddress || ""}:${issue.gameId || ""}:${issue.matchId || ""}`;
+  if (!issues.some((existing) => `${existing.type}:${existing.playerAddress || ""}:${existing.gameId || ""}:${existing.matchId || ""}` === key)) {
     issues.push(issue);
   }
 }
@@ -62,6 +77,13 @@ export async function buildArenaHealth(options: { recentLimit?: number; matchLim
         status: resolve.status,
         error: resolve.error ? sanitizeOperationalError(resolve.error) : undefined,
         timestamp: resolveTimestamp(resolve),
+        retryable: resolve.retryable,
+        retryMeta: resolve.retryable
+          ? {
+              matchId,
+              winnerAddress: resolve.winnerAddress || null,
+            }
+          : undefined,
         suggestedNextAction: "retry_resolve_or_cancel_match",
       });
     }
@@ -90,9 +112,48 @@ export async function buildArenaHealth(options: { recentLimit?: number; matchLim
         status: reputationFailure.status,
         error: reputationFailure.error ? sanitizeOperationalError(reputationFailure.error) : undefined,
         timestamp: reputationFailure.failedAt,
+        retryable: reputationFailure.retryable,
+        retryMeta: reputationFailure.retryable
+          ? {
+              gameId: game.id,
+              agentIds: reputationFailure.agentIds || [],
+            }
+          : undefined,
         suggestedNextAction: reputationFailure.suggestedNextAction || "retry_reputation_feedback",
       });
     }
+  }
+
+  const conflictAddresses = new Set<string>();
+  for (const game of recentGames) {
+    if (game.status === "finished") continue;
+    for (const player of game.players) {
+      conflictAddresses.add(player.address.toLowerCase());
+    }
+  }
+
+  for (const address of conflictAddresses) {
+    const inspection = await inspectRecoveryConflict(address);
+    if (!inspection.ok || inspection.activeGames.length < 2) continue;
+
+    pushUnique(issues, {
+      type: "recovery_conflict",
+      severity: inspection.repair.strategy === "clear_waiting_games" ? "medium" : "high",
+      playerAddress: inspection.address,
+      gameId: inspection.keepGameId || inspection.activeGames[0]?.id,
+      activeGameIds: inspection.activeGames.map((game) => game.id),
+      repair: {
+        strategy: inspection.repair.strategy,
+        keepGameId: inspection.keepGameId,
+        removableGameIds: inspection.repair.removableGameIds,
+        blockedGameIds: inspection.repair.blockedGameIds,
+        requiresExplicitConfirmation: true,
+      },
+      suggestedNextAction:
+        inspection.repair.strategy === "clear_waiting_games"
+          ? "repair_recovery_conflict"
+          : "manual_recovery_conflict_review",
+    });
   }
 
   let matchCount = 0;

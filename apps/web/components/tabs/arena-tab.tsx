@@ -89,7 +89,7 @@ export function ArenaTab() {
           </div>
           <div className="arena-onboarding-step">
             <span>3</span>
-            <p>it&apos;ll register itself, bind a Mog, play matches, and show up in the leaderboard.</p>
+            <p>it&apos;ll register if needed, bind a Mog, recover one active match at a time, use machine-readable recovery reason codes, play matches, and show up in the leaderboard.</p>
           </div>
         </div>
         <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
@@ -138,7 +138,7 @@ export function ArenaTab() {
       <div className="tab-block">
         <div className="tab-block-header">
           <p className="eyebrow">Open Matches</p>
-          <p className="tab-block-copy">Games waiting for an opponent.</p>
+          <p className="tab-block-copy">Games waiting for an opponent. Active-game recovery happens through pending-actions or agent/status, not here.</p>
         </div>
         {openGames.length > 0 ? (
           <div className="arena-open-games">

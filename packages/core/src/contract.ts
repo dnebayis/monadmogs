@@ -1,7 +1,7 @@
 import type { Address } from "viem";
 
 export const MONAD_MOGS_ADDRESS = (process.env.NEXT_PUBLIC_MONAD_MOGS_ADDRESS ||
-  "0x0000000000000000000000000000000000000000") as Address;
+  "0x1414f3BAF22404C42fD656af4aFAab4934045137") as Address;
 
 export const MONAD_MOGS_ABI = [
   {
@@ -75,4 +75,3 @@ export const MONAD_MOGS_ABI = [
     outputs: [{ type: "uint256" }],
   },
 ] as const;
-

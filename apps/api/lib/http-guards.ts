@@ -31,6 +31,10 @@ export function rateLimitedResponse(retryAfter: number, message = "Too many requ
   );
 }
 
+export function rateLimitUnavailableResponse(message = "Rate limit unavailable. Retry later.", extra?: Record<string, unknown>) {
+  return NextResponse.json({ error: message, degraded: true, ...(extra || {}) }, { status: 503 });
+}
+
 export function requireAdminSecret(request: NextRequest, message = "Only the arena admin can create games.", status = 403) {
   const adminSecret = request.headers.get("x-admin-secret");
   if (!process.env.ARENA_ADMIN_SECRET || adminSecret !== process.env.ARENA_ADMIN_SECRET) {
@@ -58,7 +62,10 @@ export async function enforceRateLimit(
   const result = await rateLimit(key, limit, windowSeconds);
   if (result.ok) return { ok: true as const };
   const extra = options?.includeRetryAfterBody ? { retryAfter: result.retryAfter } : undefined;
-  return { ok: false as const, response: rateLimitedResponse(result.retryAfter, message, extra) };
+  if (result.status === 503) {
+    return { ok: false as const, response: rateLimitUnavailableResponse(result.message, extra) };
+  }
+  return { ok: false as const, response: rateLimitedResponse(result.retryAfter, message || result.message, extra) };
 }
 
 export async function enforceIpRateLimit(

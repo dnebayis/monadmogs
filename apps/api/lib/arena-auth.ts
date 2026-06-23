@@ -4,11 +4,10 @@ import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import {
   ERC8004_IDENTITY_REGISTRY_ABI,
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
-  MOGS_AGENT_BINDINGS_ABI,
-  MOGS_AGENT_BINDINGS_ADDRESS,
 } from "@/lib/erc8004";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 import { KV_TTL, kvKeys } from "@/lib/kv-keys";
+import { resolveAgentBinding } from "@/lib/agent-binding";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                               */
@@ -32,7 +31,6 @@ const SESSION_TTL = KV_TTL.session; // 1 hour
 const CHALLENGE_TTL = KV_TTL.challenge; // 5 minutes
 // DEV_MODE skips Mog ownership verification — NEVER enable in production
 const DEV_MODE = process.env.ARENA_DEV_MODE === "true" && process.env.NODE_ENV !== "production";
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /* ------------------------------------------------------------------ */
 /*  Client                                                              */
@@ -48,16 +46,17 @@ const client = createPublicClient({
 /* ------------------------------------------------------------------ */
 
 export async function createChallenge(address: string): Promise<string> {
+  const normalizedAddress = address.toLowerCase();
   const nonce = crypto.randomUUID();
   const timestamp = Date.now();
-  const challenge = `Monad Mogs Arena Authentication\nAddress: ${address}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
+  const challenge = `Monad Mogs Arena Authentication\nAddress: ${normalizedAddress}\nNonce: ${nonce}\nTimestamp: ${timestamp}`;
 
-  await kv.set(kvKeys.arena.auth.challenge(address), challenge, { ex: CHALLENGE_TTL });
+  await kv.set(kvKeys.arena.auth.challenge(normalizedAddress), challenge, { ex: CHALLENGE_TTL });
   return challenge;
 }
 
 export async function getChallenge(address: string): Promise<string | null> {
-  return kv.get<string>(kvKeys.arena.auth.challenge(address));
+  return kv.get<string>(kvKeys.arena.auth.challenge(address.toLowerCase()));
 }
 
 /* ------------------------------------------------------------------ */
@@ -144,7 +143,8 @@ export async function verifyAgentWallet(
     }
 
     try {
-      const [agentOwner, binding] = await Promise.all([
+      const [{ binding }, agentOwner, agentWallet] = await Promise.all([
+        resolveAgentBinding(BigInt(claimedAgentId)),
         client.readContract({
           address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
           abi: ERC8004_IDENTITY_REGISTRY_ABI,
@@ -152,18 +152,28 @@ export async function verifyAgentWallet(
           args: [BigInt(claimedAgentId)],
         }),
         client.readContract({
-          address: MOGS_AGENT_BINDINGS_ADDRESS,
-          abi: MOGS_AGENT_BINDINGS_ABI,
-          functionName: "bindingOf",
+          address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
+          abi: ERC8004_IDENTITY_REGISTRY_ABI,
+          functionName: "getAgentWallet",
           args: [BigInt(claimedAgentId)],
         }),
       ]);
-      if (getAddress(agentOwner) !== getAddress(address as Address)) {
+      const normalizedOwner = getAddress(agentOwner);
+      const normalizedSigner = getAddress(address as Address);
+      const normalizedAgentWallet = getAddress(agentWallet);
+
+      if (normalizedOwner !== normalizedSigner) {
+        if (normalizedAgentWallet === normalizedSigner && normalizedAgentWallet !== normalizedOwner) {
+          return {
+            error:
+              "Delegated agentWallet is not currently supported for Arena auth or ERC-8217 binding. Sign with the ERC-8004 owner wallet that also owns the bound Mog.",
+          };
+        }
         return { error: `Agent #${claimedAgentId} is not owned by this wallet.` };
       }
 
       const bound = binding as { tokenContract: string; tokenId: bigint };
-      if (bound.tokenContract === ZERO_ADDRESS) {
+      if (bound.tokenContract === "0x0000000000000000000000000000000000000000") {
         return { error: `Agent #${claimedAgentId} is not bound to a Monad Mog. Call bind(agentId, mogId) first.` };
       }
       if (getAddress(bound.tokenContract) !== getAddress(MONAD_MOGS_ADDRESS) || Number(bound.tokenId) !== claimedMogId) {

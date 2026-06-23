@@ -1,98 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createPublicClient, getAddress, http, type Address } from "viem";
+import { createPublicClient, getAddress, http } from "viem";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import {
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_IDENTITY_REGISTRY_ABI,
   MOGS_AGENT_BINDINGS_ADDRESS,
-  MOGS_AGENT_BINDINGS_ABI,
 } from "@/lib/erc8004";
 import { MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import { getMogRarity } from "@/lib/rarity";
 import { apiUrl } from "@/lib/urls";
+import {
+  AGENT_BINDING_METADATA_KEY,
+  isZeroBindingAddress,
+  resolveAgentBinding,
+} from "@/lib/agent-binding";
+import { classifyContractReadError } from "@/lib/chain-read-errors";
 
 const client = createPublicClient({ chain: MONAD_CHAIN, transport: http(MONAD_RPC_URL) });
 
 const TOKEN_STANDARD = ["ERC721", "ERC1155", "ERC6909"] as const;
-const ZERO = "0x0000000000000000000000000000000000000000";
-const AGENT_BINDING_METADATA_KEY = "agent-binding";
-
-function parseBindingMetadata(value: unknown): Address | null {
-  if (typeof value !== "string" || value === "0x") return null;
-  const hex = value.toLowerCase();
-
-  try {
-    if (/^0x[0-9a-f]{40}$/.test(hex)) return getAddress(hex);
-    if (/^0x[0-9a-f]{64}$/.test(hex)) return getAddress(`0x${hex.slice(-40)}`);
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-async function discoverBindingContract(agentId: bigint) {
-  try {
-    const metadataValue = await client.readContract({
-      address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-      abi: ERC8004_IDENTITY_REGISTRY_ABI,
-      functionName: "getMetadata",
-      args: [agentId, AGENT_BINDING_METADATA_KEY],
-    });
-    const discovered = parseBindingMetadata(metadataValue);
-    if (discovered) {
-      return {
-        contract: discovered,
-        metadataPresent: true,
-        source: "erc8004-metadata" as const,
-      };
-    }
-    return {
-      contract: MOGS_AGENT_BINDINGS_ADDRESS,
-      metadataPresent: Boolean(metadataValue && metadataValue !== "0x"),
-      source: "monad-mogs-default" as const,
-    };
-  } catch {
-    return {
-      contract: MOGS_AGENT_BINDINGS_ADDRESS,
-      metadataPresent: false,
-      source: "monad-mogs-default" as const,
-    };
-  }
-}
-
-async function readBinding(agentId: bigint, bindingContract: Address) {
-  return client.readContract({
-    address: bindingContract,
-    abi: MOGS_AGENT_BINDINGS_ABI,
-    functionName: "bindingOf",
-    args: [agentId],
-  });
-}
-
-async function isExpectedMogsBindingContract(bindingContract: Address) {
-  try {
-    const [nftContract, identityRegistry] = await Promise.all([
-      client.readContract({
-        address: bindingContract,
-        abi: MOGS_AGENT_BINDINGS_ABI,
-        functionName: "NFT_CONTRACT",
-      }),
-      client.readContract({
-        address: bindingContract,
-        abi: MOGS_AGENT_BINDINGS_ABI,
-        functionName: "IDENTITY_REGISTRY",
-      }),
-    ]);
-    return (
-      getAddress(nftContract as string) === getAddress(MONAD_MOGS_ADDRESS) &&
-      getAddress(identityRegistry as string) === getAddress(ERC8004_IDENTITY_REGISTRY_ADDRESS)
-    );
-  } catch {
-    return false;
-  }
-}
 
 /**
  * GET /api/agents/binding?agentId={id}
@@ -106,8 +33,11 @@ export async function GET(request: NextRequest) {
   const rl = await rateLimit(`agent-binding:${ip}`, 60, 60);
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Too many requests." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { error: rl.message, degraded: rl.status === 503 ? true : undefined },
+      {
+        status: rl.status,
+        headers: rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : undefined,
+      }
     );
   }
 
@@ -133,14 +63,6 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let discovery = await discoverBindingContract(agentId);
-    if (discovery.contract !== MOGS_AGENT_BINDINGS_ADDRESS && !(await isExpectedMogsBindingContract(discovery.contract))) {
-      discovery = {
-        contract: MOGS_AGENT_BINDINGS_ADDRESS,
-        metadataPresent: discovery.metadataPresent,
-        source: "monad-mogs-default",
-      };
-    }
     const [owner, agentWallet] = await Promise.all([
       client.readContract({
         address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
@@ -156,21 +78,10 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    let binding: Awaited<ReturnType<typeof readBinding>>;
-    try {
-      binding = await readBinding(agentId, discovery.contract);
-    } catch {
-      if (discovery.contract === MOGS_AGENT_BINDINGS_ADDRESS) throw new Error("Binding call failed.");
-      discovery = {
-        contract: MOGS_AGENT_BINDINGS_ADDRESS,
-        metadataPresent: discovery.metadataPresent,
-        source: "monad-mogs-default",
-      };
-      binding = await readBinding(agentId, discovery.contract);
-    }
+    const { discovery, binding } = await resolveAgentBinding(agentId);
 
     const b = binding as { standard: number; tokenContract: string; tokenId: bigint };
-    const isBound = b.tokenContract !== ZERO;
+    const isBound = !isZeroBindingAddress(b.tokenContract);
     const isMonadMog = isBound && getAddress(b.tokenContract) === getAddress(MONAD_MOGS_ADDRESS);
 
     if (!isBound) {
@@ -262,10 +173,15 @@ export async function GET(request: NextRequest) {
       },
       { headers: { "Cache-Control": "public, max-age=60" } }
     );
-  } catch {
+  } catch (error) {
+    const classified = classifyContractReadError(error);
     return NextResponse.json(
-      { error: "Agent not found or contract call failed.", agentId: Number(agentId) },
-      { status: 404 }
+      {
+        error: classified.kind === "not_found" ? "Agent not found." : "Agent binding read failed.",
+        code: classified.code,
+        agentId: Number(agentId),
+      },
+      { status: classified.status }
     );
   }
 }

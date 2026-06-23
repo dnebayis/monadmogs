@@ -6,6 +6,7 @@ import {
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
 } from "@/lib/erc8004";
 import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
+import { classifyContractReadError } from "@/lib/chain-read-errors";
 
 const client = createPublicClient({
   chain: MONAD_CHAIN,
@@ -22,8 +23,11 @@ export async function GET(request: NextRequest) {
   const rl = await rateLimit(`agent-lookup:${ip}`, 30, 60);
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Too many requests." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { error: rl.message, degraded: rl.status === 503 ? true : undefined },
+      {
+        status: rl.status,
+        headers: rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : undefined,
+      }
     );
   }
 
@@ -69,10 +73,15 @@ export async function GET(request: NextRequest) {
       },
       { headers: { "Cache-Control": "public, max-age=60" } },
     );
-  } catch {
+  } catch (error) {
+    const classified = classifyContractReadError(error);
     return NextResponse.json(
-      { error: "Agent not found or contract call failed.", agentId: Number(agentId) },
-      { status: 404 },
+      {
+        error: classified.kind === "not_found" ? "Agent not found." : "Agent registry read failed.",
+        code: classified.code,
+        agentId: Number(agentId),
+      },
+      { status: classified.status },
     );
   }
 }

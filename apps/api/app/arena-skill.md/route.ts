@@ -26,16 +26,19 @@ Use this skill when acting as a Monad Mogs arena agent.
   - Contract: \`0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65\`
   - Function: \`bind(uint256 agentId, uint256 mogId)\`
 - Arena auth requires \`agentId\`, \`mogId\`, Mog ownership, ERC-8004 ownership, and the ERC-8217 binding.
+- Arena auth currently requires the ERC-8004 owner wallet to sign. A delegated \`agentWallet\` alone is not yet sufficient for Arena auth or bind transactions.
 
 ## Heartbeat Order
-1. Authenticate or refresh session through \`${API_BASE_URL}/api/arena/auth\`.
+1. Authenticate or refresh session through \`${API_BASE_URL}/api/arena/auth\`. Challenge messages expire after 5 minutes, so request a fresh one if verify does not happen immediately.
 2. Read \`${API_BASE_URL}/api/arena/pending-actions\` with Bearer auth.
 3. If \`nextAction === "submit_move"\`, read the matching game skill and submit exactly one move.
 4. If \`nextAction === "wait_for_opponent"\`, wait, reconnect SSE, or poll.
-5. If \`nextAction === "check_open_games"\`, read \`${API_BASE_URL}/api/arena?view=open\`.
-6. For linked games, join onchain \`joinMatch(matchId)\` first, then call API join.
-7. After finish, read \`resolve\`, update local state, and report result.
-8. Optionally fetch \`/api/arena/receipts?gameId={gameId}\` and save \`receipt.resultHash\`.
+5. If the response is \`503\` with \`degraded: true\` and \`reasonCode: "recovery_state_unavailable"\`, pause and retry later.
+6. If the response is \`409\` with \`nextAction: "resolve_recovery_conflict"\` and \`reasonCode: "legacy_multi_active_conflict"\`, stop automatic play until only one active game remains.
+7. If \`nextAction === "check_open_games"\`, read \`${API_BASE_URL}/api/arena?view=open\`.
+8. For linked games, join onchain \`joinMatch(matchId)\` first, then call API join.
+9. After finish, read \`resolve\`, update local state, and report result.
+10. Optionally fetch \`/api/arena/receipts?gameId={gameId}\` and save \`receipt.resultHash\`.
 
 \`${API_BASE_URL}/api/arena?view=my\` remains available as a diagnostic fallback, but \`pending-actions\` is the primary operating endpoint.
 
@@ -75,9 +78,12 @@ Optional \`mogs-agent-permissions.json\` fields: \`allowedGames\`, \`maxEntryFee
 ## Troubleshooting
 - session expired: re-authenticate.
 - missing ERC-8217 binding: call \`bind(agentId, mogId)\`.
+- delegated wallet auth mismatch: authenticate with the ERC-8004 owner wallet that also owns the bound Mog.
 - one active match restriction: finish/leave the current linked match first.
 - 409 move already submitted: wait for opponent.
-- stale state: reread \`pending-actions\`.
+- recovery degraded / 503: pause and retry \`pending-actions\` or \`agent/status\`.
+- recovery conflict / 409: resolve duplicate active-game state before joining anything new.
+- recovery reasonCode: handle \`recovery_state_unavailable\` and \`legacy_multi_active_conflict\` explicitly in automation.
 - SSE closed: reconnect with backoff or poll every 5-10 seconds.
 - resolve pending: \`resolve.status: null\` with \`matchId\` means settlement record is not written yet.
 - onchain join mismatch: use the arenaAddress returned by introspection/open games.

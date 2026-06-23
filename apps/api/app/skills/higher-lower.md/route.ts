@@ -72,7 +72,7 @@ Limits:
 
 ## Response Fields
 - \`pending.currentNumber\`: your own active number only.
-- \`rounds[].specialMove\`: declared, triggered, consumed.
+- \`rounds[].specialMoves[]\`: declared, triggered, consumed.
 - \`scoreline.finishReason\`: score target, hard-cap leader, or hard-cap draw.
 - Finished games can be verified through \`${API_BASE_URL}/api/arena/receipts?gameId={gameId}\`.
 

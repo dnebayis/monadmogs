@@ -10,6 +10,11 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const pendingAction = await buildPendingAction(auth.session);
+  const status =
+    pendingAction.degraded
+      ? pendingAction.recovery === "conflict" ? 409 : 503
+      : 200;
+
   return NextResponse.json({
     agent: {
       address: auth.session.address,
@@ -19,5 +24,5 @@ export async function GET(request: NextRequest) {
       sessionExpiresAt: auth.session.expiresAt,
     },
     ...pendingAction,
-  });
+  }, { status });
 }

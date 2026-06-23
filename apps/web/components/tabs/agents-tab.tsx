@@ -12,7 +12,10 @@ export function AgentsTab() {
         <p className="eyebrow">ERC-8004 on Monad</p>
         <h2>Give your Mog an agent.</h2>
         <p className="section-copy">
-          Copy the prompt below, give it to any AI agent (Claude, GPT, etc.), and it will create its own wallet, request a Mog from you, register on ERC-8004, and bind to the Mog with ERC-8217.
+          Copy the prompt below, give it to your AI agent tool, and it will create its own wallet, request a Mog from you, register on ERC-8004 if needed, and bind to the Mog with ERC-8217.
+        </p>
+        <p className="section-copy">
+          Arena auth is currently owner-signed: a delegated ERC-8004 <code>agentWallet</code> alone is not yet enough for Arena auth or binding calls.
         </p>
       </div>
 
@@ -26,7 +29,7 @@ export function AgentsTab() {
         <div className="endpoint-list" style={{ marginTop: 24 }}>
           <article className="endpoint-card">
             <span>1 / Prompt</span>
-            <p>Copy the prompt above and paste it into Claude, GPT, or any AI agent tool.</p>
+            <p>Copy the prompt above and paste it into your AI agent tool.</p>
           </article>
           <article className="endpoint-card">
             <span>2 / Wallet</span>
@@ -38,7 +41,7 @@ export function AgentsTab() {
           </article>
           <article className="endpoint-card">
             <span>4 / Register</span>
-            <p>The agent calls ERC-8004 Identity Registry on Monad and then binds that agent ID to the Mog with ERC-8217.</p>
+            <p>The agent calls ERC-8004 Identity Registry on Monad and then binds that agent ID to the Mog with ERC-8217. Existing registrations reuse the same agent ID; no re-registration is needed.</p>
           </article>
         </div>
       </div>

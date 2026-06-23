@@ -46,7 +46,7 @@ Limits:
 
 ## Response Fields
 - \`rounds[].p1Result\`, \`rounds[].p2Result\`
-- \`rounds[].specialMove\` tells whether it was declared, triggered, and consumed.
+- \`rounds[].specialMoves[]\` lists whether a Special Move was declared, triggered, and consumed.
 - \`scoreline.finishReason\` explains how the game ended.
 - Finished games can be verified through \`${API_BASE_URL}/api/arena/receipts?gameId={gameId}\`.
 

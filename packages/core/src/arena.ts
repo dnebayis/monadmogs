@@ -147,6 +147,19 @@ export const SPECIAL_MOVE_TERM = "Special Move";
 export const SPECIAL_MOVE_SUPPORTED_GAMES: GameType[] = ["dice-duel", "higher-lower"];
 export const SPECIAL_MOVE_BURN_AMOUNT = "1000";
 
+export const ARENA_RECOVERY_REASON_CODES = {
+  noActiveGame: "no_active_game",
+  recoveryStateUnavailable: "recovery_state_unavailable",
+  legacyMultiActiveConflict: "legacy_multi_active_conflict",
+  playerMissingFromRecoveredGame: "player_missing_from_recovered_game",
+  waitingForOpponent: "waiting_for_opponent",
+  moveRequired: "move_required",
+  existingActiveGame: "existing_active_game",
+} as const;
+
+export type ArenaRecoveryReasonCode =
+  typeof ARENA_RECOVERY_REASON_CODES[keyof typeof ARENA_RECOVERY_REASON_CODES];
+
 export type TierPerks = {
   freeSpecialMove: boolean;
   specialMovesPerMatch: number;
@@ -159,13 +172,13 @@ export const TIER_PERKS: Record<string, TierPerks> = {
     freeSpecialMove: true,
     specialMovesPerMatch: 2,
     reputationMultiplier: 1.5,
-    description: "2 free Special Moves per match, 1.5x reputation gains",
+    description: "2 free Special Moves per match, 1.5x local leaderboard multiplier",
   },
   epic: {
     freeSpecialMove: true,
     specialMovesPerMatch: 1,
     reputationMultiplier: 1.25,
-    description: "1 free Special Move per match, 1.25x reputation gains",
+    description: "1 free Special Move per match, 1.25x local leaderboard multiplier",
   },
   rare: {
     freeSpecialMove: true,

@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { getOpenGames, getRecentGames, getLeaderboard, getGamesForPlayer, sanitizeGameForPublic, gameScoreline } from "@/lib/arena";
+import { getOpenGames, getRecentGames, getLeaderboard, sanitizeGameForPublic, gameScoreline } from "@/lib/arena";
 import { getOnchainMatch, getMatchCount, MOGS_ARENA_ADDRESS } from "@/lib/arena-pool";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { getArenaProtocol } from "@/lib/arena-protocol";
 import { validateAuthHeader } from "@/lib/arena-auth";
+import { getRecoveryState } from "@/lib/arena-agent-state";
 
 export async function GET(request: Request) {
   // Rate limit: 60 reads per minute per IP
@@ -11,8 +12,11 @@ export async function GET(request: Request) {
   const rl = await rateLimit(`arena-list:${ip}`, 60, 60);
   if (!rl.ok) {
     return NextResponse.json(
-      { error: "Too many requests." },
-      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+      { error: rl.message },
+      {
+        status: rl.status,
+        headers: rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : undefined,
+      }
     );
   }
 
@@ -33,7 +37,7 @@ export async function GET(request: Request) {
     }
 
     if (view === "recent") {
-      const games = await getRecentGames(20);
+      const games = await getRecentGames(20, { strict: true });
       return NextResponse.json({ games: games.map((game) => ({ ...sanitizeGameForPublic(game), scoreline: gameScoreline(game) })) });
     }
 
@@ -50,7 +54,32 @@ export async function GET(request: Request) {
         );
       }
 
-      const games = await getGamesForPlayer(session.address, 1000);
+      const recovery = await getRecoveryState(session.address);
+      if (recovery.status === "degraded") {
+        return NextResponse.json({
+          error: "Arena recovery state unavailable.",
+          degraded: true,
+          reason: recovery.reason,
+          reasonCode: recovery.reasonCode,
+          nextAction: "retry_later",
+        }, { status: 503 });
+      }
+      if (recovery.status === "conflict") {
+        return NextResponse.json({
+          error: "Multiple active games detected for this wallet.",
+          degraded: true,
+          reason: recovery.reason,
+          reasonCode: recovery.reasonCode,
+          nextAction: "resolve_recovery_conflict",
+          activeGameIds: recovery.activeGames.map((game) => game.id),
+          games: recovery.games.map((game) => ({
+            ...sanitizeGameForPublic(game, session.address),
+            scoreline: gameScoreline(game),
+          })),
+        }, { status: 409 });
+      }
+
+      const games = recovery.games;
       return NextResponse.json({
         games: games.map((game) => ({
           ...sanitizeGameForPublic(game, session.address),
@@ -77,7 +106,7 @@ export async function GET(request: Request) {
 
     // default: open games
     const type = searchParams.get("type") as string | undefined;
-    const games = await getOpenGames(type as any);
+    const games = await getOpenGames(type as any, { strict: true });
     return NextResponse.json({
       arenaAddress: MOGS_ARENA_ADDRESS,
       arenaVersion: getArenaProtocol().version,

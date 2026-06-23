@@ -111,6 +111,8 @@ export type GameResolution = {
   error?: string;
   failedAt?: string;
   reason?: string;
+  retryable?: boolean;
+  suggestedNextAction?: string;
 };
 
 export type PublicGame = Game & {
@@ -127,6 +129,13 @@ export type LeaderboardEntry = {
   games: number;
   reputation: number;
 };
+
+export class ArenaStateUnavailableError extends Error {
+  constructor(message = "Arena state unavailable.") {
+    super(message);
+    this.name = "ArenaStateUnavailableError";
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                           */
@@ -525,6 +534,15 @@ export async function getGame(id: string): Promise<Game | null> {
   return kv.get<Game>(GAME_KEY(id));
 }
 
+async function touchLinkedMatchKeys(gameId: string): Promise<void> {
+  const matchId = await kv.get<number>(kvKeys.arena.games.matchByGame(gameId));
+  if (!matchId) return;
+  await Promise.all([
+    kv.expire(kvKeys.arena.games.matchByGame(gameId), KV_TTL.game).catch(() => {}),
+    kv.expire(kvKeys.arena.games.gameByMatch(matchId), KV_TTL.game).catch(() => {}),
+  ]);
+}
+
 async function indexPlayerGame(address: string, gameId: string): Promise<void> {
   const key = PLAYER_GAMES_KEY(address);
   await kv.lrem(key, 0, gameId).catch(() => {});
@@ -534,6 +552,48 @@ async function indexPlayerGame(address: string, gameId: string): Promise<void> {
 
 async function removePlayerGameIndex(address: string, gameId: string): Promise<void> {
   await kv.lrem(PLAYER_GAMES_KEY(address), 0, gameId).catch(() => {});
+}
+
+export async function rebuildPlayerGameIndex(address: string, limit = 1000): Promise<string[]> {
+  const normalized = address.toLowerCase();
+  const ids = await kv.lrange<string>(GAMES_KEY, 0, limit - 1);
+  const matchingIds: string[] = [];
+
+  for (const id of ids) {
+    const game = await getGame(id);
+    if (!game) continue;
+    if (game.players.some((player) => player.address.toLowerCase() === normalized)) {
+      matchingIds.push(game.id);
+    }
+  }
+
+  const existingIds = await kv.lrange<string>(PLAYER_GAMES_KEY(normalized), 0, limit - 1).catch(() => []);
+  const desired = new Set(matchingIds);
+
+  for (const gameId of existingIds) {
+    if (!desired.has(gameId)) {
+      await kv.lrem(PLAYER_GAMES_KEY(normalized), 0, gameId).catch(() => {});
+    }
+  }
+
+  for (let i = matchingIds.length - 1; i >= 0; i--) {
+    await kv.lrem(PLAYER_GAMES_KEY(normalized), 0, matchingIds[i]).catch(() => {});
+    await kv.lpush(PLAYER_GAMES_KEY(normalized), matchingIds[i]);
+  }
+
+  if (matchingIds.length > 0) {
+    await kv.expire(PLAYER_GAMES_KEY(normalized), KV_TTL.game).catch(() => {});
+  }
+
+  return matchingIds;
+}
+
+async function persistGame(game: Game): Promise<void> {
+  await kv.set(GAME_KEY(game.id), game, { ex: KV_TTL.game });
+  await Promise.all([
+    touchLinkedMatchKeys(game.id),
+    ...game.players.map((player) => indexPlayerGame(player.address, game.id)),
+  ]);
 }
 
 export async function joinGame(
@@ -558,7 +618,7 @@ export async function joinGame(
 
     // Two players = game is active
     if (game.players.length < 2) {
-      await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
+      await persistGame(game);
       return game;
     }
 
@@ -570,7 +630,7 @@ export async function joinGame(
       return advanceRound(game);
     }
 
-    await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
+    await persistGame(game);
     return game;
   } finally {
     await kv.del(lockKey);
@@ -590,7 +650,7 @@ export async function leaveWaitingGame(id: string, address: string): Promise<Gam
     game.players = game.players.filter((p) => p.address.toLowerCase() !== address.toLowerCase());
     if (game.players.length === before) return null;
 
-    await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
+    await persistGame(game);
     await removePlayerGameIndex(address, id);
     return game;
   } finally {
@@ -630,7 +690,7 @@ export async function submitMove(
       return advanceRound(game);
     }
 
-    await kv.set(GAME_KEY(id), game, { ex: KV_TTL.game });
+    await persistGame(game);
     return game;
   } finally {
     await kv.del(lockKey);
@@ -640,7 +700,7 @@ export async function submitMove(
 async function advanceRound(game: Game): Promise<Game> {
   const roundResult = resolveRound(game);
   if (!roundResult) {
-    await kv.set(GAME_KEY(game.id), game, { ex: KV_TTL.game });
+    await persistGame(game);
     return game;
   }
 
@@ -702,7 +762,7 @@ async function advanceRound(game: Game): Promise<Game> {
   game.players[0].result = roundResult.p1Result;
   game.players[1].result = roundResult.p2Result;
 
-  await kv.set(GAME_KEY(game.id), game, { ex: KV_TTL.game });
+  await persistGame(game);
 
   if (game.status === "finished") {
     await updateStats(game);
@@ -715,7 +775,19 @@ async function advanceRound(game: Game): Promise<Game> {
 /*  Queries                                                             */
 /* ------------------------------------------------------------------ */
 
-export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
+type ArenaReadOptions = {
+  strict?: boolean;
+};
+
+function handleArenaReadError(error: unknown, strict: boolean | undefined, message: string) {
+  if (strict) {
+    throw new ArenaStateUnavailableError(message);
+  }
+  console.error(message, error);
+  return [];
+}
+
+export async function getOpenGames(type?: GameType, options?: ArenaReadOptions): Promise<GameSummary[]> {
   try {
     const ids = await kv.lrange<string>(GAMES_KEY, 0, 49);
     if (!ids.length) return [];
@@ -755,12 +827,12 @@ export async function getOpenGames(type?: GameType): Promise<GameSummary[]> {
 
       return summary;
     }));
-  } catch {
-    return [];
+  } catch (error) {
+    return handleArenaReadError(error, options?.strict, "Open games read failed.");
   }
 }
 
-export async function getRecentGames(limit = 20): Promise<Game[]> {
+export async function getRecentGames(limit = 20, options?: ArenaReadOptions): Promise<Game[]> {
   try {
     const ids = await kv.lrange<string>(GAMES_KEY, 0, limit - 1);
     if (!ids.length) return [];
@@ -769,12 +841,12 @@ export async function getRecentGames(limit = 20): Promise<Game[]> {
     return games
       .filter((g): g is Game => g !== null)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  } catch {
-    return [];
+  } catch (error) {
+    return handleArenaReadError(error, options?.strict, "Recent games read failed.");
   }
 }
 
-export async function getGamesForPlayer(address: string, limit = 50): Promise<Game[]> {
+export async function getGamesForPlayer(address: string, limit = 50, options?: ArenaReadOptions): Promise<Game[]> {
   try {
     const normalized = address.toLowerCase();
     const indexedIds = await kv.lrange<string>(PLAYER_GAMES_KEY(normalized), 0, limit - 1);
@@ -788,8 +860,8 @@ export async function getGamesForPlayer(address: string, limit = 50): Promise<Ga
       .filter((g) => g.players.some((p) => p.address.toLowerCase() === normalized))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
-  } catch {
-    return [];
+  } catch (error) {
+    return handleArenaReadError(error, options?.strict, `Player recovery read failed for ${address}.`);
   }
 }
 

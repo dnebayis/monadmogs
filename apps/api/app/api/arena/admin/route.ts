@@ -19,6 +19,7 @@ import type { GameType } from "@/lib/arena";
 import { KV_TTL, kvKeys } from "@/lib/kv-keys";
 import { requireAdminSecret } from "@/lib/http-guards";
 import { buildArenaHealth } from "@/lib/arena-health";
+import { inspectRecoveryConflict, repairRecoveryConflict } from "@/lib/arena-repair";
 
 async function getLinkedGameId(matchId: number, explicitGameId?: unknown) {
   if (typeof explicitGameId === "string" && explicitGameId) return explicitGameId;
@@ -57,6 +58,51 @@ export async function POST(request: NextRequest) {
         matchLimit: Number(body.matchLimit || 20),
       });
       return NextResponse.json({ health });
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
+
+  /* ---- Recovery conflict inspect ---- */
+  if (action === "inspect-recovery-conflict") {
+    const address = typeof body.address === "string" ? body.address : "";
+    if (!address) {
+      return NextResponse.json({ error: "address required." }, { status: 400 });
+    }
+
+    try {
+      const inspection = await inspectRecoveryConflict(address);
+      return NextResponse.json(
+        inspection.ok ? { inspection } : { error: inspection.error, reasonCode: inspection.reasonCode, inspection },
+        { status: inspection.ok ? 200 : inspection.status },
+      );
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 500 });
+    }
+  }
+
+  /* ---- Recovery conflict repair ---- */
+  if (action === "repair-recovery-conflict") {
+    const address = typeof body.address === "string" ? body.address : "";
+    const keepGameId = typeof body.keepGameId === "string" ? body.keepGameId : "";
+    const removeFromGameIds = Array.isArray(body.removeFromGameIds)
+      ? body.removeFromGameIds.filter((value): value is string => typeof value === "string" && value.length > 0)
+      : [];
+    const confirm = body.confirm;
+
+    if (!address || !keepGameId || removeFromGameIds.length === 0) {
+      return NextResponse.json({ error: "address, keepGameId, and removeFromGameIds are required." }, { status: 400 });
+    }
+    if (confirm !== "repair-recovery-conflict") {
+      return NextResponse.json({ error: "Explicit confirm string required." }, { status: 400 });
+    }
+
+    try {
+      const repaired = await repairRecoveryConflict({ address, keepGameId, removeFromGameIds });
+      return NextResponse.json(
+        repaired.ok ? { repaired } : { error: repaired.error, reasonCode: repaired.reasonCode, repaired },
+        { status: repaired.ok ? 200 : repaired.status },
+      );
     } catch (err) {
       return NextResponse.json({ error: String(err) }, { status: 500 });
     }

@@ -1,6 +1,7 @@
 import { createPublicClient, http } from "viem";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "./contract";
 import { MONAD_CHAIN, MONAD_EXPLORER_URL, MONAD_RPC_URL } from "./network";
+import raritySnapshot from "../data/rarity.json";
 
 export const MAX_SUPPLY = 5000;
 
@@ -36,6 +37,12 @@ const client = createPublicClient({
   transport: http(MONAD_RPC_URL),
 });
 
+type FallbackSnapshot = {
+  tokens: Record<string, { name: string; attributes: Array<{ trait_type: string; value: string }> }>;
+};
+
+const FALLBACK_SNAPSHOT = raritySnapshot as FallbackSnapshot;
+
 export function parseTokenId(value: string) {
   const tokenId = Number(value);
   if (!Number.isInteger(tokenId) || tokenId < 1 || tokenId > MAX_SUPPLY) return null;
@@ -58,16 +65,35 @@ export function decodeImageDataUri(image: string) {
 }
 
 export async function getMogMetadata(tokenId: number): Promise<MogMetadata> {
-  const tokenURI = await client.readContract({
-    address: MONAD_MOGS_ADDRESS,
-    abi: MONAD_MOGS_ABI,
-    functionName: "tokenURI",
-    args: [BigInt(tokenId)],
-  });
+  try {
+    const tokenURI = await client.readContract({
+      address: MONAD_MOGS_ADDRESS,
+      abi: MONAD_MOGS_ABI,
+      functionName: "tokenURI",
+      args: [BigInt(tokenId)],
+    });
+
+    return {
+      ...decodeMetadataDataUri(tokenURI),
+      tokenId,
+    };
+  } catch {
+    const fallback = getFallbackMogMetadata(tokenId);
+    if (fallback) return fallback;
+    throw new Error(`Mog metadata unavailable for token ${tokenId}.`);
+  }
+}
+
+export function getFallbackMogMetadata(tokenId: number): MogMetadata | null {
+  const token = FALLBACK_SNAPSHOT.tokens[String(tokenId)];
+  if (!token) return null;
 
   return {
-    ...decodeMetadataDataUri(tokenURI),
     tokenId,
+    name: token.name,
+    description: `${token.name} fallback metadata reconstructed from the deterministic rarity snapshot.`,
+    image: `/api/v0/mogs/${tokenId}/render`,
+    attributes: token.attributes,
   };
 }
 

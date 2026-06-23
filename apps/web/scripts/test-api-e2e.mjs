@@ -104,6 +104,8 @@ await check("arena introspection marks Special Move active", async () => {
   assert(protocol.endpoints?.agentStatus?.includes("/api/arena/agent/status"), "agent/status endpoint missing");
   assert(protocol.endpoints?.bugReport?.includes("/api/arena/bug-report"), "bug-report endpoint missing");
   assert(protocol.endpoints?.receipt?.includes("/api/arena/receipts"), "receipt endpoint missing");
+  assert(protocol.responseSemantics?.recovery?.reasonCodes?.legacyMultiActiveConflict === "legacy_multi_active_conflict", "recovery reason codes missing");
+  assert(protocol.admin?.health?.recoveryConflictAction === "repair-recovery-conflict", "admin recovery repair action missing");
   assert(protocol.receipts?.privacy?.includes("public-safe"), "receipt privacy note missing");
   assert(protocol.permissions?.fields?.includes("allowBurnSpecialMove"), "permission profile fields missing");
   assert(protocol.gameSkills?.diceDuel?.includes("/skills/dice-duel.md"), "dice-duel skill missing");
@@ -122,6 +124,7 @@ await check("agent prompt teaches rarity and burn limits", async () => {
   assert(prompt.includes("allowBurnSpecialMove"), "agent prompt missing permission profile burn control");
   assert(prompt.includes("mogs-agent-rarity.json"), "agent prompt missing rarity file instruction");
   assert(prompt.includes("exactly 1,000 $MOGS"), "agent prompt missing fixed burn amount");
+  assert(prompt.includes("complete verify within 5 minutes"), "agent prompt missing challenge expiry guidance");
 });
 
 await check("arena skill states Special Move rules", async () => {
@@ -131,6 +134,7 @@ await check("arena skill states Special Move rules", async () => {
   assert(skill.includes("/api/arena/receipts?gameId={gameId}"), "arena skill missing receipts");
   assert(skill.includes("mogs-agent-permissions.json"), "arena skill missing permissions file");
   assert(skill.includes("Dice Duel"), "arena skill missing game skill links");
+  assert(skill.includes("expire after 5 minutes"), "arena skill missing challenge expiry guidance");
 });
 
 await check("arena auth-only endpoints fail closed without bearer token", async () => {
@@ -210,6 +214,13 @@ await check("game-specific skills are readable", async () => {
   }
 });
 
+await check("llms auth docs match verify requirements", async () => {
+  const text = await request("/llms.txt");
+  assert(text.includes('"mogId":N,"agentId":N'), "llms auth verify example missing mogId/agentId");
+  assert(text.includes("Challenge expires after 5 minutes"), "llms auth docs missing challenge expiry");
+  assert(text.includes("delegated `agentWallet` alone is not yet sufficient"), "llms auth docs missing delegated wallet rule");
+});
+
 await check("local runner dry-run sample proposes a move without mutation", async () => {
   const root = resolve(process.cwd(), "../..");
   const output = execFileSync(
@@ -239,14 +250,24 @@ await check("arena game route delegates to service layer", async () => {
   const route = readFileSync(resolve(root, "apps/api/app/api/arena/games/route.ts"), "utf8");
   const service = readFileSync(resolve(root, "apps/api/lib/arena-game-service.ts"), "utf8");
   const health = readFileSync(resolve(root, "apps/api/lib/arena-health.ts"), "utf8");
+  const repair = readFileSync(resolve(root, "apps/api/lib/arena-repair.ts"), "utf8");
+  const chainErrors = readFileSync(resolve(root, "apps/api/lib/chain-read-errors.ts"), "utf8");
   const permissions = readFileSync(resolve(root, "apps/api/lib/arena-permissions.ts"), "utf8");
   const observability = readFileSync(resolve(root, "apps/api/lib/arena-observability.ts"), "utf8");
+  const admin = readFileSync(resolve(root, "apps/api/app/api/arena/admin/route.ts"), "utf8");
   assert(route.includes("joinArenaGameAction"), "games route should delegate join action");
   assert(route.includes("submitArenaMoveAction"), "games route should delegate move action");
   assert(route.includes("leaveArenaGameAction"), "games route should delegate leave action");
   assert(service.includes("export async function validateSpecialMove"), "validateSpecialMove should be exported for tests");
   assert(service.includes("Move already submitted for this round."), "duplicate move guard should live in service");
+  assert(service.includes("Higher or Lower join must not include an opening move."), "higher-lower join guard should reject opening moves");
+  assert(service.includes("This wallet already has an active game."), "join flow should enforce one active offchain game per wallet");
+  assert(service.includes("Arena recovery state unavailable."), "join flow should fail closed on degraded recovery state");
   assert(health.includes("failed_reputation_feedback"), "arena health should include reputation failures");
+  assert(health.includes("recovery_conflict"), "arena health should include recovery conflicts");
+  assert(repair.includes("repairRecoveryConflict"), "recovery repair helper missing");
+  assert(admin.includes("repair-recovery-conflict"), "admin route missing recovery repair action");
+  assert(chainErrors.includes("rpc_read_failed"), "chain read classifier should distinguish RPC failures");
   assert(permissions.includes("allowBurnSpecialMove: profile?.allowBurnSpecialMove === true"), "burn permission should default closed");
   assert(permissions.includes("maxEntryFeeWei"), "permission profile should check max entry fee");
   assert(observability.includes("[redacted]"), "operational errors should be redacted");

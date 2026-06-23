@@ -75,6 +75,15 @@ type ArenaHealthIssue = {
   txHash?: string;
   error?: string;
   timestamp?: string;
+  playerAddress?: string;
+  activeGameIds?: string[];
+  repair?: {
+    strategy: "clear_waiting_games" | "manual_review_required";
+    keepGameId: string | null;
+    removableGameIds: string[];
+    blockedGameIds: string[];
+    requiresExplicitConfirmation: true;
+  };
   suggestedNextAction: string;
 };
 
@@ -219,6 +228,7 @@ function HealthPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =>
   const [health, setHealth] = useState<ArenaHealth | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [repairMsg, setRepairMsg] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -237,6 +247,33 @@ function HealthPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =>
     }
     setLoading(false);
   }, [secret, onAuthFail]);
+
+  async function repairConflict(issue: ArenaHealthIssue) {
+    if (!issue.playerAddress || !issue.repair?.keepGameId || issue.repair.removableGameIds.length === 0) return;
+    const key = issue.playerAddress;
+    setRepairMsg((current) => ({ ...current, [key]: "…" }));
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/arena/admin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({
+          action: "repair-recovery-conflict",
+          address: issue.playerAddress,
+          keepGameId: issue.repair.keepGameId,
+          removeFromGameIds: issue.repair.removableGameIds,
+          confirm: "repair-recovery-conflict",
+        }),
+      });
+      if (res.status === 401) { onAuthFail(); return; }
+      const data = await readJson<{ repaired?: { repairedGames?: string[] } }>(res);
+      const repairedCount = data.repaired?.repairedGames?.length || 0;
+      setRepairMsg((current) => ({ ...current, [key]: `✓ repaired ${repairedCount}` }));
+      load();
+    } catch (caught) {
+      setRepairMsg((current) => ({ ...current, [key]: `✗ ${errorMessage(caught)}` }));
+    }
+  }
 
   useEffect(() => {
     load();
@@ -269,7 +306,7 @@ function HealthPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =>
 
         <div className="admin-table">
           <div className="admin-table-head health">
-            <span>Severity</span><span>Type</span><span>Game</span><span>Match</span><span>Status</span><span>Next Action</span>
+            <span>Severity</span><span>Type</span><span>Game</span><span>Match</span><span>Status</span><span>Next Action</span><span>Repair</span>
           </div>
           {(health?.issues || []).map((issue, index) => (
             <div key={`${issue.type}-${issue.gameId || issue.matchId || index}`} className="admin-table-row health">
@@ -279,6 +316,20 @@ function HealthPanel({ secret, onAuthFail }: { secret: string; onAuthFail: () =>
               <span>{issue.matchId ? `#${issue.matchId}` : "—"}</span>
               <span>{issue.status || "—"}</span>
               <span title={issue.error || ""}>{issue.suggestedNextAction.replaceAll("_", " ")}</span>
+              <span className="admin-actions">
+                {issue.type === "recovery_conflict" && issue.playerAddress ? (
+                  issue.repair?.strategy === "clear_waiting_games" && issue.repair.removableGameIds.length > 0 ? (
+                    <>
+                      <button className="admin-btn" onClick={() => repairConflict(issue)}>Repair</button>
+                      {repairMsg[issue.playerAddress] && <span className="admin-msg-inline">{repairMsg[issue.playerAddress]}</span>}
+                    </>
+                  ) : (
+                    <span className="admin-hint">
+                      {issue.playerAddress.slice(0, 8)}… manual review
+                    </span>
+                  )
+                ) : "—"}
+              </span>
             </div>
           ))}
           {loadError && <p className="admin-empty admin-error">{loadError}</p>}
