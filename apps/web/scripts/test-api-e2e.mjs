@@ -185,6 +185,7 @@ await check("OpenSea tool manifests are same-origin and schema shaped", async ()
     assert(manifest.inputs?.type === "object", `${slug} inputs schema missing`);
     assert(manifest.outputs?.type === "object", `${slug} outputs schema missing`);
     assert(/^0x[a-fA-F0-9]{40}$/.test(manifest.creatorAddress), `${slug} creatorAddress invalid`);
+    assert(manifest.creatorAddress === manifest.creatorAddress.toLowerCase(), `${slug} creatorAddress must be lowercase`);
     assert(isHttpUrl(manifest.image), `${slug} image invalid`);
     assert(Array.isArray(manifest.tags), `${slug} tags missing`);
   }

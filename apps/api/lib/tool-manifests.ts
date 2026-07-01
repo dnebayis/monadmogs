@@ -1,9 +1,11 @@
 import { apiUrl } from "@/lib/urls";
 
 const CREATOR_ADDRESS =
-  process.env.NEXT_PUBLIC_TOOL_CREATOR_ADDRESS ||
-  process.env.TOOL_CREATOR_ADDRESS ||
-  "0x0000000000000000000000000000000000000000";
+  (
+    process.env.NEXT_PUBLIC_TOOL_CREATOR_ADDRESS ||
+    process.env.TOOL_CREATOR_ADDRESS ||
+    "0x0000000000000000000000000000000000000000"
+  ).toLowerCase();
 
 const TOOL_MANIFEST_TYPE = "https://ercs.ethereum.org/ERCS/erc-8257#tool-manifest-v1";
 
