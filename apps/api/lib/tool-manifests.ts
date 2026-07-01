@@ -33,6 +33,14 @@ type ToolManifest = {
   image: string;
   featuredImage: string;
   tags: string[];
+  version: string;
+  verifiability: {
+    tier: "self-attested";
+    execution: "standard";
+    description: string;
+    dataRetention: "metadata-only";
+    sourceVisibility: "open-source";
+  };
 };
 
 const baseInput = {
@@ -65,8 +73,16 @@ export const toolManifests = {
     },
     creatorAddress: CREATOR_ADDRESS,
     image: apiUrl("/api/agents/image/1"),
-    featuredImage: apiUrl("/api/agents/image/1"),
+    featuredImage: apiUrl("/api/tools/featured-image/mog-agent-lookup"),
     tags: ["ai", "nft", "monad", "mogs", "erc-8004", "erc-8217", "agent"],
+    version: "1.0.0",
+    verifiability: {
+      tier: "self-attested",
+      execution: "standard",
+      description: "Open-source serverless API endpoint. No hardware attestation is claimed.",
+      dataRetention: "metadata-only",
+      sourceVisibility: "open-source",
+    },
   },
   "mog-persona": {
     type: TOOL_MANIFEST_TYPE,
@@ -86,8 +102,16 @@ export const toolManifests = {
     },
     creatorAddress: CREATOR_ADDRESS,
     image: apiUrl("/api/agents/image/1"),
-    featuredImage: apiUrl("/api/agents/image/1"),
+    featuredImage: apiUrl("/api/tools/featured-image/mog-persona"),
     tags: ["ai", "nft", "monad", "mogs", "persona", "agent"],
+    version: "1.0.0",
+    verifiability: {
+      tier: "self-attested",
+      execution: "standard",
+      description: "Open-source serverless API endpoint. No hardware attestation is claimed.",
+      dataRetention: "metadata-only",
+      sourceVisibility: "open-source",
+    },
   },
   "mog-rarity": {
     type: TOOL_MANIFEST_TYPE,
@@ -107,7 +131,15 @@ export const toolManifests = {
     },
     creatorAddress: CREATOR_ADDRESS,
     image: apiUrl("/api/agents/image/1"),
-    featuredImage: apiUrl("/api/agents/image/1"),
+    featuredImage: apiUrl("/api/tools/featured-image/mog-rarity"),
     tags: ["ai", "nft", "monad", "mogs", "rarity"],
+    version: "1.0.0",
+    verifiability: {
+      tier: "self-attested",
+      execution: "standard",
+      description: "Open-source serverless API endpoint. No hardware attestation is claimed.",
+      dataRetention: "metadata-only",
+      sourceVisibility: "open-source",
+    },
   },
 } satisfies Record<string, ToolManifest>;

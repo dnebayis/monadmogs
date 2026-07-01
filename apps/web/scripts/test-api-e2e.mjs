@@ -187,6 +187,11 @@ await check("OpenSea tool manifests are same-origin and schema shaped", async ()
     assert(/^0x[a-fA-F0-9]{40}$/.test(manifest.creatorAddress), `${slug} creatorAddress invalid`);
     assert(manifest.creatorAddress === manifest.creatorAddress.toLowerCase(), `${slug} creatorAddress must be lowercase`);
     assert(isHttpUrl(manifest.image), `${slug} image invalid`);
+    assert(isHttpUrl(manifest.featuredImage), `${slug} featuredImage invalid`);
+    assert(manifest.featuredImage.includes(`/api/tools/featured-image/${slug}`), `${slug} featuredImage should be a 16:9 tool banner`);
+    assert(manifest.version === "1.0.0", `${slug} version missing`);
+    assert(manifest.verifiability?.tier === "self-attested", `${slug} verifiability tier mismatch`);
+    assert(manifest.verifiability?.execution === "standard", `${slug} verifiability execution mismatch`);
     assert(Array.isArray(manifest.tags), `${slug} tags missing`);
   }
 });
