@@ -38,6 +38,13 @@ contract Mogs8004AdapterTest is Test {
         assertEq(registry.getMetadata(agentId, "agent-binding"), abi.encodePacked(address(adapter)));
     }
 
+    function test_adapterAcceptsSafeMintedERC8004AgentNft() public view {
+        assertEq(
+            adapter.onERC721Received(address(registry), address(0), 1, ""),
+            bytes4(0x150b7a02)
+        );
+    }
+
     function test_registerMogAgent_revertsForNonOwner() public {
         vm.prank(bob);
         vm.expectRevert(abi.encodeWithSelector(Mogs8004Adapter.NotMogOwner.selector, MOG_ID));

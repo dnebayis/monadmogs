@@ -19,10 +19,14 @@ interface IERC8004IdentityRegistry {
     function getMetadata(uint256 agentId, string calldata metadataKey) external view returns (bytes memory);
 }
 
+interface IERC721Receiver {
+    function onERC721Received(address operator, address from, uint256 tokenId, bytes calldata data) external returns (bytes4);
+}
+
 /// @title Mogs8004Adapter
 /// @notice Adapter8004-style registry for Monad Mogs agent identities.
 ///         The adapter owns ERC-8004 identity NFTs and maps control to the current Mog owner.
-contract Mogs8004Adapter {
+contract Mogs8004Adapter is IERC721Receiver {
     enum TokenStandard {
         ERC721,
         ERC1155,
@@ -130,6 +134,15 @@ contract Mogs8004Adapter {
         Binding memory binding = _bindings[agentId];
         if (binding.tokenContract == address(0)) revert AgentNotFound(agentId);
         return IMogs721(binding.tokenContract).ownerOf(binding.tokenId);
+    }
+
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external pure returns (bytes4) {
+        return IERC721Receiver.onERC721Received.selector;
     }
 
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {

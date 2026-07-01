@@ -23,6 +23,19 @@ contract MockERC8004IdentityRegistry {
         balanceOf[msg.sender] += 1;
         tokenURI[agentId] = agentURI;
 
+        if (msg.sender.code.length > 0) {
+            (bool ok, bytes memory ret) = msg.sender.call(
+                abi.encodeWithSignature(
+                    "onERC721Received(address,address,uint256,bytes)",
+                    address(0),
+                    address(0),
+                    agentId,
+                    ""
+                )
+            );
+            require(ok && abi.decode(ret, (bytes4)) == bytes4(0x150b7a02), "ERC721InvalidReceiver");
+        }
+
         for (uint256 i = 0; i < metadata.length; i++) {
             _metadata[agentId][metadata[i].metadataKey] = metadata[i].metadataValue;
             emit MetadataSet(agentId, metadata[i].metadataKey, metadata[i].metadataKey, metadata[i].metadataValue);

@@ -30,7 +30,7 @@ export const ERC8004_REPUTATION_REGISTRY_ADDRESS = "0x8004BAa17C55a88189AE136b18
 // Adapter8004-style contract for new Monad Mogs Agent NFT registrations.
 // Env values can override these deployed defaults for forks or redeploys.
 export const MOGS_8004_ADAPTER_ADDRESS = (isMonadMainnet
-  ? process.env.NEXT_PUBLIC_MOGS_8004_ADAPTER_ADDRESS || "0x9c6057df5303a03dafdc967eD019Ae267158d20d"
+  ? process.env.NEXT_PUBLIC_MOGS_8004_ADAPTER_ADDRESS || "0x0C789bcF41C9F30462250904EF0FB01e502E18f7"
   : process.env.NEXT_PUBLIC_TESTNET_MOGS_8004_ADAPTER_ADDRESS ||
     process.env.NEXT_PUBLIC_MOGS_8004_ADAPTER_ADDRESS ||
     "0x668b0876801923f50B79CA1BFDe7a695D08f4d73") as Address;
