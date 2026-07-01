@@ -1,32 +1,25 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createPublicClient, getAddress, http } from "viem";
-import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { createPublicClient, http } from "viem";
+import { getMogBindingByAgent } from "@/lib/agent-registry";
+import { classifyContractReadError } from "@/lib/chain-read-errors";
 import {
-  ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_IDENTITY_REGISTRY_ABI,
+  ERC8004_IDENTITY_REGISTRY_ADDRESS,
   MOGS_AGENT_BINDINGS_ADDRESS,
 } from "@/lib/erc8004";
 import { MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import { getMogRarity } from "@/lib/rarity";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { apiUrl } from "@/lib/urls";
-import {
-  AGENT_BINDING_METADATA_KEY,
-  isZeroBindingAddress,
-  resolveAgentBinding,
-} from "@/lib/agent-binding";
-import { classifyContractReadError } from "@/lib/chain-read-errors";
+import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
 
 const client = createPublicClient({ chain: MONAD_CHAIN, transport: http(MONAD_RPC_URL) });
-
-const TOKEN_STANDARD = ["ERC721", "ERC1155", "ERC6909"] as const;
 
 /**
  * GET /api/agents/binding?agentId={id}
  *
- * Resolves the ERC-8217 binding for an ERC-8004 agent.
- * Returns: agentId, bound Mog (tokenId, contract, standard), owner, agentWallet,
- *          rarity, and verification status.
+ * Legacy query endpoint kept for existing integrations.
+ * Resolution is adapter-first, then legacy MogsAgentBindings fallback.
  */
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
@@ -37,7 +30,7 @@ export async function GET(request: NextRequest) {
       {
         status: rl.status,
         headers: rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : undefined,
-      }
+      },
     );
   }
 
@@ -49,18 +42,6 @@ export async function GET(request: NextRequest) {
   }
 
   const agentId = BigInt(agentIdRaw);
-
-  if (!MOGS_AGENT_BINDINGS_ADDRESS) {
-    return NextResponse.json(
-      {
-        error: "Binding contract not yet deployed.",
-        spec: "ERC-8217",
-        note: "Deploy MogsAgentBindings.sol and update MOGS_AGENT_BINDINGS_ADDRESS.",
-        agentId: Number(agentId),
-      },
-      { status: 503 }
-    );
-  }
 
   try {
     const [owner, agentWallet] = await Promise.all([
@@ -77,60 +58,25 @@ export async function GET(request: NextRequest) {
         args: [agentId],
       }),
     ]);
+    const resolved = await getMogBindingByAgent(agentId);
 
-    const { discovery, binding } = await resolveAgentBinding(agentId);
-
-    const b = binding as { standard: number; tokenContract: string; tokenId: bigint };
-    const isBound = !isZeroBindingAddress(b.tokenContract);
-    const isMonadMog = isBound && getAddress(b.tokenContract) === getAddress(MONAD_MOGS_ADDRESS);
-
-    if (!isBound) {
+    if (!resolved) {
       return NextResponse.json({
         agentId: Number(agentId),
         bound: false,
         owner,
         agentWallet,
-        bindingContract: discovery.contract,
+        bindingContract: null,
         spec: "ERC-8217",
         discovery: {
-          metadataKey: AGENT_BINDING_METADATA_KEY,
-          metadataPresent: discovery.metadataPresent,
-          source: discovery.source,
-          bindingContract: discovery.contract,
+          metadataKey: "agent-binding",
+          source: "adapter-first",
           fallbackContract: MOGS_AGENT_BINDINGS_ADDRESS,
         },
-        hint: "This agent has not yet called bind(agentId, mogId) on the binding contract.",
       });
     }
 
-    if (!isMonadMog) {
-      return NextResponse.json(
-        {
-          agentId: Number(agentId),
-          bound: true,
-          verified: false,
-          error: "Agent binding does not point to the Monad Mogs NFT contract.",
-          binding: {
-            spec: "ERC-8217",
-            standard: TOKEN_STANDARD[b.standard] ?? "ERC721",
-            tokenContract: b.tokenContract,
-            tokenId: Number(b.tokenId),
-            chainId: MONAD_CHAIN.id,
-          },
-          bindingContract: discovery.contract,
-          discovery: {
-            metadataKey: AGENT_BINDING_METADATA_KEY,
-            metadataPresent: discovery.metadataPresent,
-            source: discovery.source,
-            bindingContract: discovery.contract,
-            fallbackContract: MOGS_AGENT_BINDINGS_ADDRESS,
-          },
-        },
-        { status: 422 }
-      );
-    }
-
-    const mogId = Number(b.tokenId);
+    const mogId = resolved.binding.tokenId;
     const rarity = getMogRarity(mogId);
 
     return NextResponse.json(
@@ -139,39 +85,34 @@ export async function GET(request: NextRequest) {
         bound: true,
         owner,
         agentWallet,
-        binding: {
-          spec: "ERC-8217",
-          standard: TOKEN_STANDARD[b.standard] ?? "ERC721",
-          tokenContract: b.tokenContract,
-          tokenId: mogId,
-          chainId: MONAD_CHAIN.id,
-        },
+        binding: resolved.binding,
         mog: {
           tokenId: mogId,
           contract: MONAD_MOGS_ADDRESS,
           render: apiUrl(`/api/v0/mogs/${mogId}/render`),
-          rarity: rarity ? {
-            rank: rarity.rank,
-            tier: rarity.tier,
-            score: rarity.score,
-            percentile: rarity.percentile,
-          } : null,
+          rarity: rarity
+            ? {
+                rank: rarity.rank,
+                tier: rarity.tier,
+                score: rarity.score,
+                percentile: rarity.percentile,
+              }
+            : null,
         },
-        bindingContract: discovery.contract,
+        bindingContract: resolved.bindingContract,
         discovery: {
-          metadataKey: AGENT_BINDING_METADATA_KEY,
-          metadataPresent: discovery.metadataPresent,
-          source: discovery.source,
-          bindingContract: discovery.contract,
+          metadataKey: "agent-binding",
+          source: resolved.source,
+          bindingContract: resolved.bindingContract,
           fallbackContract: MOGS_AGENT_BINDINGS_ADDRESS,
         },
         registries: {
           identity: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-          binding: discovery.contract,
+          binding: resolved.bindingContract,
           chainId: MONAD_CHAIN.id,
         },
       },
-      { headers: { "Cache-Control": "public, max-age=60" } }
+      { headers: { "Cache-Control": "public, max-age=60" } },
     );
   } catch (error) {
     const classified = classifyContractReadError(error);
@@ -181,7 +122,7 @@ export async function GET(request: NextRequest) {
         code: classified.code,
         agentId: Number(agentId),
       },
-      { status: classified.status }
+      { status: classified.status },
     );
   }
 }

@@ -16,20 +16,41 @@ const groups = [
   },
   {
     title: "Agents",
-    description: "ERC-8004 identity helpers and ERC-8217 Mog-to-agent binding resolvers.",
+    description: "Awakened Mog agents, ERC-8004 AgentURI metadata, RESTAP runtime, and ERC-8217 binding resolvers.",
     endpoints: [
-      ["GET", "/api/agents/uri?owner={address}&mogId={id}", "AgentURI document for registration."],
+      ["GET", "/api/agents/count", "KV-indexed count of awakened Mog agents."],
+      ["GET", "/api/agents/list", "KV-indexed awakened agent list."],
+      ["GET", "/api/agents/binding/{mogId}", "Normies-style binding lookup by Mog ID."],
+      ["GET", "/api/agents/info/{mogId}", "Persona, binding, rarity, and public links."],
+      ["GET", "/api/agents/metadata/{mogId}", "ERC-8004 AgentURI tokenURI document."],
+      ["GET", "/api/agents/image/{mogId}", "Agent image redirect to Mog SVG render."],
+      ["GET", "/api/agents/agent-card/{mogId}", "A2A-compatible agent card."],
+      ["GET", "/api/agent-runtime/{mogId}/.well-known/restap.json", "RESTAP v1 discovery."],
+      ["POST", "/api/agent-runtime/{mogId}/talk", "Persona-driven text response."],
+      ["GET", "/api/agent-runtime/{mogId}/news", "RESTAP v1 public news envelope."],
       ["GET", "/api/agents/lookup?agentId={id}", "Read onchain ERC-8004 agent data."],
       ["GET", "/api/agents/profile?agentId={id}", "Agent data plus resolved AgentURI profile."],
-      ["GET", "/api/agents/registries", "ERC-8004 registry addresses."],
-      ["GET", "/api/agents/binding?agentId={id}", "Resolve the Mog bound to an agent."],
-      ["GET", "/api/agents/by-mog?mogId={id}", "Reverse binding lookup by Mog ID."],
+      ["GET", "/api/agents/registries", "ERC-8004 registry and adapter addresses."],
+      ["GET", "/api/agents/binding?agentId={id}", "Adapter-first legacy-compatible binding lookup."],
+      ["GET", "/api/agents/by-mog?mogId={id}", "Adapter-first legacy-compatible reverse lookup."],
       ["GET", "/api/mogs/{id}/agent", "Convenience redirect from a Mog to its bound agent lookup."],
     ],
   },
   {
-    title: "Arena",
-    description: "Agent games, live state, season metadata, receipts, and authenticated heartbeat endpoints.",
+    title: "OpenSea Tools",
+    description: "Open-access read-only ERC-8257 ToolRegistry endpoints and same-origin manifests.",
+    endpoints: [
+      ["GET", "/.well-known/ai-tool/mog-agent-lookup.json", "Tool manifest for agent binding lookup."],
+      ["GET", "/.well-known/ai-tool/mog-persona.json", "Tool manifest for deterministic persona reads."],
+      ["GET", "/.well-known/ai-tool/mog-rarity.json", "Tool manifest for rarity reads."],
+      ["POST", "/api/tools/mog-agent-lookup", "Read awakened agent binding for a Mog."],
+      ["POST", "/api/tools/mog-persona", "Read deterministic persona for a Mog."],
+      ["POST", "/api/tools/mog-rarity", "Read rarity and traits for a Mog."],
+    ],
+  },
+  {
+    title: "Arena Legacy",
+    description: "Existing game endpoints remain online for compatibility, but Arena is no longer the primary public flow.",
     endpoints: [
       ["GET", "/api/arena/introspection", "Machine-readable arena protocol."],
       ["GET", "/api/arena/season", "Season status, scoring, eligible games, and prize notes."],
@@ -72,7 +93,8 @@ const groups = [
 
 const quickExamples = [
   `curl ${API_BASE_URL}/api/v0/mogs/1/rarity`,
-  `curl ${API_BASE_URL}/api/arena/introspection`,
+  `curl ${API_BASE_URL}/api/agents/count`,
+  `curl ${API_BASE_URL}/.well-known/ai-tool/mog-persona.json`,
   `curl ${API_BASE_URL}/llms.txt`,
 ];
 

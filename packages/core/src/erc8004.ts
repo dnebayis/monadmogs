@@ -16,15 +16,28 @@ export type AgentRegistration = {
   createdAt: string;
 };
 
+const configuredNetwork = process.env.NEXT_PUBLIC_MONAD_NETWORK;
+const isMonadMainnet = configuredNetwork === "mainnet";
+
 /* ------------------------------------------------------------------ */
 /*  ERC-8004 Registry Addresses (same across 25+ chains incl. Monad)  */
 /* ------------------------------------------------------------------ */
 
-export const ERC8004_IDENTITY_REGISTRY_ADDRESS = "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432" as Address;
+export const ERC8004_IDENTITY_REGISTRY_ADDRESS = (isMonadMainnet
+  ? "0x8004A169FB4a3325136EB29fA0ceB6D2e539a432"
+  : "0x8004A818BFB912233c491871b3d84c89A494BD9e") as Address;
 export const ERC8004_REPUTATION_REGISTRY_ADDRESS = "0x8004BAa17C55a88189AE136b182e5fdA19dE9b63" as Address;
+// Adapter8004-style contract for new Monad Mogs Agent NFT registrations.
+// Env values can override these deployed defaults for forks or redeploys.
+export const MOGS_8004_ADAPTER_ADDRESS = (isMonadMainnet
+  ? process.env.NEXT_PUBLIC_MOGS_8004_ADAPTER_ADDRESS || "0x9c6057df5303a03dafdc967eD019Ae267158d20d"
+  : process.env.NEXT_PUBLIC_TESTNET_MOGS_8004_ADAPTER_ADDRESS ||
+    process.env.NEXT_PUBLIC_MOGS_8004_ADAPTER_ADDRESS ||
+    "0x668b0876801923f50B79CA1BFDe7a695D08f4d73") as Address;
 // ERC-8217 per-collection binding registry — MogsAgentBindings.sol
 // Deployed on Monad mainnet, chain ID 143
 export const MOGS_AGENT_BINDINGS_ADDRESS = "0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65" as Address;
+export const LEGACY_MOGS_AGENT_BINDINGS_ADDRESS = MOGS_AGENT_BINDINGS_ADDRESS;
 
 /* ------------------------------------------------------------------ */
 /*  Identity Registry ABI                                              */
@@ -378,6 +391,106 @@ export const MOGS_AGENT_BINDINGS_ABI = [
     stateMutability: "view",
     inputs: [{ name: "agentId", type: "uint256" }],
     outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "NFT_CONTRACT",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "function",
+    name: "IDENTITY_REGISTRY",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
+    type: "event",
+    name: "AgentBound",
+    inputs: [
+      { name: "agentId", type: "uint256", indexed: true },
+      { name: "standard", type: "uint8", indexed: true },
+      { name: "tokenContract", type: "address", indexed: true },
+      { name: "tokenId", type: "uint256", indexed: false },
+      { name: "registeredBy", type: "address", indexed: false },
+    ],
+  },
+] as const;
+
+export const MOGS_8004_ADAPTER_ABI = [
+  {
+    type: "function",
+    name: "registerMogAgent",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "mogId", type: "uint256" },
+      { name: "agentURI", type: "string" },
+    ],
+    outputs: [{ name: "agentId", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "setAgentURI",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "agentURI", type: "string" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "setAgentMetadata",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "metadataKey", type: "string" },
+      { name: "metadataValue", type: "bytes" },
+    ],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "bindingOf",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "standard", type: "uint8" },
+          { name: "tokenContract", type: "address" },
+          { name: "tokenId", type: "uint256" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "agentOf",
+    stateMutability: "view",
+    inputs: [{ name: "mogId", type: "uint256" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "isController",
+    stateMutability: "view",
+    inputs: [
+      { name: "agentId", type: "uint256" },
+      { name: "account", type: "address" },
+    ],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "controllerOf",
+    stateMutability: "view",
+    inputs: [{ name: "agentId", type: "uint256" }],
+    outputs: [{ name: "", type: "address" }],
   },
   {
     type: "function",

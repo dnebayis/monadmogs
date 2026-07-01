@@ -13,7 +13,8 @@
     "kv:migrate:player-games": "node scripts/kv-migrate-v1.mjs --backfill-player-games",
     "kv:migrate:cleanup": "node scripts/kv-migrate-v1.mjs --cleanup",
     "arena:runner:once": "node scripts/arena-runner.mjs --once",
-    "arena:runner:watch": "node scripts/arena-runner.mjs --watch"
+    "arena:runner:watch": "node scripts/arena-runner.mjs --watch",
+    "agents:index": "node scripts/agent-registry-index.mjs"
   },
   "dependencies": {
     "@monad-mogs/core": "workspace:*",

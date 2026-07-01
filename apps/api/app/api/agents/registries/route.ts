@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import {
   ERC8004_IDENTITY_REGISTRY_ADDRESS,
   ERC8004_REPUTATION_REGISTRY_ADDRESS,
+  MOGS_8004_ADAPTER_ADDRESS,
+  MOGS_AGENT_BINDINGS_ADDRESS,
 } from "@/lib/erc8004";
 import { MONAD_CHAIN } from "@/lib/network";
 
@@ -18,7 +20,10 @@ export function GET() {
       identityRegistry: ERC8004_IDENTITY_REGISTRY_ADDRESS,
       reputationRegistry: ERC8004_REPUTATION_REGISTRY_ADDRESS,
       validationRegistry: null,
+      mogs8004Adapter: MOGS_8004_ADAPTER_ADDRESS,
+      mogsAgentBindingsLegacy: MOGS_AGENT_BINDINGS_ADDRESS,
       spec: "https://eips.ethereum.org/EIPS/eip-8004",
+      bindingSpec: "https://eips.ethereum.org/EIPS/eip-8217",
       docs: "https://docs.monad.xyz/guides/erc-8004",
       contracts: "https://github.com/erc-8004/erc-8004-contracts",
     },

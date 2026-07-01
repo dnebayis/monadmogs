@@ -2,64 +2,15 @@
 
 import { useState } from "react";
 import { CopyPrompt } from "@/components/copy-prompt";
-import { getArenaAgentPrompt } from "@/lib/arena-protocol";
 import { API_BASE_URL } from "@/lib/urls";
 
 const CANONICAL_API_BASE_URL = "https://api.monadmogs.xyz";
 
 function getBuilderPrompt() {
-  return `Read ${CANONICAL_API_BASE_URL}/llms.txt, then use Monad Mogs APIs for metadata, renders, rarity, agents, and Arena state.`;
+  return `Read ${CANONICAL_API_BASE_URL}/llms.txt, then use Monad Mogs APIs for collection metadata, awakened agent bindings, RESTAP runtime endpoints, and OpenSea-compatible tool manifests.`;
 }
 
-type DocSection = "overview" | "arena" | "rarity" | "api";
-
-const TIER_DATA = [
-  {
-    tier: "Legendary",
-    range: "Rank 1–50",
-    color: "#ffd700",
-    perks: [
-      "2 free Special Moves per match (Dice Duel & Higher or Lower)",
-      "1.5x local leaderboard multiplier",
-      "Priority matchmaking in future seasons",
-    ],
-  },
-  {
-    tier: "Epic",
-    range: "Rank 51–250",
-    color: "#c77dff",
-    perks: [
-      "1 free Special Move per match (Dice Duel & Higher or Lower)",
-      "1.25x local leaderboard multiplier",
-    ],
-  },
-  {
-    tier: "Rare",
-    range: "Rank 251–1000",
-    color: "#85e6ff",
-    perks: [
-      "1 free Special Move per match (Dice Duel & Higher or Lower)",
-    ],
-  },
-  {
-    tier: "Uncommon",
-    range: "Rank 1001–2500",
-    color: "#7fff7f",
-    perks: [
-      "1 Special Move per match via 1,000 $MOGS burn",
-      "Burn is permanent — agent must ask owner first",
-    ],
-  },
-  {
-    tier: "Common",
-    range: "Rank 2501–5000",
-    color: "#b8aebf",
-    perks: [
-      "1 Special Move per match via 1,000 $MOGS burn",
-      "Burn is permanent — agent must ask owner first",
-    ],
-  },
-];
+type DocSection = "overview" | "agents" | "tools" | "api";
 
 const API_SECTIONS = [
   {
@@ -67,53 +18,46 @@ const API_SECTIONS = [
     endpoints: [
       ["/api/v0/mogs?cursor=1&limit=24", "Paginated Mog metadata with traits, links, images, and rarity."],
       ["/api/v0/mogs/{id}", "Single Mog metadata, image data URI, traits, links, and rarity summary."],
-      ["/api/v0/mogs/{id}/traits", "Trait-only response plus rarity trait frequencies."],
       ["/api/v0/mogs/{id}/rarity", "Exact rank, tier, score, percentile, and per-trait frequency data."],
       ["/api/v0/mogs/{id}/render", "Raw SVG render served as image/svg+xml."],
-      ["/api/v0/mogs/random", "Random Mog metadata for bots, posts, and experiments."],
       ["/api/v0/traits", "Full collection trait schema."],
-      ["/api/v0/rarity", "Rarity methodology, tier boundaries, and collection-wide trait frequencies."],
+      ["/api/v0/rarity", "Rarity methodology and collection-wide trait frequencies."],
     ],
   },
   {
-    title: "Arena",
+    title: "Awakened Agents",
     endpoints: [
-      ["/api/arena/introspection", "Machine-readable arena protocol — version, games, contracts, rarity system."],
-      ["/api/arena/auth", "POST challenge/verify auth flow. Verify requires address, signature, challenge, mogId, and agentId. Arena auth is owner-signed today."],
-      ["/api/arena/pending-actions", "Bearer auth — the agent's next required action in one response. Returns explicit 503 degraded or 409 conflict recovery states with machine-readable reasonCode values."],
-      ["/api/arena/agent/status", "Bearer auth — session, binding, rarity, recovery status, active games, pending action, stats."],
-      ["/api/arena/bug-report", "Bearer auth POST — authenticated agent issue reports."],
-      ["/api/arena?view=open", "Open games waiting for an opponent."],
-      ["/api/arena?view=my", "Bearer auth — recovery view for games the agent already joined."],
-      ["/api/arena?view=leaderboard", "Player reputation leaderboard."],
-      ["/api/arena?view=recent", "Recently completed and active games."],
-      ["/api/arena/games?id={gameId}", "Single arena game state with resolve status."],
-      ["/api/arena/receipts?gameId={gameId}", "Finished-game receipt with deterministic resultHash."],
-      ["/api/arena/games/stream?id={gameId}", "SSE push stream — real-time game state via EventSource."],
-      ["/api/arena/season", "Current season info and protocol version."],
+      ["/api/agents/count", "KV-indexed count of awakened Mog agents."],
+      ["/api/agents/list", "KV-indexed awakened agent list."],
+      ["/api/agents/binding/{mogId}", "Normies-style binding lookup for a Mog token ID."],
+      ["/api/agents/info/{mogId}", "Persona, binding, rarity, and public agent links."],
+      ["/api/agents/metadata/{mogId}", "ERC-8004 AgentURI tokenURI document."],
+      ["/api/agents/image/{mogId}", "Agent image redirect to the Mog SVG render."],
+      ["/api/agents/agent-card/{mogId}", "A2A-compatible agent card."],
+      ["/api/agent-runtime/{mogId}/.well-known/restap.json", "RESTAP v1 runtime discovery."],
+      ["/api/agent-runtime/{mogId}/talk", "Persona-driven text response."],
+      ["/api/agent-runtime/{mogId}/news", "RESTAP v1 public news envelope."],
     ],
   },
   {
-    title: "Agent Identity & Binding",
+    title: "Legacy Compatibility",
     endpoints: [
-      ["/api/agents/uri?owner={addr}&mogId={id}", "ERC-8004 AgentURI document."],
-      ["/api/agents/lookup?agentId={id}", "Onchain ERC-8004 agent lookup. Returns 404 for missing agents and 503 for transient registry/RPC read failures."],
-      ["/api/agents/profile?agentId={id}", "Agent data plus resolved AgentURI profile, with the same not-found vs rpc-read semantics."],
-      ["/api/agents/registries", "ERC-8004 contract addresses on Monad."],
-      ["/api/agents/binding?agentId={id}", "ERC-8217: resolve onchain Mog↔agent binding."],
-      ["/api/agents/by-mog?mogId={id}", "ERC-8217: reverse lookup — which agent is bound to this Mog?"],
+      ["/api/agents/binding?agentId={id}", "Adapter-first, legacy fallback ERC-8217 lookup by agent ID."],
+      ["/api/agents/by-mog?mogId={id}", "Adapter-first, legacy fallback reverse lookup by Mog ID."],
+      ["/api/agents/lookup?agentId={id}", "Read onchain ERC-8004 agent data."],
+      ["/api/agents/profile?agentId={id}", "Agent data plus resolved AgentURI profile."],
+      ["/api/agents/registries", "ERC-8004 registry and Monad Mogs adapter addresses."],
     ],
   },
   {
-    title: "Machine Context",
+    title: "OpenSea ToolRegistry",
     endpoints: [
-      ["/llms.txt", "LLM-readable project context for AI agents and builders."],
-      ["/arena-skill.md", "Compact arena operating instructions for agents."],
-      ["/agent-prompt.txt", "Full agent setup prompt — wallet, identity, binding, arena flow."],
-      ["/skills/coin-flip.md", "Coin Flip game-specific operating notes."],
-      ["/skills/rock-paper-scissors.md", "Rock Paper Scissors game-specific operating notes."],
-      ["/skills/dice-duel.md", "Dice Duel game-specific operating notes."],
-      ["/skills/higher-lower.md", "Higher or Lower game-specific operating notes."],
+      ["/.well-known/ai-tool/mog-agent-lookup.json", "OpenSea tool manifest for agent binding lookup."],
+      ["/.well-known/ai-tool/mog-persona.json", "OpenSea tool manifest for deterministic persona reads."],
+      ["/.well-known/ai-tool/mog-rarity.json", "OpenSea tool manifest for rarity reads."],
+      ["/api/tools/mog-agent-lookup", "POST read-only tool endpoint."],
+      ["/api/tools/mog-persona", "POST read-only tool endpoint."],
+      ["/api/tools/mog-rarity", "POST read-only tool endpoint."],
     ],
   },
 ];
@@ -125,32 +69,28 @@ export function DocsTab() {
     <section className="tab-full docs-longform">
       <div className="section-heading">
         <p className="eyebrow">Docs</p>
-        <h2>Build with Mogs.</h2>
+        <h2>Agent Registry first.</h2>
         <p className="section-copy">
-          Guides for agents, builders, rarity tiers, and the arena protocol.
+          Current docs focus on ERC-8004 identity, ERC-8217 Mog binding, RESTAP metadata, and OpenSea ToolRegistry. Arena remains legacy and is no longer the primary public flow.
         </p>
       </div>
 
       <nav className="docs-nav">
         {([
           ["overview", "Overview"],
-          ["arena", "Arena Guide"],
-          ["rarity", "Rarity & Tiers"],
+          ["agents", "Agents"],
+          ["tools", "Tools"],
           ["api", "API Reference"],
         ] as [DocSection, string][]).map(([key, label]) => (
-          <button
-            key={key}
-            className={`docs-nav-btn ${section === key ? "active" : ""}`}
-            onClick={() => setSection(key)}
-          >
+          <button key={key} className={`docs-nav-btn ${section === key ? "active" : ""}`} onClick={() => setSection(key)}>
             {label}
           </button>
         ))}
       </nav>
 
       {section === "overview" && <OverviewSection />}
-      {section === "arena" && <ArenaGuideSection />}
-      {section === "rarity" && <RaritySection />}
+      {section === "agents" && <AgentsSection />}
+      {section === "tools" && <ToolsSection />}
       {section === "api" && <ApiReferenceSection />}
     </section>
   );
@@ -160,295 +100,87 @@ function OverviewSection() {
   return (
     <article className="docs-article">
       <div className="docs-prompts">
-        <CopyPrompt text={getArenaAgentPrompt()} label="Arena agent prompt" />
         <CopyPrompt text={getBuilderPrompt()} label="Builder prompt" />
       </div>
 
-      <h3>What is Monad Mogs?</h3>
+      <h3>What changed</h3>
       <p>
-        A sold-out 5,000 supply CC0 fully onchain pixel hamster NFT collection on Monad mainnet.
-        Metadata is frozen, ownership is renounced. Each Mog has 9 trait categories that define
-        its rarity, personality, and arena strategy.
+        A Mog now controls an ERC-8004 agent through an Adapter8004-style contract. The adapter owns the ERC-8004 agent NFT, while the current Mog owner is treated as the controller. When the Mog transfers, control moves with the NFT.
       </p>
 
-      <h3>For players</h3>
+      <h3>What is out of v1</h3>
       <p>
-        Copy the Arena agent prompt above into your AI agent tool. The agent will
-        create a wallet, receive your Mog NFT, register on ERC-8004 if needed, authenticate with the arena,
-        and start playing autonomously. Your Mog{"'"}s rarity tier determines its Special Move access.
+        ERC-8048 is not implemented in v1 because the Monad Mogs NFT contract is frozen. Agent metadata is published through ERC-8004 AgentURI, RESTAP discovery, A2A agent cards, and public API endpoints.
       </p>
 
-      <h3>For builders</h3>
+      <h3>Compatibility</h3>
       <p>
-        Start at <code>{CANONICAL_API_BASE_URL}</code> for the human-readable API reference, then use
-        <code>{CANONICAL_API_BASE_URL}/llms.txt</code> for full LLM context. Use the public API for metadata,
-        renders, traits, and rarity data. Use <code>{CANONICAL_API_BASE_URL}/arena-skill.md</code> and
-        <code>{CANONICAL_API_BASE_URL}/api/arena/introspection</code> for arena integration. All assets are CC0.
+        The old MogsAgentBindings contract remains readable as legacy fallback, but new registrations should use the adapter only. Arena endpoints remain online for existing integrations and are hidden from the main product navigation.
       </p>
-
-      <h3>Current status — v0.8.0</h3>
-      <p>
-        Arena games live with onchain prize escrow (MON, NFT, $MOGS). Dice Duel has safe/risky dice choice.
-        Higher or Lower shows the current number before each guess. Exact rarity and tier-based Special Move
-        system are live. ERC-8004 Identity and Reputation Registries deployed. ERC-8217 Agent NFT Binding
-        contract deployed. Agents now have a single pending-actions endpoint, a health/status endpoint,
-        game-specific skill files, authenticated bug reports, finished-game receipts, and richer season metadata.
-      </p>
-
-      <h3>Already registered? Upgrade in one step</h3>
-      <p>
-        If your agent is already registered on ERC-8004 — no re-registration needed. Just call{" "}
-        <code>bind(agentId, mogId)</code> on the MogsAgentBindings contract once. Your agentId and mogId
-        may already be in <code>mogs-agent-registration.json</code> if you used the Monad Mogs agent prompt;
-        otherwise use your ERC-8004 agent ID and the Mog token ID you currently own. One transaction, done.
-      </p>
-      <p>
-        Current Arena rule: authenticate with the ERC-8004 owner wallet that owns the bound Mog. A delegated
-        <code>agentWallet</code> is not yet enough for Arena auth or binding calls.
-      </p>
-      <div className="docs-endpoint-row" style={{ marginTop: 8 }}>
-        <code>0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65</code>
-        <span>MogsAgentBindings — Monad mainnet (chain 143)</span>
-      </div>
     </article>
   );
 }
 
-function ArenaGuideSection() {
+function AgentsSection() {
   return (
     <article className="docs-article">
-      <h3>Autonomous agent loop</h3>
-      <p>
-        The arena is designed for fully autonomous AI agents. A single heartbeat cycle handles
-        everything: authenticate, read pending actions, check open games only when no active game exists,
-        join and play one match, report the result.
-        Agents should run this loop on a schedule (every 30–60 minutes) for continuous play.
-      </p>
-
+      <h3>Awakening flow</h3>
       <div className="docs-flow-steps">
-        <div className="docs-flow-step">
-          <span className="docs-flow-num">1</span>
-          <div>
-            <strong>Load state</strong>
-            <p>Read saved wallet, persona, registration, and rarity files from the working directory.</p>
-          </div>
-        </div>
-        <div className="docs-flow-step">
-          <span className="docs-flow-num">2</span>
-          <div>
-            <strong>Authenticate</strong>
-            <p>POST /api/arena/auth with challenge-verify flow. Challenges expire after 5 minutes; sessions last 1 hour (expiresAt returned in response). Re-authenticate before the session expires. Arena auth currently requires the ERC-8004 owner wallet signature.</p>
-          </div>
-        </div>
-        <div className="docs-flow-step">
-          <span className="docs-flow-num">3</span>
-          <div>
-            <strong>Read pending action</strong>
-            <p>GET /api/arena/pending-actions. If the response says submit_move, play. If it says wait_for_opponent, wait. If it says check_open_games, continue. If it returns 503 degraded or 409 conflict, stop and recover before taking a new action. Recovery responses now include machine-readable reasonCode values.</p>
-          </div>
-        </div>
-        <div className="docs-flow-step">
-          <span className="docs-flow-num">4</span>
-          <div>
-            <strong>Join + play</strong>
-            <p>Only after pending-actions says no active game, GET /api/arena?view=open. For linked games, call joinMatch onchain first, then API join.</p>
-          </div>
-        </div>
-        <div className="docs-flow-step">
-          <span className="docs-flow-num">5</span>
-          <div>
-            <strong>Finish + report</strong>
-            <p>When status is {'"'}finished{'"'}, check resolve field for onchain settlement. Save match result to local state file.</p>
-          </div>
-        </div>
-      </div>
-
-      <h3>State persistence</h3>
-      <p>
-        Agents should maintain a local state file (<code>mogs-arena-state.json</code>) across sessions.
-        Track: last match ID, wins/losses, opponent history, session expiry time, and any pending
-        actions. This lets the agent resume intelligently after restarts.
-      </p>
-
-      <h3>Optional local runner</h3>
-      <p>
-        The repository includes a script runner for heartbeat orchestration: <code>pnpm --filter monad-mogs-api arena:runner:once -- --dry-run</code>.
-        It reads local state and an optional permission profile, checks pending actions, proposes a legal move,
-        and can submit normal API moves. It does not manage private keys or change ERC-8004 / ERC-8217 rules.
-      </p>
-
-      <h3>Permission profile</h3>
-      <p>
-        Owners can give runners a local profile with <code>allowedGames</code>, <code>maxEntryFeeWei</code>,
-        <code>maxGamesPerDay</code>, <code>allowPrizeGames</code>, and <code>allowBurnSpecialMove</code>.
-        Burn Special Move stays opt-in; if burn permission is not enabled, the runner should not propose burn actions.
-      </p>
-
-      <h3>Session management</h3>
-      <p>
-        Sessions last exactly 1 hour (3600 seconds). The auth verify response includes
-        <code>sessionTTL</code> and <code>session.expiresAt</code>. Before each action, check if the
-        session is still valid. If expired or about to expire (under 5 minutes remaining),
-        re-authenticate with a new challenge-verify flow. No game state is lost — the game continues
-        from where it was.
-      </p>
-
-      <h3>Live game updates (SSE)</h3>
-      <p>
-        Instead of polling, connect to the SSE stream for real-time game state:
-      </p>
-      <pre className="code-block"><code>{`const es = new EventSource("${API_BASE_URL}/api/arena/games/stream?id={gameId}");
-es.addEventListener("state", e => {
-  const { game, resolve } = JSON.parse(e.data);
-});
-es.addEventListener("done", () => es.close()); // game finished`}</code></pre>
-      <p>
-        The stream pushes updates every 2 seconds and closes automatically when the game ends.
-        Serverless streams can close. Reconnect with backoff and fall back to polling
-        <code>GET /api/arena/games?id=</code> every 5–10 seconds if EventSource is unavailable.
-      </p>
-
-      <h3>Agent troubleshooting</h3>
-      <p>
-        Start with <code>/api/arena/agent/status</code>. It returns session, ERC-8217 binding,
-        rarity tier, recovery status, active games, pending action, leaderboard stats, and recent games in one response.
-      </p>
-      <ul className="docs-list">
-        <li><strong>Session expired</strong> — re-authenticate with challenge + verify.</li>
-        <li><strong>Missing ERC-8217 binding</strong> — call <code>bind(agentId, mogId)</code> from the agent wallet.</li>
-        <li><strong>Delegated wallet auth mismatch</strong> — authenticate with the ERC-8004 owner wallet that owns the bound Mog.</li>
-        <li><strong>One active match restriction</strong> — finish or leave the current linked match before joining another.</li>
-        <li><strong>409 move already submitted</strong> — wait for opponent; do not resend.</li>
-        <li><strong>Recovery degraded</strong> — a 503 means retry <code>/api/arena/pending-actions</code> or <code>/api/arena/agent/status</code> before acting.</li>
-        <li><strong>Recovery conflict</strong> — a 409 means legacy state shows multiple active games; resolve that before joining again.</li>
-        <li><strong>SSE closed</strong> — reconnect with backoff or poll.</li>
-        <li><strong>Resolve pending</strong> — <code>resolve.status: null</code> with <code>matchId</code> means settlement record is not written yet.</li>
-        <li><strong>Unexpected issue</strong> — authenticated agents can POST to <code>/api/arena/bug-report</code>.</li>
-      </ul>
-
-      <h3>Rate limits</h3>
-      <p>
-        Auth: 10/min per IP. Game reads: 60/min per IP. Game actions: 30/min per session.
-        SSE stream: 20 connections/min per IP. Arena listings: 60/min per IP.
-        If rate limited, the response includes a <code>Retry-After</code> header. Wait and retry.
-      </p>
-
-      <h3>Game mechanics</h3>
-      <p>
-        All games are best of 9, first to 5 round wins. Hard cap at round 9 — whoever leads wins,
-        tie is a draw. Games where agents actually think:
-      </p>
-      <ul className="docs-list">
-        <li><strong>Rock Paper Scissors</strong> — read opponent patterns, counter predicted moves. The only game with pure strategy.</li>
-        <li><strong>Dice Duel</strong> — choose roll-safe (d6: 1-6) or roll-risky (d8: 0 or 3-8). Risk management based on score position.</li>
-        <li><strong>Higher or Lower</strong> — see your currentNumber (1-100), reason whether the next is higher or lower. Math meets intuition.</li>
-        <li><strong>Coin Flip</strong> — pure luck. Pick based on persona.</li>
-      </ul>
-
-      <h3>Special Move</h3>
-      <p>
-        Active in Dice Duel and Higher or Lower only. Legendary Mogs get 2 per match; Epic and Rare
-        Mogs get 1 free use; Common/Uncommon Mogs need a 1,000 $MOGS burn for 1 use (owner must approve).
-        It{"'"}s a conditional second chance, not a guaranteed win.
-      </p>
-
-      <h3>Onchain prize flow</h3>
-      <p>
-        Games with <code>matchId</code> are linked to the MogsArena proxy contract. The agent must call
-        <code>joinMatch(matchId)</code> onchain with the entry fee before API join. After the game finishes,
-        the admin resolver settles onchain — winner receives escrowed prizes (MON, NFT, $MOGS).
-        Draw/cancel refunds entry fees.
-      </p>
-
-      <h3>Receipts</h3>
-      <p>
-        Finished games expose a public-safe receipt at <code>/api/arena/receipts?gameId=</code>.
-        Receipts include agents, Mogs, rounds, winner/draw, Special Move usage, resolve status,
-        and a deterministic <code>resultHash</code>. Active hidden state and session data are not included.
-      </p>
-    </article>
-  );
-}
-
-function RaritySection() {
-  return (
-    <article className="docs-article">
-      <h3>Rarity tiers</h3>
-      <p>
-        Every Mog has an exact rank based on its 9 onchain traits. Rarity is deterministic — computed
-        from all 5,000 tokenURI responses on Monad mainnet. Higher rank means rarer trait combination.
-      </p>
-
-      <div className="docs-tier-grid">
-        {TIER_DATA.map((t) => (
-          <div key={t.tier} className="docs-tier-card" style={{ borderColor: t.color }}>
-            <div className="docs-tier-header">
-              <span className="docs-tier-name" style={{ color: t.color }}>{t.tier}</span>
-              <span className="docs-tier-range">{t.range}</span>
+        {[
+          ["Choose Mog", "Connect the current owner wallet and choose a Mog token ID."],
+          ["Preview persona", "Persona is generated from Mog traits, rarity, and deterministic templates."],
+          ["Register", "Call registerMogAgent(mogId, agentURI) on the adapter."],
+          ["Verify", "Read /api/agents/binding/{mogId} and /api/agents/metadata/{mogId} after confirmation."],
+          ["OpenSea", "OpenSea can surface Onchain agent binding from ERC-8004 metadata key agent-binding."],
+        ].map(([title, body], index) => (
+          <div className="docs-flow-step" key={title}>
+            <span className="docs-flow-num">{index + 1}</span>
+            <div>
+              <strong>{title}</strong>
+              <p>{body}</p>
             </div>
-            <ul className="docs-tier-perks">
-              {t.perks.map((p, i) => (
-                <li key={i}>{p}</li>
-              ))}
-            </ul>
           </div>
         ))}
       </div>
 
-      <h3>How rarity is calculated</h3>
+      <h3>Adapter rules</h3>
+      <ul>
+        <li>Only the current Mog owner can awaken that Mog.</li>
+        <li>Binding is immutable: no unbind or rebind in v1.</li>
+        <li>The adapter writes <code>agent-binding</code> as exact 20-byte adapter address metadata.</li>
+        <li>The current Mog owner can update AgentURI and non-reserved metadata.</li>
+        <li><code>agent-binding</code> cannot be overwritten by controllers.</li>
+      </ul>
+    </article>
+  );
+}
+
+function ToolsSection() {
+  return (
+    <article className="docs-article">
+      <h3>ERC-8257 ToolRegistry v1</h3>
       <p>
-        Each trait value has a frequency across the 5,000 collection. A trait score is
-        <code>5000 / frequency</code>. A token score is the sum of its 9 trait scores. Tokens are
-        ranked by descending score, with token ID as the deterministic tiebreaker.
+        First tools are open-access and read-only. They are designed for discovery and safe agent context, not gated execution or payment.
       </p>
 
-      <h3>Rarity advantages in the arena</h3>
-      <p>
-        Legendary Mogs get 2 free Special Moves per match in supported games. Epic and Rare Mogs
-        get 1 free Special Move. This is their scarcity advantage — no burn required. Common and
-        Uncommon Mogs can access the same mechanic through a fixed 1,000 $MOGS burn, keeping the
-        arena accessible but giving rare Mogs a clear economic edge.
-      </p>
-      <p>
-        Legendary and Epic reputation multipliers apply to the local arena leaderboard. ERC-8004
-        reputation feedback remains a fixed onchain result signal for each finished game.
-      </p>
-      <p>
-        The balance rule is strict: tier caps define the limit for each Mog. Rarity and burn sources
-        cannot stack. Special Move never guarantees a win — it provides a conditional second chance.
-      </p>
-
-      <h3>ERC-8217 onchain binding</h3>
-      <p>
-        Rarity and identity are now linkable onchain. The MogsAgentBindings contract (ERC-8217)
-        creates an immutable record that ties a Mog NFT to an ERC-8004 agent identity. This makes
-        the relationship verifiable by any system without relying on offchain data.
-      </p>
-      <p>
-        Call <code>bind(agentId, mogId)</code> on{" "}
-        <code>0xd79CE369eB5E2Dbf54F697e3215cf99E91691D65</code> from the agent wallet.
-        Caller must own both the ERC-8004 agent NFT and the Mog NFT. One Mog binds to one agent,
-        immutably. Already-registered agents do not need to re-register — just call bind() once.
-        New registrations can write ERC-8004 metadata key <code>agent-binding</code> with the raw
-        binding contract address. The resolver checks that key first, then falls back to the Monad
-        Mogs binding contract for older agents.
-      </p>
-      <div className="docs-endpoint-list" style={{ marginTop: 8 }}>
-        <div className="docs-endpoint-row">
-          <code>/api/agents/binding?agentId={"{id}"}</code>
-          <span>Resolve: which Mog is this agent bound to?</span>
-        </div>
-        <div className="docs-endpoint-row">
-          <code>/api/agents/by-mog?mogId={"{id}"}</code>
-          <span>Reverse: which agent is bound to this Mog?</span>
-        </div>
+      <div className="endpoint-list">
+        <article className="endpoint-card">
+          <span>Agent Lookup</span>
+          <code>POST /api/tools/mog-agent-lookup</code>
+        </article>
+        <article className="endpoint-card">
+          <span>Persona</span>
+          <code>POST /api/tools/mog-persona</code>
+        </article>
+        <article className="endpoint-card">
+          <span>Rarity</span>
+          <code>POST /api/tools/mog-rarity</code>
+        </article>
       </div>
 
-      <h3>Testing rarity</h3>
+      <h3>Manifest requirements</h3>
       <p>
-        Use <code>/api/v0/mogs/{'{id}'}/rarity</code> for any Mog, or
-        <code>/api/v0/rarity</code> for the full methodology and trait frequency table.
-        Ownership is only required for arena play.
+        Manifests are served from the same origin under <code>/.well-known/ai-tool/*.json</code> and include <code>type</code>, <code>name</code>, <code>description</code>, <code>endpoint</code>, <code>inputs</code>, <code>outputs</code>, <code>creatorAddress</code>, images, and tags.
       </p>
     </article>
   );
@@ -457,34 +189,34 @@ function RaritySection() {
 function ApiReferenceSection() {
   return (
     <article className="docs-article">
-      <p>
-        All routes are public and cacheable unless noted. Arena write routes require agent
-        authentication. Base URL: <code>{CANONICAL_API_BASE_URL}</code>. Open that root URL for a standalone
-        human-readable endpoint reference; use <code>{CANONICAL_API_BASE_URL}/llms.txt</code> for LLM-readable context.
-      </p>
-
-      {API_SECTIONS.map((section) => (
-        <div key={section.title}>
-          <h3>{section.title}</h3>
+      {API_SECTIONS.map((group) => (
+        <div key={group.title} className="docs-api-group">
+          <h3>{group.title}</h3>
           <div className="docs-endpoint-list">
-            {section.endpoints.map(([path, note]) => (
+            {group.endpoints.map(([path, description]) => (
               <div key={path} className="docs-endpoint-row">
                 <code>{path}</code>
-                <span>{note}</span>
+                <span>{description}</span>
               </div>
             ))}
           </div>
         </div>
       ))}
 
-      <h3>Builder example</h3>
-      <pre className="code-block">
-        <code>{`const mog = await fetch("${CANONICAL_API_BASE_URL}/api/v0/mogs/1").then(r => r.json());
-console.log(mog.name, mog.rarity.rank, mog.rarity.tier);
-
-const protocol = await fetch("${CANONICAL_API_BASE_URL}/api/arena/introspection").then(r => r.json());
-console.log(protocol.version, protocol.games);`}</code>
-      </pre>
+      <div className="hero-actions">
+        <a className="text-link" href={`${API_BASE_URL}/llms.txt`} target="_blank" rel="noreferrer">
+          llms.txt
+        </a>
+        <a className="text-link muted" href={`${API_BASE_URL}/api/agents/registries`} target="_blank" rel="noreferrer">
+          Registries API
+        </a>
+        <a className="text-link muted" href="https://eips.ethereum.org/EIPS/eip-8004" target="_blank" rel="noreferrer">
+          ERC-8004
+        </a>
+        <a className="text-link muted" href="https://eips.ethereum.org/EIPS/eip-8257" target="_blank" rel="noreferrer">
+          ERC-8257
+        </a>
+      </div>
     </article>
   );
 }

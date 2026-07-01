@@ -1,25 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createPublicClient, http } from "viem";
-import { MONAD_CHAIN, MONAD_RPC_URL } from "@/lib/network";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import {
-  ERC8004_IDENTITY_REGISTRY_ADDRESS,
-  ERC8004_IDENTITY_REGISTRY_ABI,
-  MOGS_AGENT_BINDINGS_ADDRESS,
-  MOGS_AGENT_BINDINGS_ABI,
-} from "@/lib/erc8004";
+import { getAgentByMog } from "@/lib/agent-registry";
+import { MAX_SUPPLY, parseTokenId } from "@/lib/mogs";
 import { getMogRarity } from "@/lib/rarity";
-import { parseTokenId, MAX_SUPPLY } from "@/lib/mogs";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 import { apiUrl } from "@/lib/urls";
-import { classifyContractReadError } from "@/lib/chain-read-errors";
-
-const client = createPublicClient({ chain: MONAD_CHAIN, transport: http(MONAD_RPC_URL) });
 
 /**
  * GET /api/agents/by-mog?mogId={id}
  *
- * Reverse ERC-8217 lookup: given a Mog token ID, returns the immutable bound ERC-8004 agent.
- * This is binding state, not proof of current Mog ownership.
+ * Legacy query endpoint kept for existing integrations.
+ * Resolution is adapter-first, then legacy MogsAgentBindings fallback.
  */
 export async function GET(request: NextRequest) {
   const ip = getClientIp(request);
@@ -30,7 +20,7 @@ export async function GET(request: NextRequest) {
       {
         status: rl.status,
         headers: rl.status === 429 ? { "Retry-After": String(rl.retryAfter) } : undefined,
-      }
+      },
     );
   }
 
@@ -38,114 +28,44 @@ export async function GET(request: NextRequest) {
   const mogId = parseTokenId(searchParams.get("mogId") || "");
 
   if (!mogId || mogId < 1 || mogId > MAX_SUPPLY) {
-    return NextResponse.json(
-      { error: "mogId must be between 1 and 5000." },
-      { status: 400 }
-    );
-  }
-
-  if (!MOGS_AGENT_BINDINGS_ADDRESS) {
-    return NextResponse.json(
-      {
-        error: "Binding contract not yet deployed.",
-        spec: "ERC-8217",
-        mogId,
-      },
-      { status: 503 }
-    );
+    return NextResponse.json({ error: "mogId must be between 1 and 5000." }, { status: 400 });
   }
 
   try {
-    const agentIdBig = await client.readContract({
-      address: MOGS_AGENT_BINDINGS_ADDRESS,
-      abi: MOGS_AGENT_BINDINGS_ABI,
-      functionName: "agentOf",
-      args: [BigInt(mogId)],
-    }) as bigint;
-
-    const agentId = Number(agentIdBig);
+    const result = await getAgentByMog(mogId);
     const rarity = getMogRarity(mogId);
 
-    if (agentId === 0) {
+    if (!result) {
       return NextResponse.json({
         mogId,
         bound: false,
         spec: "ERC-8217",
         discovery: {
           metadataKey: "agent-binding",
-          source: "reverse-lookup-default",
-          bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
-          note: "Reverse lookup starts from a Mog token ID, so it uses the Monad Mogs binding contract directly. Agent lookups can discover the binding contract from ERC-8004 metadata.",
+          source: "adapter-first",
         },
         rarity: rarity ? { rank: rarity.rank, tier: rarity.tier } : null,
         render: apiUrl(`/api/v0/mogs/${mogId}/render`),
-        hint: "This Mog has not been bound to an ERC-8004 agent yet.",
       });
     }
-
-    const [agentURI, owner, agentWallet] = await Promise.all([
-      client.readContract({
-        address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-        abi: ERC8004_IDENTITY_REGISTRY_ABI,
-        functionName: "tokenURI",
-        args: [agentIdBig],
-      }),
-      client.readContract({
-        address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-        abi: ERC8004_IDENTITY_REGISTRY_ABI,
-        functionName: "ownerOf",
-        args: [agentIdBig],
-      }),
-      client.readContract({
-        address: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-        abi: ERC8004_IDENTITY_REGISTRY_ABI,
-        functionName: "getAgentWallet",
-        args: [agentIdBig],
-      }),
-    ]);
 
     return NextResponse.json(
       {
         mogId,
         bound: true,
         spec: "ERC-8217",
-        agent: {
-          agentId,
-          agentURI,
-          owner,
-          agentWallet,
-          registry: ERC8004_IDENTITY_REGISTRY_ADDRESS,
-          chainId: MONAD_CHAIN.id,
-        },
-        mog: {
-          tokenId: mogId,
-          render: apiUrl(`/api/v0/mogs/${mogId}/render`),
-          rarity: rarity ? {
-            rank: rarity.rank,
-            tier: rarity.tier,
-            score: rarity.score,
-            percentile: rarity.percentile,
-          } : null,
-        },
-        bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
+        agent: result.agent,
+        mog: result.mog,
+        bindingContract: result.bindingContract,
         discovery: {
           metadataKey: "agent-binding",
-          source: "reverse-lookup-default",
-          bindingContract: MOGS_AGENT_BINDINGS_ADDRESS,
-          note: "Reverse lookup starts from a Mog token ID, so it uses the Monad Mogs binding contract directly. Agent lookups can discover the binding contract from ERC-8004 metadata.",
+          source: result.source,
+          bindingContract: result.bindingContract,
         },
       },
-      { headers: { "Cache-Control": "public, max-age=60" } }
+      { headers: { "Cache-Control": "public, max-age=60" } },
     );
-  } catch (error) {
-    const classified = classifyContractReadError(error);
-    return NextResponse.json(
-      {
-        error: classified.kind === "not_found" ? "Bound agent not found." : "Binding contract read failed.",
-        code: classified.code,
-        mogId,
-      },
-      { status: classified.status }
-    );
+  } catch {
+    return NextResponse.json({ error: "Binding contract read failed.", mogId }, { status: 502 });
   }
 }

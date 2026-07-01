@@ -82,6 +82,15 @@ export const kvKeysLegacy = {
       item: (id: string) => `arena:bug-report:${id}`,
     },
   },
+
+  agents: {
+    awakened: {
+      list: "agents:awakened",
+      item: (mogId: number | string) => `agents:awakened:${mogId}`,
+      count: "agents:awakened:count",
+      lastIndexedBlock: "agents:awakened:last-indexed-block",
+    },
+  },
 } as const;
 
 export const kvKeysV1 = {
@@ -128,6 +137,15 @@ export const kvKeysV1 = {
     reports: {
       list: "arena:v1:reports:list",
       item: (id: string) => `arena:v1:reports:${id}`,
+    },
+  },
+
+  agents: {
+    awakened: {
+      list: "agents:v1:awakened:list",
+      item: (mogId: number | string) => `agents:v1:awakened:${mogId}`,
+      count: "agents:v1:awakened:count",
+      lastIndexedBlock: "agents:v1:awakened:last-indexed-block",
     },
   },
 } as const;

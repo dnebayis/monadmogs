@@ -1,159 +1,243 @@
-import { AgentDashboard } from "@/components/agent-dashboard";
-import { CopyPrompt } from "@/components/copy-prompt";
+"use client";
+
+import { useMemo, useState } from "react";
+import { getAddress } from "viem";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { ConnectWalletButton } from "@/components/connect-wallet-button";
+import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
+import { MOGS_8004_ADAPTER_ABI, MOGS_8004_ADAPTER_ADDRESS } from "@/lib/erc8004";
 import { API_BASE_URL } from "@/lib/urls";
 
-const agentOnboardingPrompt = `read ${API_BASE_URL}/agent-prompt.txt and follow every step.
-create a wallet, request a Mog NFT and gas from the owner, register on ERC-8004, bind the agent to the Mog with ERC-8217, and save all credentials locally.`;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
+type PersonaPreview = {
+  name: string;
+  tagline: string;
+  backstory: string;
+  communicationStyle: string;
+  personalityTraits: string[];
+};
+
+function sameAddress(a?: string, b?: string) {
+  if (!a || !b) return false;
+  try {
+    return getAddress(a) === getAddress(b);
+  } catch {
+    return false;
+  }
+}
 
 export function AgentsTab() {
+  const [mogIdInput, setMogIdInput] = useState("");
+  const [preview, setPreview] = useState<PersonaPreview | null>(null);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const { address, isConnected } = useAccount();
+  const { writeContract, data: txHash, isPending, error: writeError } = useWriteContract();
+
+  const mogId = useMemo(() => {
+    const parsed = Number(mogIdInput);
+    return Number.isInteger(parsed) && parsed >= 1 && parsed <= 5000 ? parsed : null;
+  }, [mogIdInput]);
+  const adapterConfigured = !sameAddress(MOGS_8004_ADAPTER_ADDRESS, ZERO_ADDRESS);
+  const metadataUrl = mogId ? `${API_BASE_URL}/api/agents/metadata/${mogId}` : "";
+
+  const { data: mogOwner, isLoading: ownerLoading } = useReadContract({
+    address: MONAD_MOGS_ADDRESS,
+    abi: MONAD_MOGS_ABI,
+    functionName: "ownerOf",
+    args: mogId ? [BigInt(mogId)] : undefined,
+    query: { enabled: Boolean(mogId) },
+  });
+
+  const ownsMog = sameAddress(address, mogOwner as string | undefined);
+  const canRegister = Boolean(adapterConfigured && mogId && isConnected && ownsMog && metadataUrl && !isPending);
+
+  async function loadPreview() {
+    if (!mogId) return;
+    setPreviewError(null);
+    setPreview(null);
+    const response = await fetch(`${API_BASE_URL}/api/tools/mog-persona`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ mogId }),
+    });
+    const json = await response.json();
+    if (!response.ok) {
+      setPreviewError(json.error || "Persona preview failed.");
+      return;
+    }
+    setPreview(json);
+  }
+
+  function registerAgent() {
+    if (!mogId || !canRegister) return;
+    writeContract({
+      address: MOGS_8004_ADAPTER_ADDRESS,
+      abi: MOGS_8004_ADAPTER_ABI,
+      functionName: "registerMogAgent",
+      args: [BigInt(mogId), metadataUrl],
+    });
+  }
+
   return (
     <section className="tab-full">
       <div className="section-heading">
-        <p className="eyebrow">ERC-8004 on Monad</p>
-        <h2>Give your Mog an agent.</h2>
+        <p className="eyebrow">Awaken / Agent Registry</p>
+        <h2>Mog ownership controls the agent.</h2>
         <p className="section-copy">
-          Copy the prompt below, give it to your AI agent tool, and it will create its own wallet, request a Mog from you, register on ERC-8004 if needed, and bind to the Mog with ERC-8217.
+          New registrations use the Adapter8004 model: the adapter registers the ERC-8004 agent, keeps the agent NFT in adapter custody, and treats the current Mog owner as controller.
         </p>
         <p className="section-copy">
-          Arena auth is currently owner-signed: a delegated ERC-8004 <code>agentWallet</code> alone is not yet enough for Arena auth or binding calls.
+          Arena is legacy for now. The active flow is ERC-8004 identity, ERC-8217 binding, RESTAP metadata, and OpenSea agent visibility.
         </p>
       </div>
 
       <div className="tab-block">
         <div className="tab-block-header">
-          <p className="eyebrow">Agent Setup</p>
-          <p className="tab-block-copy">Give this prompt to your AI agent. It handles the rest.</p>
+          <p className="eyebrow">Register</p>
+          <p className="tab-block-copy">Enter a Mog you own, preview its deterministic persona, then awaken it onchain.</p>
         </div>
-        <CopyPrompt text={agentOnboardingPrompt} label="Agent setup prompt" />
 
-        <div className="endpoint-list" style={{ marginTop: 24 }}>
+        <div className="endpoint-list">
           <article className="endpoint-card">
-            <span>1 / Prompt</span>
-            <p>Copy the prompt above and paste it into your AI agent tool.</p>
+            <span>1 / Connect</span>
+            <p>The connected wallet must currently own the Mog NFT.</p>
+            <ConnectWalletButton />
           </article>
           <article className="endpoint-card">
-            <span>2 / Wallet</span>
-            <p>The agent creates its own wallet and saves the private key locally in its directory.</p>
+            <span>2 / Mog ID</span>
+            <input
+              className="arena-input"
+              inputMode="numeric"
+              min={1}
+              max={5000}
+              placeholder="4354"
+              value={mogIdInput}
+              onChange={(event) => setMogIdInput(event.target.value)}
+            />
+            <p>
+              {mogId
+                ? ownerLoading
+                  ? "Checking owner..."
+                  : ownsMog
+                    ? "Ownership verified for the connected wallet."
+                    : "Connected wallet is not the current owner."
+                : "Use a token id from 1 to 5000."}
+            </p>
           </article>
           <article className="endpoint-card">
-            <span>3 / Fund</span>
-            <p>Transfer a Mog NFT and a small amount of MON to the agent's wallet address.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>4 / Register</span>
-            <p>The agent calls ERC-8004 Identity Registry on Monad and then binds that agent ID to the Mog with ERC-8217. Existing registrations reuse the same agent ID; no re-registration is needed.</p>
+            <span>3 / AgentURI</span>
+            <code>{metadataUrl || `${API_BASE_URL}/api/agents/metadata/{mogId}`}</code>
+            <p>This becomes the ERC-8004 tokenURI after the adapter registers the agent.</p>
           </article>
         </div>
+
+        <div className="hero-actions" style={{ marginTop: 24 }}>
+          <button className="primary-link" type="button" disabled={!mogId} onClick={loadPreview}>
+            Preview persona
+          </button>
+          <button className="primary-link" type="button" disabled={!canRegister} onClick={registerAgent}>
+            {isPending ? "Confirm in wallet..." : "Awaken onchain"}
+          </button>
+        </div>
+
+        {!adapterConfigured ? (
+          <p className="section-copy" style={{ marginTop: 16 }}>
+            Adapter address is not configured yet. Set <code>NEXT_PUBLIC_MOGS_8004_ADAPTER_ADDRESS</code> after deployment.
+          </p>
+        ) : null}
+        {previewError ? <p className="section-copy">{previewError}</p> : null}
+        {writeError ? <p className="section-copy">{writeError.message}</p> : null}
       </div>
+
+      {preview ? (
+        <div className="tab-block">
+          <div className="tab-block-header">
+            <p className="eyebrow">Persona Preview</p>
+            <p className="tab-block-copy">{preview.name}</p>
+          </div>
+          <div className="endpoint-list">
+            <article className="endpoint-card">
+              <span>Tagline</span>
+              <p>{preview.tagline}</p>
+            </article>
+            <article className="endpoint-card">
+              <span>Style</span>
+              <p>{preview.communicationStyle}</p>
+            </article>
+            <article className="endpoint-card">
+              <span>Backstory</span>
+              <p>{preview.backstory}</p>
+            </article>
+          </div>
+        </div>
+      ) : null}
 
       <div className="tab-block">
         <div className="tab-block-header">
-          <p className="eyebrow">Your Agents</p>
-        </div>
-        <AgentDashboard />
-      </div>
-
-      <div className="tab-block">
-        <div className="tab-block-header">
-          <p className="eyebrow">ERC-8004 Registries</p>
-          <p className="tab-block-copy">Monad uses the same ERC-8004 contract addresses deployed across 25+ chains.</p>
+          <p className="eyebrow">Registry APIs</p>
+          <p className="tab-block-copy">Public agent data follows the awakened Mog model.</p>
         </div>
         <div className="endpoint-list">
           <article className="endpoint-card">
-            <span>Identity Registry</span>
-            <p>ERC-721 agent cards with AgentURI, metadata, and wallet management.</p>
+            <span>Count</span>
+            <code>/api/agents/count</code>
+          </article>
+          <article className="endpoint-card">
+            <span>Binding</span>
+            <code>/api/agents/binding/&#123;mogId&#125;</code>
+          </article>
+          <article className="endpoint-card">
+            <span>Metadata</span>
+            <code>/api/agents/metadata/&#123;mogId&#125;</code>
+          </article>
+          <article className="endpoint-card">
+            <span>RESTAP</span>
+            <code>/api/agent-runtime/&#123;mogId&#125;/.well-known/restap.json</code>
+          </article>
+        </div>
+      </div>
+
+      {txHash && mogId ? (
+        <div className="tab-block">
+          <div className="tab-block-header">
+            <p className="eyebrow">Submitted</p>
+            <p className="tab-block-copy">After confirmation, these links should resolve for the awakened Mog.</p>
+          </div>
+          <div className="hero-actions">
+            <a className="text-link" href={`${API_BASE_URL}/api/agents/binding/${mogId}`} target="_blank" rel="noreferrer">
+              Binding API
+            </a>
+            <a className="text-link" href={metadataUrl} target="_blank" rel="noreferrer">
+              AgentURI
+            </a>
+            <a className="text-link" href={`https://opensea.io/item/monad/${MONAD_MOGS_ADDRESS}/${mogId}`} target="_blank" rel="noreferrer">
+              OpenSea item
+            </a>
+          </div>
+          <code>{txHash}</code>
+        </div>
+      ) : null}
+
+      <div className="tab-block">
+        <div className="tab-block-header">
+          <p className="eyebrow">Contracts</p>
+          <p className="tab-block-copy">Legacy bindings remain readable, but new awakenings use the adapter.</p>
+        </div>
+        <div className="endpoint-list">
+          <article className="endpoint-card">
+            <span>Adapter8004</span>
+            <code>{MOGS_8004_ADAPTER_ADDRESS}</code>
+          </article>
+          <article className="endpoint-card">
+            <span>ERC-8004 Identity Registry</span>
             <code>0x8004A169FB4a3325136EB29fA0ceB6D2e539a432</code>
           </article>
           <article className="endpoint-card">
-            <span>Reputation Registry</span>
-            <p>Onchain feedback signals with tags, values, and dispute responses.</p>
-            <code>0x8004BAa17C55a88189AE136b182e5fdA19dE9b63</code>
-          </article>
-          <article className="endpoint-card">
-            <span>Validation Registry</span>
-            <p>Third-party validation requests and responses. Coming soon.</p>
+            <span>Monad Mogs NFT</span>
+            <code>{MONAD_MOGS_ADDRESS}</code>
           </article>
         </div>
-      </div>
-
-      <div className="tab-block">
-        <div className="tab-block-header">
-          <p className="eyebrow">Agent API</p>
-          <p className="tab-block-copy">Programmatic access to agent identities and ERC-8004 data.</p>
-        </div>
-        <div className="endpoint-list">
-          <article className="endpoint-card">
-            <span>AgentURI</span>
-            <code>/api/agents/uri?owner=&#123;addr&#125;&mogId=&#123;id&#125;</code>
-            <p>Generate a spec-compliant ERC-8004 AgentURI JSON document.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>Lookup</span>
-            <code>/api/agents/lookup?agentId=&#123;id&#125;</code>
-            <p>Read onchain tokenURI and agentWallet for a registered agent.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>Registries</span>
-            <code>/api/agents/registries</code>
-            <p>ERC-8004 contract addresses and chain info for Monad.</p>
-          </article>
-        </div>
-      </div>
-
-      <div className="tab-block">
-        <div className="tab-block-header">
-          <p className="eyebrow">Agent Chat</p>
-          <p className="tab-block-copy">Talk to your Mog. Its personality, tone, and decisions reflect its traits and playstyle.</p>
-        </div>
-        <div className="agent-chat-preview">
-          <div className="agent-chat-disabled">
-            <p>Agent Chat is coming soon.</p>
-            <p>Every Mog will have a unique persona derived from its 9 onchain traits. Chat with your agent, ask it about strategy, or just talk.</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="tab-block">
-        <div className="tab-block-header">
-          <p className="eyebrow">What&rsquo;s Next</p>
-          <p className="tab-block-copy">Agents will go beyond registration.</p>
-        </div>
-        <div className="endpoint-list">
-          <article className="endpoint-card">
-            <span>Trait Personas</span>
-            <p>Every Mog has a unique persona derived from its 9 onchain traits. Agents behave accordingly.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>Agent Runners</span>
-            <p>Persistent agent endpoints that act autonomously, respond to API calls, and interact with other agents.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>Reputation</span>
-            <p>Agents earn reputation from game results, community interactions, and peer feedback via ERC-8004.</p>
-          </article>
-          <article className="endpoint-card">
-            <span>Rarity Advantage</span>
-            <p>Exact onchain rarity ranks are live. Legendary Mogs unlock 2 Special Moves; Epic and Rare unlock 1. Never a guaranteed win.</p>
-          </article>
-        </div>
-      </div>
-
-      <div className="hero-actions">
-        <a className="text-link" href="https://docs.monad.xyz/guides/erc-8004" target="_blank" rel="noreferrer">
-          Monad ERC-8004 Docs
-        </a>
-        <a className="text-link muted" href="https://eips.ethereum.org/EIPS/eip-8004" target="_blank" rel="noreferrer">
-          EIP Spec
-        </a>
-        <a className="text-link muted" href="https://github.com/erc-8004/erc-8004-contracts" target="_blank" rel="noreferrer">
-          Contracts
-        </a>
-        <a className="text-link muted" href={`${API_BASE_URL}/api/agents/registries`} target="_blank" rel="noreferrer">
-          Registries API
-        </a>
-        <a className="text-link muted" href={`${API_BASE_URL}/llms.txt`} target="_blank" rel="noreferrer">
-          llms.txt
-        </a>
       </div>
     </section>
   );
