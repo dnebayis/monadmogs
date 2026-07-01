@@ -92,62 +92,75 @@ export function AgentsTab() {
         </p>
       </div>
 
-      <div className="tab-block">
+      <div className="tab-block agent-awaken-block">
         <div className="tab-block-header">
           <p className="eyebrow">Register</p>
           <p className="tab-block-copy">Enter a Mog you own, preview its deterministic persona, then awaken it onchain.</p>
         </div>
 
-        <div className="endpoint-list">
-          <article className="endpoint-card">
-            <span>1 / Connect</span>
-            <p>The connected wallet must currently own the Mog NFT.</p>
-            <ConnectWalletButton />
-          </article>
-          <article className="endpoint-card">
-            <span>2 / Mog ID</span>
-            <input
-              className="arena-input"
-              inputMode="numeric"
-              min={1}
-              max={5000}
-              placeholder="4354"
-              value={mogIdInput}
-              onChange={(event) => setMogIdInput(event.target.value)}
-            />
-            <p>
-              {mogId
-                ? ownerLoading
-                  ? "Checking owner..."
-                  : ownsMog
-                    ? "Ownership verified for the connected wallet."
-                    : "Connected wallet is not the current owner."
-                : "Use a token id from 1 to 5000."}
-            </p>
-          </article>
-          <article className="endpoint-card">
-            <span>3 / AgentURI</span>
-            <code>{metadataUrl || `${API_BASE_URL}/api/agents/metadata/{mogId}`}</code>
-            <p>This becomes the ERC-8004 tokenURI after the adapter registers the agent.</p>
-          </article>
-        </div>
+        <div className="agent-awaken-panel">
+          <div className="agent-awaken-grid">
+            <article className="agent-awaken-card">
+              <div className="agent-step-label">
+                <small>01</small>
+                <strong>Connect</strong>
+              </div>
+              <p>The connected wallet must currently own the Mog NFT.</p>
+              <div className="agent-connect-slot">
+                <ConnectWalletButton />
+              </div>
+            </article>
+            <article className="agent-awaken-card">
+              <div className="agent-step-label">
+                <small>02</small>
+                <strong>Mog ID</strong>
+              </div>
+              <input
+                className="agent-id-input"
+                inputMode="numeric"
+                min={1}
+                max={5000}
+                placeholder="4354"
+                value={mogIdInput}
+                onChange={(event) => setMogIdInput(event.target.value)}
+              />
+              <p className={mogId && ownsMog ? "agent-field-status ok" : mogId && !ownerLoading ? "agent-field-status warn" : "agent-field-status"}>
+                {mogId
+                  ? ownerLoading
+                    ? "Checking owner..."
+                    : ownsMog
+                      ? "Ownership verified for the connected wallet."
+                      : "Connected wallet is not the current owner."
+                  : "Use a token id from 1 to 5000."}
+              </p>
+            </article>
+            <article className="agent-awaken-card">
+              <div className="agent-step-label">
+                <small>03</small>
+                <strong>AgentURI</strong>
+              </div>
+              <code className="agent-uri-preview">{metadataUrl || `${API_BASE_URL}/api/agents/metadata/{mogId}`}</code>
+              <p>This becomes the ERC-8004 tokenURI after the adapter registers the agent.</p>
+            </article>
+          </div>
 
-        <div className="hero-actions" style={{ marginTop: 24 }}>
-          <button className="primary-link" type="button" disabled={!mogId} onClick={loadPreview}>
-            Preview persona
-          </button>
-          <button className="primary-link" type="button" disabled={!canRegister} onClick={registerAgent}>
-            {isPending ? "Confirm in wallet..." : "Awaken onchain"}
-          </button>
+          <div className="agent-awaken-actions">
+            <button className="agent-action-button secondary" type="button" disabled={!mogId} onClick={loadPreview}>
+              Preview persona
+            </button>
+            <button className="agent-action-button primary" type="button" disabled={!canRegister} onClick={registerAgent}>
+              {isPending ? "Confirm in wallet..." : "Awaken onchain"}
+            </button>
+          </div>
         </div>
 
         {!adapterConfigured ? (
-          <p className="section-copy" style={{ marginTop: 16 }}>
+          <p className="agent-form-note">
             Adapter address is not configured yet. Set <code>NEXT_PUBLIC_MOGS_8004_ADAPTER_ADDRESS</code> after deployment.
           </p>
         ) : null}
-        {previewError ? <p className="section-copy">{previewError}</p> : null}
-        {writeError ? <p className="section-copy">{writeError.message}</p> : null}
+        {previewError ? <p className="agent-form-note error">{previewError}</p> : null}
+        {writeError ? <p className="agent-form-note error">{writeError.message}</p> : null}
       </div>
 
       {preview ? (
