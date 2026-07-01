@@ -987,6 +987,28 @@ h2 {
   opacity: 0.42;
 }
 
+.agent-awaken-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.agent-awaken-links a {
+  border: 1px solid rgba(255, 248, 238, 0.14);
+  padding: 10px 12px;
+  color: #ffe8b8;
+  font-size: 14px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: border-color 160ms ease, background 160ms ease;
+}
+
+.agent-awaken-links a:hover {
+  border-color: rgba(255, 248, 238, 0.34);
+  background: rgba(255, 248, 238, 0.06);
+}
+
 .agent-form-note {
   max-width: 760px;
   margin: 16px 0 0;
@@ -3290,6 +3312,11 @@ textarea:focus-visible {
   }
 
   .agent-awaken-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .agent-awaken-links {
     align-items: stretch;
     flex-direction: column;
   }

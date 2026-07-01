@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { enrichMogMetadata, getMogMetadata, immutableHeaders, parseTokenId } from "@/lib/mogs";
+import { getAgentByMog } from "@/lib/agent-registry";
+import { enrichMogMetadata, getMogMetadata, parseTokenId } from "@/lib/mogs";
 import { getMogRarity } from "@/lib/rarity";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +21,24 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ error: "Mog metadata unavailable." }, { status: 503 });
   }
 
+  const agent = await getAgentByMog(tokenId);
+
   return NextResponse.json(
     {
       ...enrichMogMetadata(metadata),
       rarity: getMogRarity(tokenId),
+      agentAwake: Boolean(agent),
+      agentId: agent?.agent.agentId || null,
+      agentBinding: agent
+        ? {
+            spec: "ERC-8217",
+            contract: agent.bindingContract,
+            source: agent.source,
+            agentURI: agent.agent.agentURI,
+            controller: agent.agent.controller,
+          }
+        : null,
     },
-    { headers: immutableHeaders() },
+    { headers: { "Content-Type": "application/json", "Cache-Control": "public, max-age=60" } },
   );
 }

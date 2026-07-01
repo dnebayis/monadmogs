@@ -17,6 +17,7 @@ const API_SECTIONS = [
     title: "Collection",
     endpoints: [
       ["/api/v0/mogs?cursor=1&limit=24", "Paginated Mog metadata with traits, links, images, and rarity."],
+      ["/api/v0/mogs?awake=true", "Awakened Mog metadata feed."],
       ["/api/v0/mogs/{id}", "Single Mog metadata, image data URI, traits, links, and rarity summary."],
       ["/api/v0/mogs/{id}/rarity", "Exact rank, tier, score, percentile, and per-trait frequency data."],
       ["/api/v0/mogs/{id}/render", "Raw SVG render served as image/svg+xml."],
@@ -27,11 +28,15 @@ const API_SECTIONS = [
   {
     title: "Awakened Agents",
     endpoints: [
-      ["/api/agents/count", "KV-indexed count of awakened Mog agents."],
-      ["/api/agents/list", "KV-indexed awakened agent list."],
+      ["/api/agents/count", "Awakened Mog agent count from KV with onchain adapter fallback."],
+      ["/api/agents/list", "Awakened agent list from KV with onchain adapter fallback."],
+      ["/api/agents/search", "Search awakened agents by token, agent, wallet, rarity, or name."],
       ["/api/agents/binding/{mogId}", "Normies-style binding lookup for a Mog token ID."],
+      ["/api/agents/binding/batch", "POST batch binding lookup for Mog token IDs."],
       ["/api/agents/info/{mogId}", "Persona, binding, rarity, and public agent links."],
       ["/api/agents/metadata/{mogId}", "ERC-8004 AgentURI tokenURI document."],
+      ["/api/agents/identity/{mogId}", "Mog identity plus awakened agent status."],
+      ["/api/agents/persona-preview/{mogId}", "Deterministic persona preview without requiring awakening."],
       ["/api/agents/image/{mogId}", "Agent image redirect to the Mog SVG render."],
       ["/api/agents/agent-card/{mogId}", "A2A-compatible agent card."],
       ["/api/agent-runtime/{mogId}/.well-known/restap.json", "RESTAP v1 runtime discovery."],
@@ -43,6 +48,8 @@ const API_SECTIONS = [
     title: "Legacy Compatibility",
     endpoints: [
       ["/api/agents/binding?agentId={id}", "Adapter-first, legacy fallback ERC-8217 lookup by agent ID."],
+      ["/api/agents/by-agent-id/{agentId}", "Resolve a bound Mog from an ERC-8004 agent ID."],
+      ["/api/agents/by-agent-id/{agentId}/info", "Persona-rich agent info by ERC-8004 agent ID."],
       ["/api/agents/by-mog?mogId={id}", "Adapter-first, legacy fallback reverse lookup by Mog ID."],
       ["/api/agents/lookup?agentId={id}", "Read onchain ERC-8004 agent data."],
       ["/api/agents/profile?agentId={id}", "Agent data plus resolved AgentURI profile."],

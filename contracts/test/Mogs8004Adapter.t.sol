@@ -14,12 +14,14 @@ contract Mogs8004AdapterTest is Test {
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
     uint256 public constant MOG_ID = 123;
+    uint256 public constant SECOND_MOG_ID = 124;
 
     function setUp() public {
         mogs = new MockERC721();
         registry = new MockERC8004IdentityRegistry();
         adapter = new Mogs8004Adapter(address(mogs), address(registry));
         mogs.mint(alice, MOG_ID);
+        mogs.mint(alice, SECOND_MOG_ID);
     }
 
     function test_registerMogAgent_succeedsForMogOwner() public {
@@ -58,6 +60,18 @@ contract Mogs8004AdapterTest is Test {
         vm.prank(alice);
         vm.expectRevert(abi.encodeWithSelector(Mogs8004Adapter.MogAlreadyAwakened.selector, MOG_ID, 1));
         adapter.registerMogAgent(MOG_ID, "uri2");
+    }
+
+    function test_sameOwnerCanRegisterDifferentMogs() public {
+        vm.startPrank(alice);
+        uint256 firstAgentId = adapter.registerMogAgent(MOG_ID, "uri-1");
+        uint256 secondAgentId = adapter.registerMogAgent(SECOND_MOG_ID, "uri-2");
+        vm.stopPrank();
+
+        assertEq(firstAgentId, 1);
+        assertEq(secondAgentId, 2);
+        assertEq(adapter.agentOf(MOG_ID), firstAgentId);
+        assertEq(adapter.agentOf(SECOND_MOG_ID), secondAgentId);
     }
 
     function test_mogTransferChangesControllerPermissions() public {

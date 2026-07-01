@@ -28,6 +28,7 @@ Steps:
 3. Preview persona:
    POST ${API_BASE_URL}/api/tools/mog-persona
    Body: {"mogId": N}
+   or GET ${API_BASE_URL}/api/agents/persona-preview/{mogId}
 
 4. Build AgentURI:
    ${API_BASE_URL}/api/agents/metadata/{mogId}
@@ -42,6 +43,8 @@ Steps:
    GET ${API_BASE_URL}/api/agents/binding/{mogId}
    GET ${API_BASE_URL}/api/agents/info/{mogId}
    GET ${API_BASE_URL}/api/agents/metadata/{mogId}
+   GET ${API_BASE_URL}/api/agents/identity/{mogId}
+   GET ${API_BASE_URL}/api/agents/by-agent-id/{agentId}
    GET ${API_BASE_URL}/api/agent-runtime/{mogId}/.well-known/restap.json
 
 7. Check OpenSea item page:
@@ -53,12 +56,14 @@ Do not:
 - Use old MogsAgentBindings for new registrations.
 - Attempt ERC-8048 in v1; the NFT contract is frozen.
 - Claim RESTAP v1 can sign wallet actions, execute autonomously, or play Arena.
+- Claim a controller wallet transaction was agent-executed unless a separate signed execution receipt exists.
 
 Useful links:
 - Site: ${SITE_URL}
 - API: ${API_BASE_URL}
 - Agent count: ${API_BASE_URL}/api/agents/count
 - Agent list: ${API_BASE_URL}/api/agents/list
+- Agent search: ${API_BASE_URL}/api/agents/search
 - Registries: ${API_BASE_URL}/api/agents/registries
 `;
 

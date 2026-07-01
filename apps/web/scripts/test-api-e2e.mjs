@@ -84,6 +84,60 @@ await check("agent registry count and list are KV shaped", async () => {
   assert(list.limit === 5, "agent list should honor limit");
 });
 
+await check("known awakened Mog is present in registry index when bound", async () => {
+  const binding = await request("/api/agents/binding/995");
+  if (!binding.bound) return;
+  const count = await request("/api/agents/count");
+  const list = await request("/api/agents/list?limit=500");
+  assert(count.count >= 1, "awakened registry count should include known bound Mog");
+  assert(
+    list.agents.some((agent) => String(agent.tokenId) === "995" && String(agent.agentId) === String(binding.binding.agentId)),
+    "awakened registry list should include Mog #995",
+  );
+});
+
+await check("agent discovery endpoints resolve known awakened Mog", async () => {
+  const binding = await request("/api/agents/binding/995");
+  if (!binding.bound) return;
+  const agentId = binding.binding.agentId;
+  const byAgent = await request(`/api/agents/by-agent-id/${agentId}`);
+  assert(byAgent.bound === true, "by-agent-id should be bound");
+  assert(byAgent.mog?.tokenId === 995, "by-agent-id mog mismatch");
+  assert(byAgent.attribution?.level === "binding", "by-agent-id attribution level missing");
+
+  const byAgentInfo = await request(`/api/agents/by-agent-id/${agentId}/info`);
+  assert(byAgentInfo.tokenId === "995", "by-agent-id info token mismatch");
+  assert(byAgentInfo.binding?.agentId === agentId, "by-agent-id info agent mismatch");
+
+  const search = await request("/api/agents/search?q=995&limit=10");
+  assert(search.agents?.some((agent) => String(agent.tokenId) === "995"), "search should find Mog #995");
+
+  const identity = await request("/api/agents/identity/995");
+  assert(identity.agentAwake === true, "identity should mark #995 awake");
+  assert(identity.agentId === agentId, "identity agentId mismatch");
+});
+
+await check("batch binding handles mixed awakened and unawakened Mogs", async () => {
+  const binding = await request("/api/agents/binding/995");
+  if (!binding.bound) return;
+  const list = await request("/api/agents/list?limit=500");
+  const awakened = new Set(list.agents.map((agent) => Number(agent.tokenId)));
+  const unawakened = Array.from({ length: 5000 }, (_, index) => index + 1).find((tokenId) => !awakened.has(tokenId));
+  assert(unawakened, "expected at least one unawakened Mog");
+
+  const batch = await postJson("/api/agents/binding/batch", { mogIds: [995, unawakened] });
+  assert(batch.count === 2, "batch should return two unique results");
+  assert(batch.results.some((result) => result.mogId === 995 && result.bound === true), "batch missing bound #995");
+  assert(batch.results.some((result) => result.mogId === unawakened && result.bound === false), "batch missing unawakened result");
+
+  const tooLarge = await postJson(
+    "/api/agents/binding/batch",
+    { mogIds: Array.from({ length: 101 }, (_, index) => index + 1) },
+    400,
+  );
+  assert(tooLarge.error?.includes("1 to 100"), "batch max error mismatch");
+});
+
 await check("path binding endpoint returns awakened or unawakened shape", async () => {
   const binding = await request("/api/agents/binding/1");
   assert(binding.mogId === 1, "binding response mogId mismatch");
@@ -101,6 +155,10 @@ await check("persona tool returns deterministic persona without awakening", asyn
   assert(persona.name === "Mog #263", "persona name mismatch");
   assert(persona.systemPrompt?.includes("Mog #263"), "persona system prompt missing token id");
   assert(Array.isArray(persona.safetyRails), "persona safety rails missing");
+
+  const preview = await request("/api/agents/persona-preview/263");
+  assert(preview.awakenedRequired === false, "persona preview should not require awakening");
+  assert(preview.name === "Mog #263", "persona preview name mismatch");
 });
 
 await check("rarity tool returns rank and traits", async () => {
@@ -134,6 +192,9 @@ await check("OpenSea tool manifests are same-origin and schema shaped", async ()
 await check("invalid tool inputs fail closed", async () => {
   const error = await postJson("/api/tools/mog-persona", { mogId: 0 }, 400);
   assert(error.error?.includes("between 1 and 5000"), "invalid mogId error mismatch");
+
+  const searchError = await request("/api/agents/search?limit=0", 400);
+  assert(searchError.error?.includes("limit"), "invalid search limit error mismatch");
 });
 
 await check("legacy query endpoints reject fractional ids", async () => {
@@ -166,9 +227,37 @@ await check("RESTAP and AgentURI are gated to awakened Mogs", async () => {
     return;
   }
   const metadata = await request("/api/agents/metadata/1");
-  assert(metadata.services?.some((service) => service.type === "RESTAP"), "AgentURI RESTAP service missing");
+  assert(metadata.type === "https://eips.ethereum.org/EIPS/eip-8004#registration-v1", "AgentURI type mismatch");
+  assert(metadata.active === true, "AgentURI active flag missing");
+  assert(metadata.x402Support === false, "AgentURI x402 flag mismatch");
+  assert(metadata.registrations?.[0]?.agentRegistry?.startsWith("eip155:"), "AgentURI registration missing");
+  assert(
+    metadata.services?.some((service) => service.type === "RESTAP" && service.name === "RESTAP" && service.version),
+    "AgentURI RESTAP service missing",
+  );
   const restap = await request("/api/agent-runtime/1/.well-known/restap.json");
   assert(restap.capabilities?.walletSigning === false, "RESTAP v1 must not expose wallet signing");
+});
+
+await check("collection API exposes awake discovery", async () => {
+  const binding = await request("/api/agents/binding/995");
+  if (!binding.bound) return;
+
+  const mog = await request("/api/v0/mogs/995");
+  assert(mog.agentAwake === true, "single Mog metadata should expose agentAwake");
+  assert(mog.agentId === binding.binding.agentId, "single Mog metadata agentId mismatch");
+
+  const awake = await request("/api/v0/mogs?awake=true&limit=20");
+  assert(awake.awake === true, "awake feed flag mismatch");
+  assert(awake.items.some((item) => item.tokenId === 995 && item.agentAwake === true), "awake feed missing #995");
+
+  const asleep = await request("/api/v0/mogs?awake=false&limit=20");
+  assert(asleep.awake === false, "asleep feed flag mismatch");
+  assert(asleep.items.every((item) => item.agentAwake === false), "asleep feed should only include unawakened Mogs");
+
+  const rarity = await request("/api/v0/rarity");
+  assert(rarity.awakenedCount >= 1, "rarity summary awakened count missing");
+  assert(rarity.awakenedByTier && typeof rarity.awakenedByTier === "object", "rarity awakened tier summary missing");
 });
 
 await check("agent prompt and llms prioritize awakening over Arena", async () => {

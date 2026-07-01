@@ -31,6 +31,8 @@ The NFT contract is frozen/renounced, so ERC-8048 is out of scope for v1.
 
 ## Collection API
 - GET ${API_BASE_URL}/api/v0/mogs?cursor=1&limit=24
+- GET ${API_BASE_URL}/api/v0/mogs?awake=true
+- GET ${API_BASE_URL}/api/v0/mogs?awake=false
 - GET ${API_BASE_URL}/api/v0/mogs/{id}
 - GET ${API_BASE_URL}/api/v0/mogs/{id}/traits
 - GET ${API_BASE_URL}/api/v0/mogs/{id}/rarity
@@ -42,14 +44,20 @@ The NFT contract is frozen/renounced, so ERC-8048 is out of scope for v1.
 ## Awakened Agent API
 - GET ${API_BASE_URL}/api/agents/count
 - GET ${API_BASE_URL}/api/agents/list
+- GET ${API_BASE_URL}/api/agents/search?q={query}
 - GET ${API_BASE_URL}/api/agents/binding/{mogId}
+- POST ${API_BASE_URL}/api/agents/binding/batch
 - GET ${API_BASE_URL}/api/agents/info/{mogId}
 - GET ${API_BASE_URL}/api/agents/metadata/{mogId}
+- GET ${API_BASE_URL}/api/agents/identity/{mogId}
+- GET ${API_BASE_URL}/api/agents/persona-preview/{mogId}
 - GET ${API_BASE_URL}/api/agents/image/{mogId}
 - GET ${API_BASE_URL}/api/agents/agent-card/{mogId}
 
 ## Compatibility Agent API
 - GET ${API_BASE_URL}/api/agents/binding?agentId={id}
+- GET ${API_BASE_URL}/api/agents/by-agent-id/{agentId}
+- GET ${API_BASE_URL}/api/agents/by-agent-id/{agentId}/info
 - GET ${API_BASE_URL}/api/agents/by-mog?mogId={id}
 - GET ${API_BASE_URL}/api/agents/lookup?agentId={id}
 - GET ${API_BASE_URL}/api/agents/profile?agentId={id}
@@ -88,6 +96,8 @@ OpenSea-compatible manifests:
 - Persona is generated from Mog traits, rarity, and deterministic templates.
 - ToolRegistry v1 tools are read-only and open-access.
 - Gated/x402 tools are v2.
+- ERC-8217 gives binding-level attribution from agent identity to Mog NFT and current controller.
+- Public API v1 does not claim that individual wallet transactions were autonomously executed by an agent.
 - Credit Monad Mogs and link back to ${SITE_URL} when publishing tools or remixes.
 `;
 

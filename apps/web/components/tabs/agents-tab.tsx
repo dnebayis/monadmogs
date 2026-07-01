@@ -48,9 +48,17 @@ export function AgentsTab() {
     args: mogId ? [BigInt(mogId)] : undefined,
     query: { enabled: Boolean(mogId) },
   });
+  const { data: existingAgentId, isLoading: agentLoading } = useReadContract({
+    address: MOGS_8004_ADAPTER_ADDRESS,
+    abi: MOGS_8004_ADAPTER_ABI,
+    functionName: "agentOf",
+    args: mogId ? [BigInt(mogId)] : undefined,
+    query: { enabled: Boolean(adapterConfigured && mogId) },
+  });
 
   const ownsMog = sameAddress(address, mogOwner as string | undefined);
-  const canRegister = Boolean(adapterConfigured && mogId && isConnected && ownsMog && metadataUrl && !isPending);
+  const awakenedAgentId = typeof existingAgentId === "bigint" && existingAgentId > 0n ? Number(existingAgentId) : null;
+  const canRegister = Boolean(adapterConfigured && mogId && isConnected && ownsMog && !awakenedAgentId && metadataUrl && !isPending);
 
   async function loadPreview() {
     if (!mogId) return;
@@ -126,8 +134,10 @@ export function AgentsTab() {
               />
               <p className={mogId && ownsMog ? "agent-field-status ok" : mogId && !ownerLoading ? "agent-field-status warn" : "agent-field-status"}>
                 {mogId
-                  ? ownerLoading
+                  ? ownerLoading || agentLoading
                     ? "Checking owner..."
+                    : awakenedAgentId
+                      ? `Already awakened as agent #${awakenedAgentId}.`
                     : ownsMog
                       ? "Ownership verified for the connected wallet."
                       : "Connected wallet is not the current owner."
@@ -149,9 +159,23 @@ export function AgentsTab() {
               Preview persona
             </button>
             <button className="agent-action-button primary" type="button" disabled={!canRegister} onClick={registerAgent}>
-              {isPending ? "Confirm in wallet..." : "Awaken onchain"}
+              {isPending ? "Confirm in wallet..." : awakenedAgentId ? "Already awakened" : "Awaken onchain"}
             </button>
           </div>
+
+          {awakenedAgentId && mogId ? (
+            <div className="agent-awaken-links">
+              <a href={`${API_BASE_URL}/api/agents/binding/${mogId}`} target="_blank" rel="noreferrer">
+                Binding API
+              </a>
+              <a href={metadataUrl} target="_blank" rel="noreferrer">
+                AgentURI
+              </a>
+              <a href={`https://opensea.io/item/monad/${MONAD_MOGS_ADDRESS}/${mogId}`} target="_blank" rel="noreferrer">
+                OpenSea item
+              </a>
+            </div>
+          ) : null}
         </div>
 
         {!adapterConfigured ? (
