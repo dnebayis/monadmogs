@@ -169,6 +169,9 @@ function ToolsSection() {
       <p>
         First tools are open-access and read-only. They are designed for discovery and safe agent context, not gated execution or payment.
       </p>
+      <p>
+        Registered on Base ToolRegistry <code>0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1</code> as tool IDs <code>183</code>, <code>184</code>, and <code>185</code>.
+      </p>
 
       <div className="endpoint-list">
         <article className="endpoint-card">

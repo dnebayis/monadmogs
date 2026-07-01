@@ -83,6 +83,12 @@ OpenSea-compatible manifests:
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-persona.json
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-rarity.json
 
+Base ToolRegistry:
+- Registry: 0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1
+- mog-agent-lookup toolId: 183
+- mog-persona toolId: 184
+- mog-rarity toolId: 185
+
 ## Registry Contracts
 - ERC-8004 Identity Registry: 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
 - ERC-8004 Reputation Registry: 0x8004BAa17C55a88189AE136b182e5fdA19dE9b63
