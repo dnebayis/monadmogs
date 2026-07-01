@@ -176,9 +176,10 @@ await check("agent lookup tool accepts unawakened Mogs", async () => {
 
 await check("OpenSea tool manifests are same-origin and schema shaped", async () => {
   const slugs = ["mog-agent-lookup", "mog-persona", "mog-rarity"];
+  const manifestType = "https://ercs.ethereum.org/ERCS/erc-8257#tool-manifest-v1";
   for (const slug of slugs) {
     const manifest = await request(`/.well-known/ai-tool/${slug}.json`);
-    assert(manifest.type === "https", `${slug} type mismatch`);
+    assert(manifest.type === manifestType, `${slug} type mismatch`);
     assert(manifest.name && manifest.description, `${slug} name/description missing`);
     assert(manifest.endpoint === `${BASE_URL}/api/tools/${slug}` || isHttpUrl(manifest.endpoint), `${slug} endpoint invalid`);
     assert(manifest.inputs?.type === "object", `${slug} inputs schema missing`);
