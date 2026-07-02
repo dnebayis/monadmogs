@@ -1,17 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { buildMarketRadar, parseMogIdsInput, parseWallet } from "@/lib/holder-tools";
+import { buildMarketRadar, parseMogIdsInput } from "@/lib/holder-tools";
+import { HOLDER_TOOL_IDS, requireHolderToolAccess } from "@/lib/tool-runtime-gate";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => ({}));
-  const wallet = parseWallet(body.wallet);
-  if (!wallet) {
-    return NextResponse.json({ error: "wallet must be a valid EVM address." }, { status: 400 });
-  }
+  const access = await requireHolderToolAccess(request, HOLDER_TOOL_IDS.marketRadar);
+  if (access.response) return access.response;
 
+  const body = await request.json().catch(() => ({}));
   const mogIds = parseMogIdsInput(body.mogIds);
-  const result = await buildMarketRadar(wallet, mogIds);
+  const result = await buildMarketRadar(access.wallet, mogIds);
   if (!result.gate.verified) {
     return NextResponse.json(result, { status: 403 });
   }

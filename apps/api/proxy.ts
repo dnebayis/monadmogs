@@ -17,7 +17,7 @@ function corsOrigin(request: NextRequest) {
 function withCors(response: NextResponse, request: NextRequest) {
   response.headers.set("Access-Control-Allow-Origin", corsOrigin(request));
   response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-admin-secret");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Payment, X-Delegate-For, x-admin-secret");
   response.headers.set("Access-Control-Max-Age", "86400");
   response.headers.set("Vary", "Origin");
   return response;

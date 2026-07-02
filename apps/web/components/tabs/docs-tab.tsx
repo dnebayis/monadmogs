@@ -217,6 +217,9 @@ function ToolsSection() {
       <p>
         Registered on Monad ToolRegistry <code>0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1</code> as tool IDs <code>1</code> through <code>6</code>. Holder tools use <code>ERC721OwnerPredicate</code> with the Monad Mogs collection.
       </p>
+      <p>
+        Holder tool runtime access is strict: calls must include ERC-8257 predicate auth in <code>X-Payment</code>. The API uses the gate-resolved caller or delegated holder address and does not trust a body wallet fallback.
+      </p>
 
       <div className="endpoint-list">
         <article className="endpoint-card">

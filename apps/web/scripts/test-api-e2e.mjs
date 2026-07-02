@@ -45,12 +45,7 @@ function isHttpUrl(value) {
 
 const checks = [];
 async function check(name, fn) {
-  checks.push(
-    fn().then(
-      () => ({ name, ok: true }),
-      (error) => ({ name, ok: false, error }),
-    ),
-  );
+  checks.push({ name, fn });
 }
 
 await check("rarity summary exposes exact snapshot", async () => {
@@ -173,6 +168,20 @@ await check("agent lookup tool accepts unawakened Mogs", async () => {
   assert(typeof lookup.bound === "boolean", "lookup must include bound boolean");
 });
 
+await check("holder tools require ERC-8257 predicate auth", async () => {
+  const portfolio = await postJson("/api/tools/mog-holder-portfolio", { wallet: "0x0000000000000000000000000000000000000001" }, 402);
+  const mission = await postJson(
+    "/api/tools/mog-holder-mission-brief",
+    { wallet: "0x0000000000000000000000000000000000000001", mogId: 1 },
+    402,
+  );
+  const radar = await postJson("/api/tools/mog-market-radar", { wallet: "0x0000000000000000000000000000000000000001" }, 402);
+
+  assert(portfolio.error?.includes("X-PAYMENT"), "portfolio should return predicate challenge");
+  assert(mission.error?.includes("X-PAYMENT"), "mission should return predicate challenge");
+  assert(radar.error?.includes("X-PAYMENT"), "radar should return predicate challenge");
+});
+
 await check("OpenSea tool manifests are same-origin and schema shaped", async () => {
   const slugs = ["mog-agent-lookup", "mog-persona", "mog-rarity"];
   const manifestType = "https://ercs.ethereum.org/ERCS/erc-8257#tool-manifest-v1";
@@ -276,6 +285,7 @@ await check("agent prompt and llms prioritize awakening and agent APIs", async (
   assert(llms.includes("/api/agents/metadata/{mogId}"), "llms missing AgentURI endpoint");
   assert(llms.includes("/#agents"), "llms missing embedded agent directory link");
   assert(llms.includes("/.well-known/ai-tool/mog-persona.json"), "llms missing tool manifest");
+  assert(llms.includes("Holder tool runtime access is strict"), "llms missing strict holder tool gate note");
   assert(!llms.includes("/api/arena"), "llms should not list Arena endpoints");
 });
 
@@ -309,7 +319,15 @@ await check("Arena API routes are removed from app surface", async () => {
   assert(!apiHome.includes("/arena-skill.md"), "API landing page should not link Arena skill");
 });
 
-const results = await Promise.all(checks);
+const results = [];
+for (const { name, fn } of checks) {
+  try {
+    await fn();
+    results.push({ name, ok: true });
+  } catch (error) {
+    results.push({ name, ok: false, error });
+  }
+}
 const failures = results.filter((result) => !result.ok);
 
 for (const result of results) {

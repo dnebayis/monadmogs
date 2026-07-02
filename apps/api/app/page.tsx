@@ -45,7 +45,7 @@ const groups = [
   },
   {
     title: "OpenSea Tools",
-    description: "ERC-8257 ToolRegistry endpoints and same-origin manifests. Tools are registered on Monad ToolRegistry as IDs 1 through 6; holder tools use Monad Mogs NFT gating.",
+    description: "ERC-8257 ToolRegistry endpoints and same-origin manifests. Tools are registered on Monad ToolRegistry as IDs 1 through 6; holder tools use strict Monad Mogs NFT runtime gating.",
     endpoints: [
       ["GET", "/.well-known/ai-tool/mog-agent-lookup.json", "Tool manifest for agent binding lookup."],
       ["GET", "/.well-known/ai-tool/mog-persona.json", "Tool manifest for deterministic persona reads."],
@@ -56,9 +56,9 @@ const groups = [
       ["POST", "/api/tools/mog-agent-lookup", "Read awakened agent binding for a Mog."],
       ["POST", "/api/tools/mog-persona", "Read deterministic persona for a Mog."],
       ["POST", "/api/tools/mog-rarity", "Read rarity and traits for a Mog."],
-      ["POST", "/api/tools/mog-holder-portfolio", "Read verified holder portfolio summary."],
-      ["POST", "/api/tools/mog-holder-mission-brief", "Read verified mission brief for a held Mog."],
-      ["POST", "/api/tools/mog-market-radar", "Read verified holder rarity and awakening signals."],
+      ["POST", "/api/tools/mog-holder-portfolio", "Read verified holder portfolio summary. Requires ERC-8257 X-Payment predicate auth."],
+      ["POST", "/api/tools/mog-holder-mission-brief", "Read verified mission brief for a held Mog. Requires ERC-8257 X-Payment predicate auth."],
+      ["POST", "/api/tools/mog-market-radar", "Read verified holder rarity and awakening signals. Requires ERC-8257 X-Payment predicate auth."],
     ],
   },
   {

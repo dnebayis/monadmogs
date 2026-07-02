@@ -88,6 +88,13 @@ Monad Mogs NFT-gated tool endpoints:
 - POST ${API_BASE_URL}/api/tools/mog-holder-mission-brief (Monad ToolRegistry toolId 5)
 - POST ${API_BASE_URL}/api/tools/mog-market-radar (Monad ToolRegistry toolId 6)
 
+Holder tool runtime access is strict:
+- Requests must include ERC-8257 predicate auth in the X-Payment header.
+- X-Delegate-For may be used when the verified caller has a valid delegate.xyz delegation from the holder.
+- Missing auth returns the Tool SDK challenge response.
+- Invalid or non-holder auth returns the Tool SDK denial response.
+- The server uses the gate-resolved caller or delegated holder address; body wallet fields are legacy compatibility only.
+
 OpenSea-compatible manifests:
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-agent-lookup.json
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-persona.json
@@ -119,7 +126,7 @@ Monad ToolRegistry:
 - Render endpoints return SVG.
 - Persona is generated from Mog traits, rarity, and deterministic templates.
 - ToolRegistry v1 tools are read-only.
-- Holder tools are gated by Monad Mogs NFT ownership through ERC721OwnerPredicate.
+- Holder tools are strict runtime-gated by Monad Mogs NFT ownership through ERC721OwnerPredicate.
 - x402 paid tools are v2.
 - ERC-8217 gives binding-level attribution from agent identity to Mog NFT and current controller.
 - Public API v1 does not claim that individual wallet transactions were autonomously executed by an agent.
