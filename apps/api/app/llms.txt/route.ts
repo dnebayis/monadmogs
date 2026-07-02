@@ -94,6 +94,7 @@ Holder tool runtime access is strict:
 - Missing auth returns the Tool SDK challenge response.
 - Invalid or non-holder auth returns the Tool SDK denial response.
 - The server uses the gate-resolved caller or delegated holder address; body wallet fields are legacy compatibility only.
+- Successful holder tool calls report OpenSea usage when OPENSEA_API_KEY is configured.
 
 OpenSea-compatible manifests:
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-agent-lookup.json

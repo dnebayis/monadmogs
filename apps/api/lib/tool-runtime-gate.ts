@@ -1,11 +1,12 @@
-import { predicateGate } from "@opensea/tool-sdk";
+import { createEip3009UsageReporter, predicateGate, type InvocationEvent } from "@opensea/tool-sdk";
 import { getAddress, isAddress, type Address } from "viem";
 
 const DEFAULT_MONAD_TOOL_REGISTRY_ADDRESS = "0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1" as Address;
 const DEFAULT_TOOL_CREATOR_ADDRESS = "0xf818a22f404337f86a1155937fb119a5b9438fd6" as Address;
 const DEFAULT_MONAD_RPC_URL = "https://rpc.monad.xyz";
+const MONAD_CHAIN_ID = 143;
 const MONAD_MAINNET_CHAIN = {
-  id: 143,
+  id: MONAD_CHAIN_ID,
   name: "Monad",
   nativeCurrency: {
     decimals: 18,
@@ -35,11 +36,13 @@ type HolderToolAccess =
       response: Response;
       wallet?: never;
       agentAddress?: never;
+      callerAuthorization?: never;
     }
   | {
       response?: never;
       wallet: Address;
       agentAddress: Address | null;
+      callerAuthorization: InvocationEvent["callerAuthorization"];
     };
 
 function configuredAddress(value: string | undefined, fallback: Address) {
@@ -82,5 +85,38 @@ export async function requireHolderToolAccess(request: Request, toolId: bigint):
   return {
     wallet: getAddress(ctx.callerAddress),
     agentAddress: ctx.agentAddress ? getAddress(ctx.agentAddress) : null,
+    callerAuthorization: ctx.callerAuthorization,
   };
+}
+
+type UsageReportInput = {
+  access: Extract<HolderToolAccess, { wallet: Address }>;
+  toolId: bigint;
+  toolName: string;
+  latencyMs: number;
+};
+
+export async function reportHolderToolUsage({ access, toolId, toolName, latencyMs }: UsageReportInput) {
+  const apiKey = process.env.OPENSEA_API_KEY;
+  if (!apiKey || !access.callerAuthorization) return;
+
+  const reporter = createEip3009UsageReporter({
+    apiKey,
+    chainId: MONAD_CHAIN_ID,
+    toolChainId: MONAD_CHAIN_ID,
+    toolRegistryAddress: process.env.NEXT_PUBLIC_MONAD_TOOL_REGISTRY_ADDRESS || DEFAULT_MONAD_TOOL_REGISTRY_ADDRESS,
+    toolOnchainId: toolId.toString(),
+    timeoutMs: 2_000,
+  });
+  await reporter({
+    callerAddress: access.wallet,
+    agentAddress: access.agentAddress || undefined,
+    callerAuthorization: access.callerAuthorization,
+    paid: false,
+    toolName,
+    latencyMs,
+    timestamp: Date.now(),
+  }).catch((error) => {
+    console.error("[tool-runtime-gate] OpenSea usage reporting failed:", error);
+  });
 }

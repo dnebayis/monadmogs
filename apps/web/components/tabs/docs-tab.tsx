@@ -220,6 +220,9 @@ function ToolsSection() {
       <p>
         Holder tool runtime access is strict: calls must include ERC-8257 predicate auth in <code>X-Payment</code>. The API uses the gate-resolved caller or delegated holder address and does not trust a body wallet fallback.
       </p>
+      <p>
+        When <code>OPENSEA_API_KEY</code> is configured, successful holder tool calls report EIP-3009 usage to OpenSea so activity can appear on tool pages.
+      </p>
 
       <div className="endpoint-list">
         <article className="endpoint-card">
