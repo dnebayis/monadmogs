@@ -5,16 +5,37 @@ const TOOLS = {
     title: "Agent Lookup",
     subtitle: "ERC-8217 Mog binding discovery",
     accent: "#85e6ff",
+    gated: false,
   },
   "mog-persona": {
     title: "Mog Persona",
     subtitle: "Deterministic agent context",
     accent: "#ff8ee4",
+    gated: false,
   },
   "mog-rarity": {
     title: "Mog Rarity",
     subtitle: "Traits, tier, rank, and score",
     accent: "#ffe8a3",
+    gated: false,
+  },
+  "mog-holder-portfolio": {
+    title: "Holder Portfolio",
+    subtitle: "Verified holdings and agent status",
+    accent: "#95ffba",
+    gated: true,
+  },
+  "mog-holder-mission-brief": {
+    title: "Mission Brief",
+    subtitle: "Holder-verified agent context",
+    accent: "#ffb86f",
+    gated: true,
+  },
+  "mog-market-radar": {
+    title: "Market Radar",
+    subtitle: "Rarity and awakening signals",
+    accent: "#b8a7ff",
+    gated: true,
   },
 } as const;
 
@@ -52,7 +73,7 @@ function buildSvg(slug: ToolSlug) {
   <text x="312" y="174" fill="${tool.accent}" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" font-weight="700" letter-spacing="4">MONAD MOGS</text>
   <text x="312" y="272" fill="#fbfaf9" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="800">${escapeXml(tool.title)}</text>
   <text x="316" y="334" fill="#b9b5c8" font-family="Inter, Arial, sans-serif" font-size="34">${escapeXml(tool.subtitle)}</text>
-  <text x="118" y="520" fill="#fbfaf9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28">Open-access ERC-8257 tool on Base</text>
+  <text x="118" y="520" fill="#fbfaf9" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28">${tool.gated ? "Holder-gated ERC-8257 tool" : "Open-access ERC-8257 tool on Base"}</text>
   <text x="118" y="558" fill="#8f8aa3" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">api.monadmogs.xyz/.well-known/ai-tool/${slug}.json</text>
 </svg>`;
 }

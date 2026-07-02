@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { getAddress } from "viem";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { AgentDirectory } from "@/components/agent-directory";
 import { ConnectWalletButton } from "@/components/connect-wallet-button";
 import { MONAD_MOGS_ABI, MONAD_MOGS_ADDRESS } from "@/lib/contract";
 import { MOGS_8004_ADAPTER_ABI, MOGS_8004_ADAPTER_ADDRESS } from "@/lib/erc8004";
@@ -64,17 +65,21 @@ export function AgentsTab() {
     if (!mogId) return;
     setPreviewError(null);
     setPreview(null);
-    const response = await fetch(`${API_BASE_URL}/api/tools/mog-persona`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ mogId }),
-    });
-    const json = await response.json();
-    if (!response.ok) {
-      setPreviewError(json.error || "Persona preview failed.");
-      return;
+    try {
+      const response = await fetch("/api/agent-preview", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mogId }),
+      });
+      const json = await response.json();
+      if (!response.ok) {
+        setPreviewError(json.error || "Persona preview failed.");
+        return;
+      }
+      setPreview(json);
+    } catch {
+      setPreviewError("Persona preview could not reach the API.");
     }
-    setPreview(json);
   }
 
   function registerAgent() {
@@ -96,7 +101,7 @@ export function AgentsTab() {
           New registrations use the Adapter8004 model: the adapter registers the ERC-8004 agent, keeps the agent NFT in adapter custody, and treats the current Mog owner as controller.
         </p>
         <p className="section-copy">
-          Arena is legacy for now. The active flow is ERC-8004 identity, ERC-8217 binding, RESTAP metadata, and OpenSea agent visibility.
+          The active flow is ERC-8004 identity, ERC-8217 binding, RESTAP metadata, Agent Chat, and OpenSea agent visibility.
         </p>
       </div>
 
@@ -186,6 +191,8 @@ export function AgentsTab() {
         {previewError ? <p className="agent-form-note error">{previewError}</p> : null}
         {writeError ? <p className="agent-form-note error">{writeError.message}</p> : null}
       </div>
+
+      <AgentDirectory embedded />
 
       {preview ? (
         <div className="tab-block">

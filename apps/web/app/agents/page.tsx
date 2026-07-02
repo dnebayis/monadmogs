@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
   title: "Mog Agent Identity | Monad Mogs",
-  description: "Connect a wallet, generate an AgentURI, and register a Mog agent through ERC-8004.",
+  description: "Connect a wallet, browse awakened agents, and register a Mog agent through ERC-8004.",
 };
 
 export default function AgentsPage() {

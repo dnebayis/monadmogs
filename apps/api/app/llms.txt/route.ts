@@ -10,7 +10,6 @@ The NFT contract is frozen/renounced, so ERC-8048 is out of scope for v1.
 
 ## Current Priority
 - Agent Registry / Awakening is the primary product flow.
-- Arena endpoints remain available as legacy API surface but are hidden from public navigation.
 - New registrations use a Monad Mogs Adapter8004-style contract.
 - Old MogsAgentBindings is read-only legacy fallback for compatibility.
 
@@ -25,6 +24,7 @@ The NFT contract is frozen/renounced, so ERC-8048 is out of scope for v1.
 ## Site
 - Homepage: ${SITE_URL}/
 - Agent Registry: ${SITE_URL}/#agents
+- Agent Directory: ${SITE_URL}/#agents
 - Developers: ${SITE_URL}/developers
 - OpenSea: https://opensea.io/collection/monad-mogs
 - X: https://x.com/monadmogs
@@ -54,6 +54,11 @@ The NFT contract is frozen/renounced, so ERC-8048 is out of scope for v1.
 - GET ${API_BASE_URL}/api/agents/image/{mogId}
 - GET ${API_BASE_URL}/api/agents/agent-card/{mogId}
 
+## Agent Directory
+- Web UI: ${SITE_URL}/#agents
+- Data source: ${API_BASE_URL}/api/agents/search?awake=true&limit=24&offset=0&q={query}
+- Directory is embedded in the Agents tab, lists awakened agents only, and links to binding, info, AgentURI, RESTAP discovery, and OpenSea item pages.
+
 ## Compatibility Agent API
 - GET ${API_BASE_URL}/api/agents/binding?agentId={id}
 - GET ${API_BASE_URL}/api/agents/by-agent-id/{agentId}
@@ -70,7 +75,7 @@ The NFT contract is frozen/renounced, so ERC-8048 is out of scope for v1.
 - POST ${API_BASE_URL}/api/agent-runtime/{mogId}/news
 
 RESTAP v1 is persona-driven text only.
-It does not sign wallet actions, execute autonomously, or take Arena actions.
+It does not sign wallet actions or execute autonomously.
 
 ## ERC-8257 ToolRegistry v1
 Open-access read-only tools:
@@ -78,10 +83,18 @@ Open-access read-only tools:
 - POST ${API_BASE_URL}/api/tools/mog-persona
 - POST ${API_BASE_URL}/api/tools/mog-rarity
 
+Holder-gated tool endpoints prepared for ERC-8257 gated registration:
+- POST ${API_BASE_URL}/api/tools/mog-holder-portfolio
+- POST ${API_BASE_URL}/api/tools/mog-holder-mission-brief
+- POST ${API_BASE_URL}/api/tools/mog-market-radar
+
 OpenSea-compatible manifests:
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-agent-lookup.json
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-persona.json
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-rarity.json
+- GET ${API_BASE_URL}/.well-known/ai-tool/mog-holder-portfolio.json
+- GET ${API_BASE_URL}/.well-known/ai-tool/mog-holder-mission-brief.json
+- GET ${API_BASE_URL}/.well-known/ai-tool/mog-market-radar.json
 
 Base ToolRegistry:
 - Registry: 0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1

@@ -8,7 +8,6 @@ Goal:
 Awaken a Monad Mog as an ERC-8004 agent using the Monad Mogs Adapter8004 contract.
 
 Priority:
-- Arena is legacy for now. Do not join games or take Arena actions from this prompt.
 - The active task is agent identity, Mog binding, AgentURI metadata, RESTAP discovery, and OpenSea visibility.
 
 Model:
@@ -55,7 +54,7 @@ Do not:
 - Transfer the Mog to an agent wallet.
 - Use old MogsAgentBindings for new registrations.
 - Attempt ERC-8048 in v1; the NFT contract is frozen.
-- Claim RESTAP v1 can sign wallet actions, execute autonomously, or play Arena.
+- Claim RESTAP v1 can sign wallet actions or execute autonomously.
 - Claim a controller wallet transaction was agent-executed unless a separate signed execution receipt exists.
 
 Useful links:

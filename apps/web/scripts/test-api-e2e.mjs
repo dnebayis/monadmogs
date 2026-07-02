@@ -1,5 +1,4 @@
 const BASE_URL = process.env.BASE_URL || "http://127.0.0.1:3000";
-const { execFileSync } = await import("node:child_process");
 const { readFileSync } = await import("node:fs");
 const { resolve } = await import("node:path");
 
@@ -267,44 +266,47 @@ await check("collection API exposes awake discovery", async () => {
   assert(rarity.awakenedByTier && typeof rarity.awakenedByTier === "object", "rarity awakened tier summary missing");
 });
 
-await check("agent prompt and llms prioritize awakening over Arena", async () => {
+await check("agent prompt and llms prioritize awakening and agent APIs", async () => {
   const prompt = await request("/agent-prompt.txt");
   const llms = await request("/llms.txt");
   assert(prompt.includes("version: 1.0.0"), "agent prompt version mismatch");
   assert(prompt.includes("registerMogAgent"), "agent prompt missing adapter registration");
-  assert(prompt.includes("Do not join games or take Arena actions"), "agent prompt missing Arena deprioritization");
+  assert(!prompt.includes("Arena"), "agent prompt should not mention Arena");
   assert(llms.includes("version: 1.0.0-agent-registry"), "llms version mismatch");
   assert(llms.includes("/api/agents/metadata/{mogId}"), "llms missing AgentURI endpoint");
+  assert(llms.includes("/#agents"), "llms missing embedded agent directory link");
   assert(llms.includes("/.well-known/ai-tool/mog-persona.json"), "llms missing tool manifest");
+  assert(!llms.includes("/api/arena"), "llms should not list Arena endpoints");
 });
 
-await check("home navigation hides Arena tab", async () => {
+await check("agent directory surface is wired", async () => {
   const root = resolve(process.cwd(), "../..");
   const homeTabs = readFileSync(resolve(root, "apps/web/components/home-tabs.tsx"), "utf8");
+  const agentsTab = readFileSync(resolve(root, "apps/web/components/tabs/agents-tab.tsx"), "utf8");
+  const agentsPage = readFileSync(resolve(root, "apps/web/app/agents/page.tsx"), "utf8");
+  const footer = readFileSync(resolve(root, "apps/web/components/site-footer.tsx"), "utf8");
+  const directory = readFileSync(resolve(root, "apps/web/components/agent-directory.tsx"), "utf8");
+
   assert(!homeTabs.includes('label: "Arena"'), "Arena tab should not be in public home navigation");
+  assert(agentsTab.includes("<AgentDirectory embedded />"), "Agents tab should embed the agent directory");
+  assert(agentsPage.includes('redirect("/#agents")'), "/agents should redirect to the Agents tab");
+  assert(footer.includes('href="/#agents"'), "footer Agents link should target the Agents tab");
+  assert(directory.includes("/api/agent-directory/search"), "directory should use same-origin search proxy");
+  assert(directory.includes("/api/agent-directory/count"), "directory should use same-origin count proxy");
+  assert(directory.includes("/.well-known/restap.json"), "directory should link RESTAP discovery");
+
+  const countProxy = readFileSync(resolve(root, "apps/web/app/api/agent-directory/count/route.ts"), "utf8");
+  const searchProxy = readFileSync(resolve(root, "apps/web/app/api/agent-directory/search/route.ts"), "utf8");
+  assert(countProxy.includes("/api/agents/count"), "count proxy should call public agent count API");
+  assert(searchProxy.includes("/api/agents/search"), "search proxy should call public agent search API");
 });
 
-await check("local runner dry-run sample still works for legacy Arena", async () => {
+await check("Arena API routes are removed from app surface", async () => {
   const root = resolve(process.cwd(), "../..");
-  const output = execFileSync(
-    "node",
-    [resolve(root, "apps/api/scripts/arena-runner.mjs"), "--dry-run", "--sample"],
-    { encoding: "utf8" },
-  );
-  const result = JSON.parse(output);
-  assert(result.mode === "dry-run", "runner sample should be dry-run");
-  assert(result.nextAction === "submit_move", "runner sample should produce submit_move");
-  assert(result.plannedMove === "lower", "runner should choose lower for currentNumber 72");
-});
-
-await check("arena game route still delegates to service layer", async () => {
-  const root = resolve(process.cwd(), "../..");
-  const route = readFileSync(resolve(root, "apps/api/app/api/arena/games/route.ts"), "utf8");
-  const service = readFileSync(resolve(root, "apps/api/lib/arena-game-service.ts"), "utf8");
-  assert(route.includes("joinArenaGameAction"), "games route should delegate join action");
-  assert(route.includes("submitArenaMoveAction"), "games route should delegate move action");
-  assert(route.includes("leaveArenaGameAction"), "games route should delegate leave action");
-  assert(service.includes("Higher or Lower join must not include an opening move."), "higher-lower join guard should remain");
+  const apiHome = readFileSync(resolve(root, "apps/api/app/page.tsx"), "utf8");
+  assert(apiHome.includes("/api/agents/search?awake=true"), "API landing should show agent directory search example");
+  assert(!apiHome.includes("/api/arena"), "API landing page should not list Arena endpoints");
+  assert(!apiHome.includes("/arena-skill.md"), "API landing page should not link Arena skill");
 });
 
 const results = await Promise.all(checks);

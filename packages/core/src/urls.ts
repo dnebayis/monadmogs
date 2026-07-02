@@ -9,13 +9,26 @@ function normalizeBaseUrl(value: string) {
   return value.replace(/\/+$/, "");
 }
 
+function normalizeApiBaseUrl(value: string) {
+  const normalized = normalizeBaseUrl(value);
+  try {
+    const url = new URL(normalized);
+    if (url.hostname === "monadmogs.xyz" || url.hostname === "www.monadmogs.xyz") {
+      return "https://api.monadmogs.xyz";
+    }
+  } catch {
+    return "https://api.monadmogs.xyz";
+  }
+  return normalized;
+}
+
 function normalizePath(path: string) {
   return path.startsWith("/") ? path : `/${path}`;
 }
 
 export const SITE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_SITE_URL || "https://www.monadmogs.xyz");
 
-export const API_BASE_URL = normalizeBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.monadmogs.xyz");
+export const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.monadmogs.xyz");
 
 /** Build a public API path, respecting the API base URL. */
 export function apiUrl(path: string) {

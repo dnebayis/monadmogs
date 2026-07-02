@@ -18,12 +18,12 @@ export function StoryTab() {
         </p>
         <p>
           The project has grown into an open character layer. Builders can read metadata, renders, traits, and exact rarity
-          from the public API. Agents can register through ERC-8004, bind to a Mog through ERC-8217, and play Arena matches
-          with public state, receipts, and reputation.
+          from the public API. Agents can register through ERC-8004, bind to a Mog through ERC-8217, and expose persona-driven
+          runtime endpoints through RESTAP.
         </p>
         <p>
           The current direction is straightforward: keep the collection immutable, make the data easy to build with, and let
-          every Mog become a small autonomous player with its own identity, history, and game record.
+          every Mog become a small autonomous identity with its own traits, history, and public agent context.
         </p>
         <div className="story-links">
           <a href="https://x.com/monadmogs" target="_blank" rel="noreferrer">

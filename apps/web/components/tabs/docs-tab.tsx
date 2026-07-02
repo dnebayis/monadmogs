@@ -7,7 +7,7 @@ import { API_BASE_URL } from "@/lib/urls";
 const CANONICAL_API_BASE_URL = "https://api.monadmogs.xyz";
 
 function getBuilderPrompt() {
-  return `Read ${CANONICAL_API_BASE_URL}/llms.txt, then use Monad Mogs APIs for collection metadata, awakened agent bindings, RESTAP runtime endpoints, and OpenSea-compatible tool manifests.`;
+  return `Read ${CANONICAL_API_BASE_URL}/llms.txt, then use Monad Mogs APIs for collection metadata, awakened agent directory search, RESTAP runtime endpoints, and OpenSea-compatible tool manifests.`;
 }
 
 type DocSection = "overview" | "agents" | "tools" | "api";
@@ -78,7 +78,7 @@ export function DocsTab() {
         <p className="eyebrow">Docs</p>
         <h2>Agent Registry first.</h2>
         <p className="section-copy">
-          Current docs focus on ERC-8004 identity, ERC-8217 Mog binding, RESTAP metadata, and OpenSea ToolRegistry. Arena remains legacy and is no longer the primary public flow.
+          Current docs focus on ERC-8004 identity, ERC-8217 Mog binding, RESTAP metadata, Agent Chat, and OpenSea ToolRegistry.
         </p>
       </div>
 
@@ -115,6 +115,19 @@ function OverviewSection() {
         A Mog now controls an ERC-8004 agent through an Adapter8004-style contract. The adapter owns the ERC-8004 agent NFT, while the current Mog owner is treated as the controller. When the Mog transfers, control moves with the NFT.
       </p>
 
+      <h3>ERC standards in use</h3>
+      <ul>
+        <li><code>ERC-8004</code> provides the onchain agent identity registry and AgentURI tokenURI metadata.</li>
+        <li><code>ERC-8217</code> links that agent identity to a specific Monad Mogs NFT, so the Mog owner controls the agent.</li>
+        <li><code>ERC-8257</code> is the ToolRegistry format used for publishing agent tools and OpenSea-compatible tool manifests.</li>
+        <li><code>ERC-8048</code> is not used in v1 because the original Monad Mogs NFT contract is frozen and renounced.</li>
+      </ul>
+
+      <h3>What RESTAP means</h3>
+      <p>
+        RESTAP is the public runtime discovery layer for an awakened Mog agent. It exposes a small HTTP interface under <code>{"/api/agent-runtime/{mogId}"}</code>, including discovery, talk, and news endpoints. In v1 it returns persona-driven text only; it does not sign transactions or execute wallet actions.
+      </p>
+
       <h3>What is out of v1</h3>
       <p>
         ERC-8048 is not implemented in v1 because the Monad Mogs NFT contract is frozen. Agent metadata is published through ERC-8004 AgentURI, RESTAP discovery, A2A agent cards, and public API endpoints.
@@ -122,7 +135,7 @@ function OverviewSection() {
 
       <h3>Compatibility</h3>
       <p>
-        The old MogsAgentBindings contract remains readable as legacy fallback, but new registrations should use the adapter only. Arena endpoints remain online for existing integrations and are hidden from the main product navigation.
+        The old MogsAgentBindings contract remains readable as legacy fallback, but new registrations should use the adapter only.
       </p>
     </article>
   );
@@ -131,6 +144,19 @@ function OverviewSection() {
 function AgentsSection() {
   return (
     <article className="docs-article">
+      <h3>Agent Directory</h3>
+      <p>
+        The public directory is embedded in the Agents tab. It lists awakened agents only, uses <code>/api/agents/search?awake=true</code>, and links each agent to binding, info, AgentURI, RESTAP discovery, and OpenSea.
+      </p>
+      <div className="hero-actions">
+        <a className="text-link" href="/#agents">
+          Open Agents tab
+        </a>
+        <a className="text-link muted" href={`${API_BASE_URL}/api/agents/search?awake=true&limit=24`} target="_blank" rel="noreferrer">
+          Search API
+        </a>
+      </div>
+
       <h3>Awakening flow</h3>
       <div className="docs-flow-steps">
         {[
@@ -158,6 +184,25 @@ function AgentsSection() {
         <li>The current Mog owner can update AgentURI and non-reserved metadata.</li>
         <li><code>agent-binding</code> cannot be overwritten by controllers.</li>
       </ul>
+
+      <h3>RESTAP endpoints</h3>
+      <p>
+        RESTAP gives agents and builders a predictable HTTP surface for reading an awakened Mog agent. Use discovery first, then call the exposed runtime endpoints.
+      </p>
+      <div className="docs-endpoint-list">
+        <div className="docs-endpoint-row">
+          <code>{"/api/agent-runtime/{mogId}/.well-known/restap.json"}</code>
+          <span>Discovery document for the Mog agent runtime.</span>
+        </div>
+        <div className="docs-endpoint-row">
+          <code>{"POST /api/agent-runtime/{mogId}/talk"}</code>
+          <span>Persona-driven text response based on Mog traits and rarity.</span>
+        </div>
+        <div className="docs-endpoint-row">
+          <code>{"/api/agent-runtime/{mogId}/news"}</code>
+          <span>Public news envelope for the awakened agent.</span>
+        </div>
+      </div>
     </article>
   );
 }

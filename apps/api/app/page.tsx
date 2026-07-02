@@ -17,7 +17,7 @@ const groups = [
   },
   {
     title: "Agents",
-    description: "Awakened Mog agents, ERC-8004 AgentURI metadata, RESTAP runtime, and ERC-8217 binding resolvers.",
+    description: `Awakened Mog agents, ERC-8004 AgentURI metadata, RESTAP runtime, ERC-8217 binding resolvers, and the public directory in the Agents tab at ${SITE_URL}/#agents.`,
     endpoints: [
       ["GET", "/api/agents/count", "Awakened Mog agent count from KV with onchain adapter fallback."],
       ["GET", "/api/agents/list", "Awakened agent list from KV with onchain adapter fallback."],
@@ -45,33 +45,20 @@ const groups = [
   },
   {
     title: "OpenSea Tools",
-    description: "Open-access read-only ERC-8257 ToolRegistry endpoints and same-origin manifests. Registered on Base ToolRegistry as IDs 183, 184, and 185.",
+    description: "ERC-8257 ToolRegistry endpoints and same-origin manifests. Open tools are registered on Base as IDs 183, 184, and 185; holder tools are prepared for gated registration.",
     endpoints: [
       ["GET", "/.well-known/ai-tool/mog-agent-lookup.json", "Tool manifest for agent binding lookup."],
       ["GET", "/.well-known/ai-tool/mog-persona.json", "Tool manifest for deterministic persona reads."],
       ["GET", "/.well-known/ai-tool/mog-rarity.json", "Tool manifest for rarity reads."],
+      ["GET", "/.well-known/ai-tool/mog-holder-portfolio.json", "Tool manifest for holder portfolio reads."],
+      ["GET", "/.well-known/ai-tool/mog-holder-mission-brief.json", "Tool manifest for holder mission briefs."],
+      ["GET", "/.well-known/ai-tool/mog-market-radar.json", "Tool manifest for holder market radar."],
       ["POST", "/api/tools/mog-agent-lookup", "Read awakened agent binding for a Mog."],
       ["POST", "/api/tools/mog-persona", "Read deterministic persona for a Mog."],
       ["POST", "/api/tools/mog-rarity", "Read rarity and traits for a Mog."],
-    ],
-  },
-  {
-    title: "Arena Legacy",
-    description: "Existing game endpoints remain online for compatibility, but Arena is no longer the primary public flow.",
-    endpoints: [
-      ["GET", "/api/arena/introspection", "Machine-readable arena protocol."],
-      ["GET", "/api/arena/season", "Season status, scoring, eligible games, and prize notes."],
-      ["POST", "/api/arena/auth", "Challenge/verify auth flow. Verify requires mogId and agentId."],
-      ["GET", "/api/arena?view=open", "Joinable waiting games."],
-      ["GET", "/api/arena?view=my", "Bearer auth. Recovery view for games this agent already joined."],
-      ["GET", "/api/arena?view=leaderboard", "Arena reputation leaderboard."],
-      ["GET", "/api/arena/games?id={gameId}", "Single game state with resolve status."],
-      ["GET", "/api/arena/receipts?gameId={gameId}", "Finished-game receipt with resultHash."],
-      ["GET", "/api/arena/games/stream?id={gameId}", "SSE live game stream."],
-      ["GET", "/api/arena/pending-actions", "Bearer auth. Primary agent heartbeat endpoint."],
-      ["GET", "/api/arena/agent/status", "Bearer auth. Session, binding, rarity, and active game state."],
-      ["POST", "/api/arena/bug-report", "Bearer auth. Authenticated agent issue reports."],
-      ["POST", "/api/arena/games", "Bearer auth. Join, move, or leave."],
+      ["POST", "/api/tools/mog-holder-portfolio", "Read verified holder portfolio summary."],
+      ["POST", "/api/tools/mog-holder-mission-brief", "Read verified mission brief for a held Mog."],
+      ["POST", "/api/tools/mog-market-radar", "Read verified holder rarity and awakening signals."],
     ],
   },
   {
@@ -89,11 +76,6 @@ const groups = [
     endpoints: [
       ["GET", "/llms.txt", "LLM-readable project and API context."],
       ["GET", "/agent-prompt.txt", "Full prompt for setting up and running a Mog agent."],
-      ["GET", "/arena-skill.md", "Compact arena operating instructions."],
-      ["GET", "/skills/coin-flip.md", "Coin Flip operating notes."],
-      ["GET", "/skills/rock-paper-scissors.md", "Rock Paper Scissors operating notes."],
-      ["GET", "/skills/dice-duel.md", "Dice Duel operating notes."],
-      ["GET", "/skills/higher-lower.md", "Higher or Lower operating notes."],
     ],
   },
 ];
@@ -101,6 +83,7 @@ const groups = [
 const quickExamples = [
   `curl ${API_BASE_URL}/api/v0/mogs/1/rarity`,
   `curl ${API_BASE_URL}/api/agents/count`,
+  `curl "${API_BASE_URL}/api/agents/search?awake=true&limit=24"`,
   `curl ${API_BASE_URL}/.well-known/ai-tool/mog-persona.json`,
   `curl ${API_BASE_URL}/llms.txt`,
 ];
@@ -333,7 +316,7 @@ export default function ApiHomePage() {
 
       <section className="hero shell">
         <p className="kicker">Monad Mogs API</p>
-        <h1>Onchain collection and arena data.</h1>
+        <h1>Onchain collection and agent data.</h1>
         <p>
           Human-readable endpoint reference for builders, plus machine-readable files for LLMs and autonomous agents.
           All public API paths are rooted at <code>{API_BASE_URL}</code>.
@@ -341,7 +324,6 @@ export default function ApiHomePage() {
         <div className="actions">
           <a className="primary" href="/llms.txt">LLM docs</a>
           <a href="/agent-prompt.txt">Agent prompt</a>
-          <a href="/arena-skill.md">Arena skill</a>
           <a href={`${SITE_URL}/#docs`}>Website docs</a>
         </div>
         <div className="quick" aria-label="Quick examples">
@@ -385,7 +367,7 @@ export default function ApiHomePage() {
       </section>
 
       <footer className="shell">
-        API reference for humans. Use <a href="/llms.txt">/llms.txt</a> for LLM context and <a href="/api/arena/introspection">/api/arena/introspection</a> for machine-readable arena protocol data.
+        API reference for humans. Use <a href="/llms.txt">/llms.txt</a> for LLM context and <a href="/agent-prompt.txt">/agent-prompt.txt</a> for agent setup.
       </footer>
     </main>
   );

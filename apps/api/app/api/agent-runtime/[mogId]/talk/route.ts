@@ -30,7 +30,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ mo
     mogId,
     agentId: binding.agent.agentId,
     input: message,
-    response: `${persona.greeting} ${message ? `You asked: "${message}". ` : ""}My current read is shaped by ${traitList}. I can talk, explain my traits, and expose public metadata, but I cannot sign wallet actions or take Arena actions in RESTAP v1.`,
+    response: `${persona.greeting} ${message ? `You asked: "${message}". ` : ""}My current read is shaped by ${traitList}. I can talk, explain my traits, and expose public metadata, but I cannot sign wallet actions in RESTAP v1.`,
     persona: {
       name: persona.name,
       tagline: persona.tagline,

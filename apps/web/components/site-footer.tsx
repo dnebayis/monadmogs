@@ -10,7 +10,7 @@ export function SiteFooter() {
       <a href="https://github.com/dnebayis/monadmogs" target="_blank" rel="noreferrer">
         GitHub
       </a>
-      <a href="/agents">
+      <a href="/#agents">
         Agents
       </a>
     </footer>
