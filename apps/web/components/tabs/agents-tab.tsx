@@ -71,7 +71,7 @@ export function AgentsTab() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ mogId }),
       });
-      const json = await response.json();
+      const json = await response.json().catch(() => ({ error: "Persona preview returned an invalid response." }));
       if (!response.ok) {
         setPreviewError(json.error || "Persona preview failed.");
         return;

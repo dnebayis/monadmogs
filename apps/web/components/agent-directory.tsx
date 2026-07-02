@@ -38,6 +38,39 @@ type AgentCountResponse = {
   count: number;
 };
 
+type AgentInfo = {
+  name: string;
+  tagline: string;
+  greeting?: string;
+  backstory: string;
+  communicationStyle: string;
+  personalityTraits?: string[];
+  quirks?: string[];
+  image: string;
+  agent: {
+    agentId: number;
+    agentURI: string;
+    controller?: string | null;
+    owner?: string | null;
+    agentWallet?: string | null;
+  };
+  binding: {
+    tokenId: string;
+    agentId: number;
+    contract: string;
+    source: string;
+  };
+  rarity?: {
+    rank: number;
+    tier: string;
+  } | null;
+  links?: {
+    metadata?: string;
+    runtime?: string;
+    agentCard?: string;
+  };
+};
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
 }
@@ -76,11 +109,24 @@ export function AgentDirectory({ embedded = false }: { embedded?: boolean }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [selectedMogId, setSelectedMogId] = useState<number | null>(null);
+  const [selectedInfo, setSelectedInfo] = useState<AgentInfo | null>(null);
+  const [selectedError, setSelectedError] = useState("");
+  const [isInfoLoading, setIsInfoLoading] = useState(false);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => setDebouncedQuery(query.trim()), 250);
     return () => window.clearTimeout(timeout);
   }, [query]);
+
+  useEffect(() => {
+    if (!selectedMogId) return undefined;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeAgentInfo();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedMogId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,6 +184,34 @@ export function AgentDirectory({ embedded = false }: { embedded?: boolean }) {
     } finally {
       setIsLoadingMore(false);
     }
+  }
+
+  async function openAgentInfo(mogId: number) {
+    setSelectedMogId(mogId);
+    setSelectedInfo(null);
+    setSelectedError("");
+    setIsInfoLoading(true);
+
+    try {
+      const response = await fetch(`/api/agent-directory/info/${mogId}`, { cache: "no-store" });
+      const json = await response.json().catch(() => ({ error: "Agent info returned an invalid response." }));
+      if (!response.ok) {
+        setSelectedError(json.error || "Agent info could not be loaded.");
+        return;
+      }
+      setSelectedInfo(json);
+    } catch {
+      setSelectedError("Agent info could not reach the API.");
+    } finally {
+      setIsInfoLoading(false);
+    }
+  }
+
+  function closeAgentInfo() {
+    setSelectedMogId(null);
+    setSelectedInfo(null);
+    setSelectedError("");
+    setIsInfoLoading(false);
   }
 
   const statusText = useMemo(() => {
@@ -200,9 +274,9 @@ export function AgentDirectory({ embedded = false }: { embedded?: boolean }) {
 
               return (
                 <article className="agent-directory-card" key={`${agent.agentId}-${mogId}`}>
-                  <a className="agent-directory-image" href={infoUrl} target="_blank" rel="noreferrer" aria-label={`Open Mog #${mogId} agent info`}>
+                  <button className="agent-directory-image" type="button" onClick={() => openAgentInfo(mogId)} aria-label={`Open Mog #${mogId} agent info`}>
                     <img src={`${API_BASE_URL}/api/v0/mogs/${mogId}/render`} alt={`Mog #${mogId}`} loading="lazy" />
-                  </a>
+                  </button>
 
                   <div className="agent-directory-body">
                     <div className="agent-directory-title">
@@ -241,6 +315,60 @@ export function AgentDirectory({ embedded = false }: { embedded?: boolean }) {
           </div>
         </>
       )}
+
+      {selectedMogId ? (
+        <div className="agent-info-overlay" role="presentation" onMouseDown={closeAgentInfo}>
+          <section className="agent-info-panel" role="dialog" aria-modal="true" aria-label={`Mog #${selectedMogId} agent info`} onMouseDown={(event) => event.stopPropagation()}>
+            <button className="agent-info-close" type="button" onClick={closeAgentInfo} aria-label="Close agent info">
+              Close
+            </button>
+
+            {isInfoLoading ? (
+              <div className="agent-info-state">Loading agent info...</div>
+            ) : selectedError ? (
+              <div className="agent-info-state error">{selectedError}</div>
+            ) : selectedInfo ? (
+              <>
+                <div className="agent-info-visual">
+                  <img src={selectedInfo.image || `${API_BASE_URL}/api/v0/mogs/${selectedMogId}/render`} alt={selectedInfo.name} />
+                </div>
+                <div className="agent-info-content">
+                  <div className="agent-info-heading">
+                    <span>{selectedInfo.binding.source || "adapter"} binding</span>
+                    <h2>{selectedInfo.name}</h2>
+                    <p>{selectedInfo.tagline}</p>
+                  </div>
+
+                  <div className="agent-info-facts">
+                    <span>Agent #{selectedInfo.agent.agentId}</span>
+                    {selectedInfo.rarity ? <span>{selectedInfo.rarity.tier} #{formatNumber(selectedInfo.rarity.rank)}</span> : null}
+                    <span>Controller {shortAddress(selectedInfo.agent.controller)}</span>
+                    <span>Wallet {shortAddress(selectedInfo.agent.agentWallet)}</span>
+                  </div>
+
+                  <p className="agent-info-copy">{selectedInfo.greeting || selectedInfo.backstory}</p>
+                  <p className="agent-info-copy">{selectedInfo.communicationStyle}</p>
+
+                  {selectedInfo.personalityTraits?.length ? (
+                    <div className="agent-info-list">
+                      {selectedInfo.personalityTraits.slice(0, 4).map((trait) => (
+                        <span key={trait}>{trait}</span>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div className="agent-info-links">
+                    <a href={`${API_BASE_URL}/api/agents/binding/${selectedMogId}`} target="_blank" rel="noreferrer">Binding</a>
+                    <a href={selectedInfo.links?.metadata || `${API_BASE_URL}/api/agents/metadata/${selectedMogId}`} target="_blank" rel="noreferrer">AgentURI</a>
+                    <a href={`${API_BASE_URL}/api/agent-runtime/${selectedMogId}/.well-known/restap.json`} target="_blank" rel="noreferrer">RESTAP</a>
+                    <a href={`https://opensea.io/item/monad/${MONAD_MOGS_ADDRESS}/${selectedMogId}`} target="_blank" rel="noreferrer">OpenSea</a>
+                  </div>
+                </div>
+              </>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

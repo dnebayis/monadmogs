@@ -20,7 +20,13 @@ export async function POST(request: NextRequest) {
     },
     body: JSON.stringify(body),
     cache: "no-store",
+  }).catch((error) => {
+    const message = error instanceof Error ? error.message : "Persona API request failed.";
+    return NextResponse.json({ error: message }, { status: 502 });
   });
+
+  if (response instanceof NextResponse) return response;
+
   const text = await response.text();
 
   return new NextResponse(text, {

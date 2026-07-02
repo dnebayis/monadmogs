@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const response = await fetch(`${API_BASE_URL}/api/agents/count`, {
     headers: { Accept: "application/json" },
-    next: { revalidate: 30 },
+    cache: "no-store",
   });
   const text = await response.text();
 
@@ -14,7 +14,7 @@ export async function GET() {
     status: response.status,
     headers: {
       "Content-Type": response.headers.get("content-type") || "application/json",
-      "Cache-Control": response.headers.get("cache-control") || "public, max-age=30",
+      "Cache-Control": "no-store",
     },
   });
 }

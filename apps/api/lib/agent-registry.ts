@@ -150,17 +150,69 @@ async function rebuildAwakenedIndexFromAdapter(existing: AwakenedAgentRecord[] =
   return list;
 }
 
+async function syncAwakenedIndexFromAdapter(existing: AwakenedAgentRecord[] = []) {
+  if (!isAdapterConfigured()) return existing;
+
+  const latest = await client.getBlockNumber();
+  const lastIndexed = await kv.get<string>(kvKeys.agents.awakened.lastIndexedBlock).catch(() => null);
+  const fromBlock = lastIndexed && /^\d+$/.test(lastIndexed) ? BigInt(lastIndexed) + 1n : adapterDeployBlock();
+
+  if (fromBlock > latest) return existing;
+
+  const recordsByMog = new Map(existing.map((record) => [String(record.tokenId), record]));
+  const blockTimestamps = new Map<bigint, bigint>();
+  const ranges: Array<{ fromBlock: bigint; toBlock: bigint }> = [];
+
+  for (let cursor = fromBlock; cursor <= latest; cursor += ONCHAIN_FALLBACK_CHUNK_SIZE) {
+    const toBlock = cursor + ONCHAIN_FALLBACK_CHUNK_SIZE - 1n > latest ? latest : cursor + ONCHAIN_FALLBACK_CHUNK_SIZE - 1n;
+    ranges.push({ fromBlock: cursor, toBlock });
+  }
+
+  let nextRange = 0;
+  const logs = (
+    await Promise.all(
+      Array.from({ length: Math.min(ONCHAIN_FALLBACK_CONCURRENCY, ranges.length) }, async () => {
+        const workerLogs: Array<Parameters<typeof recordFromAgentBoundLog>[0]> = [];
+        for (;;) {
+          const index = nextRange++;
+          const range = ranges[index];
+          if (!range) break;
+          workerLogs.push(...(await readAdapterLogs(range.fromBlock, range.toBlock)));
+        }
+        return workerLogs;
+      }),
+    )
+  ).flat();
+
+  for (const log of logs) {
+    if (!blockTimestamps.has(log.blockNumber)) {
+      const block = await client.getBlock({ blockNumber: log.blockNumber });
+      blockTimestamps.set(log.blockNumber, block.timestamp);
+    }
+    const record = recordFromAgentBoundLog(log, blockTimestamps.get(log.blockNumber));
+    if (!record) continue;
+    recordsByMog.set(record.tokenId, record);
+    await kv.set(kvKeys.agents.awakened.item(record.tokenId), record);
+  }
+
+  const list = [...recordsByMog.values()].sort((a, b) => Number(a.tokenId) - Number(b.tokenId));
+  await Promise.all([
+    kv.set(kvKeys.agents.awakened.lastIndexedBlock, latest.toString()),
+    kv.set(kvKeys.agents.awakened.list, list),
+    kv.set(kvKeys.agents.awakened.count, list.length),
+  ]);
+  return list;
+}
+
 export async function getAwakenedIndex() {
   const items = (await kv.get<AwakenedAgentRecord[]>(kvKeys.agents.awakened.list)) || [];
   if (items.length === 0) {
     return rebuildAwakenedIndexFromAdapter(items).catch(() => items);
   }
-  return items;
+  return syncAwakenedIndexFromAdapter(items).catch(() => items);
 }
 
 export async function getAwakenedCount() {
-  const count = await kv.get<number>(kvKeys.agents.awakened.count);
-  if (typeof count === "number" && count > 0) return count;
   return (await getAwakenedIndex()).length;
 }
 
