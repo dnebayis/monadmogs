@@ -212,10 +212,10 @@ function ToolsSection() {
     <article className="docs-article">
       <h3>ERC-8257 ToolRegistry v1</h3>
       <p>
-        First tools are open-access and read-only. They are designed for discovery and safe agent context, not gated execution or payment.
+        Tools are read-only and designed for discovery and safe agent context. The first three are open-access; holder tools are gated by Monad Mogs NFT ownership.
       </p>
       <p>
-        Registered on Base ToolRegistry <code>0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1</code> as tool IDs <code>183</code>, <code>184</code>, and <code>185</code>.
+        Registered on Monad ToolRegistry <code>0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1</code> as tool IDs <code>1</code> through <code>6</code>. Holder tools use <code>ERC721OwnerPredicate</code> with the Monad Mogs collection.
       </p>
 
       <div className="endpoint-list">
@@ -230,6 +230,18 @@ function ToolsSection() {
         <article className="endpoint-card">
           <span>Rarity</span>
           <code>POST /api/tools/mog-rarity</code>
+        </article>
+        <article className="endpoint-card">
+          <span>Holder Portfolio</span>
+          <code>POST /api/tools/mog-holder-portfolio</code>
+        </article>
+        <article className="endpoint-card">
+          <span>Mission Brief</span>
+          <code>POST /api/tools/mog-holder-mission-brief</code>
+        </article>
+        <article className="endpoint-card">
+          <span>Market Radar</span>
+          <code>POST /api/tools/mog-market-radar</code>
         </article>
       </div>
 

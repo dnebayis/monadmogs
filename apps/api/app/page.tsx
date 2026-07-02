@@ -45,7 +45,7 @@ const groups = [
   },
   {
     title: "OpenSea Tools",
-    description: "ERC-8257 ToolRegistry endpoints and same-origin manifests. Open tools are registered on Base as IDs 183, 184, and 185; holder tools are prepared for gated registration.",
+    description: "ERC-8257 ToolRegistry endpoints and same-origin manifests. Tools are registered on Monad ToolRegistry as IDs 1 through 6; holder tools use Monad Mogs NFT gating.",
     endpoints: [
       ["GET", "/.well-known/ai-tool/mog-agent-lookup.json", "Tool manifest for agent binding lookup."],
       ["GET", "/.well-known/ai-tool/mog-persona.json", "Tool manifest for deterministic persona reads."],

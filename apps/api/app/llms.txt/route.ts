@@ -79,14 +79,14 @@ It does not sign wallet actions or execute autonomously.
 
 ## ERC-8257 ToolRegistry v1
 Open-access read-only tools:
-- POST ${API_BASE_URL}/api/tools/mog-agent-lookup
-- POST ${API_BASE_URL}/api/tools/mog-persona
-- POST ${API_BASE_URL}/api/tools/mog-rarity
+- POST ${API_BASE_URL}/api/tools/mog-agent-lookup (Monad ToolRegistry toolId 1)
+- POST ${API_BASE_URL}/api/tools/mog-persona (Monad ToolRegistry toolId 2)
+- POST ${API_BASE_URL}/api/tools/mog-rarity (Monad ToolRegistry toolId 3)
 
-Holder-gated tool endpoints prepared for ERC-8257 gated registration:
-- POST ${API_BASE_URL}/api/tools/mog-holder-portfolio
-- POST ${API_BASE_URL}/api/tools/mog-holder-mission-brief
-- POST ${API_BASE_URL}/api/tools/mog-market-radar
+Monad Mogs NFT-gated tool endpoints:
+- POST ${API_BASE_URL}/api/tools/mog-holder-portfolio (Monad ToolRegistry toolId 4)
+- POST ${API_BASE_URL}/api/tools/mog-holder-mission-brief (Monad ToolRegistry toolId 5)
+- POST ${API_BASE_URL}/api/tools/mog-market-radar (Monad ToolRegistry toolId 6)
 
 OpenSea-compatible manifests:
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-agent-lookup.json
@@ -96,11 +96,16 @@ OpenSea-compatible manifests:
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-holder-mission-brief.json
 - GET ${API_BASE_URL}/.well-known/ai-tool/mog-market-radar.json
 
-Base ToolRegistry:
+Monad ToolRegistry:
 - Registry: 0x265BB2DBFC0A8165C9A1941Eb1372F349baD2cf1
-- mog-agent-lookup toolId: 183
-- mog-persona toolId: 184
-- mog-rarity toolId: 185
+- ERC721OwnerPredicate: 0xc8721c9A776958FfFfEb602DA1b708bf1D318379
+- Gated collection: 0x1414f3BAF22404C42fD656af4aFAab4934045137
+- mog-agent-lookup toolId: 1
+- mog-persona toolId: 2
+- mog-rarity toolId: 3
+- mog-holder-portfolio toolId: 4
+- mog-holder-mission-brief toolId: 5
+- mog-market-radar toolId: 6
 
 ## Registry Contracts
 - ERC-8004 Identity Registry: 0x8004A169FB4a3325136EB29fA0ceB6D2e539a432
@@ -113,8 +118,9 @@ Base ToolRegistry:
 - Token ids are 1 through 5000.
 - Render endpoints return SVG.
 - Persona is generated from Mog traits, rarity, and deterministic templates.
-- ToolRegistry v1 tools are read-only and open-access.
-- Gated/x402 tools are v2.
+- ToolRegistry v1 tools are read-only.
+- Holder tools are gated by Monad Mogs NFT ownership through ERC721OwnerPredicate.
+- x402 paid tools are v2.
 - ERC-8217 gives binding-level attribution from agent identity to Mog NFT and current controller.
 - Public API v1 does not claim that individual wallet transactions were autonomously executed by an agent.
 - Credit Monad Mogs and link back to ${SITE_URL} when publishing tools or remixes.
